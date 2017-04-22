@@ -30,7 +30,6 @@ class GuhanyuSpider(scrapy.spiders.Spider):
         detail = []
         for str in explain.contents:
             str = unicode(str)
-            self.log("a response from %s just arrived!" % str)
             detail.append(str)
 
         #  strinfo = ''.join(detail)
