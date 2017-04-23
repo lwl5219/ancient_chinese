@@ -115,14 +115,15 @@ def explain_format(explain):
             if (0 != lastidx):
                 sense += sense_end
 
-            sense += "\t\t\t\t<sense> <b>{0}</b>\n".format(exidx)
+            sense += "\t\t\t\t<sense>\n"
             sense += "\t\t\t\t\t<description>{0}</description>\n".format(line)
             lastidx = exidx
         else:
             sense += "\t\t\t\t\t<br/>\n"
-            sense += "\t\t\t\t\t<example>\n"
-            sense += "\t\t\t\t\t\t<source>{0}</source>\n".format(line)
-            sense += "\t\t\t\t\t</example>\n"
+            sense += "\t\t\t\t\t<description>{0}</description>\n".format(line)
+            #  sense += "\t\t\t\t\t<example>\n"
+            #  sense += "\t\t\t\t\t\t<source>{0}</source>\n".format(line)
+            #  sense += "\t\t\t\t\t</example>\n"
     sense += sense_end
     outstr += sense
     outstr += "\t\t\t</category>\n"
@@ -132,4 +133,4 @@ def explain_format(explain):
 if __name__ == "__main__":
     reload(sys)
     sys.setdefaultencoding('utf8')
-    make_dict("/Users/lwl/downloads/read.json", "/Users/lwl/downloads/dict.html")
+    make_dict("./dict.json", "./Ancient_Chinese_Dict.html")
