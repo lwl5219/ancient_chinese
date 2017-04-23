@@ -80,12 +80,13 @@ def make_dict(srcfile, outfile):
 def word_format(wordinfo):
     word = wordinfo['word']
     explain = wordinfo['explain']
-    outstr = "\t\t<idx:entry scriptable=\"yes\">\n"
-    outstr += "\t\t\t<idx:orth value=\"{0}\">\n".format(word)
-    outstr += "\t\t\t</idx:orth>\n"
+    outstr = ""
     count = len(explain)
     idx = 0
     for spell in explain:
+        outstr += "\t\t<idx:entry scriptable=\"yes\">\n"
+        outstr += "\t\t\t<idx:orth value=\"{0}\">\n".format(word)
+        outstr += "\t\t\t</idx:orth>\n"
         idx += 1
         if ( 1 == count ):
             outstr += "\t\t\t<b><word homo_no=\"{0}\">{1}</word></b>\n".format(idx, word)
@@ -94,8 +95,8 @@ def word_format(wordinfo):
         outstr += "\t\t\t<br/>\n"
         outstr += "\t\t\t<phonetic>{0}</phonetic>\n".format(spell)
         outstr += explain_format(explain[spell])
-    outstr += "\t\t</idx:entry>\n"
-    outstr += "\t\t<hr/>\n"
+        outstr += "\t\t</idx:entry>\n"
+        outstr += "\t\t<hr/>\n"
     return outstr
 
 
@@ -118,6 +119,7 @@ def explain_format(explain):
             sense += "\t\t\t\t\t<description>{0}</description>\n".format(line)
             lastidx = exidx
         else:
+            sense += "\t\t\t\t\t<br/>\n"
             sense += "\t\t\t\t\t<example>\n"
             sense += "\t\t\t\t\t\t<source>{0}</source>\n".format(line)
             sense += "\t\t\t\t\t</example>\n"
