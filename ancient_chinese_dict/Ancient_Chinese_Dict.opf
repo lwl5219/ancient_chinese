@@ -6,7 +6,7 @@
 			<dc:Title>古汉语常用字字典</dc:Title><!-- 字典名称 -->
 			<dc:Language>zh-cn</dc:Language><!-- 字典语言 -->
 			<dc:Identifier id="uid">02FFA518EB</dc:Identifier><!-- 字典标识符 -->
-			<dc:creator>yilou</dc:creator><!-- 创建人 -->
+			<dc:creator>天宝佳缘</dc:creator><!-- 创建人 -->
 			<dc:publisher></dc:publisher><!-- 发布商 -->
 			<dc:date opf:event="publication">2017-04-23</dc:date><!-- 发布日期 -->
 		</dc-metadata>
