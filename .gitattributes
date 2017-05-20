@@ -1,0 +1,4 @@
+*.html linguist-language=Python
+*.opf linguist-language=Python
+*.json linguist-language=Python
+
