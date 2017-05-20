@@ -10,7 +10,6 @@ import scrapy
 
 class DictItem(scrapy.Item):
     # define the fields for your item here like:
-    # name = scrapy.Field()
     url = scrapy.Field()
     word = scrapy.Field()
     explain = scrapy.Field()

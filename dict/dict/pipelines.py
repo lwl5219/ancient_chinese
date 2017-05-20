@@ -11,10 +11,10 @@ class DictPipeline(object):
 
     def open_spider(self, spider):
         self.file = open('items.log', 'wb')
-        self.file.write("lwl open spider\n")
+        self.file.write("open spider\n")
 
     def process_item(self, item, spider):
-        self.file.write("lwl process item %s \n" % item);
+        self.file.write("process item %s \n" % item);
         explain = ''.join(item['explain'])
         explain = explain.replace("\n", "")
         definitions = {}
