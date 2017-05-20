@@ -19,6 +19,20 @@
     │   └── ancient_chinese.mongodb
 ```
 
+# 依赖
+
++ scrapy
++ kindlegen
+
+kindlegen 下载地址:https://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000765211
+Mac 下可通过 brew 安装:
+
+```
+brew install kindlegen
+```
+
+scrapy 安装参见: https://docs.scrapy.org/en/latest/intro/install.html
+
 # 使用
 
 ## 爬取

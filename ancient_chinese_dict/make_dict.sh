@@ -12,4 +12,8 @@ sed -i "/^\[/d" $file
 sed -i "/^\]/d" $file
 sed -i "s/,$//" $file
 
+# 生成html文件
 python make_dict.py
+
+# 制作字典
+kindlegen Ancient_Chinese_Dict.opf
