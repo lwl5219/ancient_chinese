@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package unique-identifier="uid" version="2.0" xmlns="http://www.idpf.org/2007/opf">
+	<!-- 字典元数据 -->
+	<metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+		<dc-metadata xmlns:dc="http://purl.org/metadata/dublin_core" xmlns:oebpackage="http://openebook.org/namespaces/oeb-package/1.0/">
+			<dc:Title>古汉语常用字字典</dc:Title><!-- 字典名称 -->
+			<dc:Language>zh-cn</dc:Language><!-- 字典语言 -->
+			<dc:Identifier id="uid">02FFA518EB</dc:Identifier><!-- 字典标识符 -->
+			<dc:creator>天宝佳缘</dc:creator><!-- 创建人 -->
+			<dc:publisher></dc:publisher><!-- 发布商 -->
+			<dc:date opf:event="publication">2017-04-23</dc:date><!-- 发布日期 -->
+		</dc-metadata>
+		<x-metadata>
+			<output encoding="utf-8"/>
+			<DictionaryInLanguage>zh-cn</DictionaryInLanguage><!-- 输入语言 -->
+			<DictionaryOutLanguage>zh-cn</DictionaryOutLanguage><!-- 输出语言 -->
+			<EmbeddedCover>images/cover.png</EmbeddedCover><!-- 封面图片 -->
+		</x-metadata>
+	</metadata>
+	<!-- 资源列表 -->
+	<manifest>
+		<item href="Ancient_Chinese_Dict.html" id="item1" media-type="text/x-oeb1-document"/><!-- HTML 文件 -->
+		<item href="images/cover.png" id="item2" media-type="image/png"/><!-- 图片文件 -->
+	</manifest>
+	<!-- 骨架文件 -->
+	<spine>
+		<itemref idref="item1"/> <!-- 对应 <manifest> 中的 html 文件 -->
+	</spine>
+	<tours/>
+	<!-- 页面指引 -->
+	<guide>
+		<reference href="Ancient_Chinese_Dict.html#filepos1" title="Start Reading" type="start"/><!-- 打开起始位置，对应 HTML 文件中的相应 ID -->
+	</guide>
+</package>
