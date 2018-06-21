@@ -67,9 +67,3 @@ sh make_dict.sh
 
 [自制 Kindle 字典简明教程（进阶篇）](https://kindlefere.com/post/178.html)
 
-
-# Donation
-
-如果你认为对你有所帮助, You can Buy me a coffee:)
-
-![donation](https://raw.githubusercontent.com/lwl5219/gallery/master/donate.png)
