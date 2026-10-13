@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>古文观止 · 系统学习</title>
+  <meta name="description" content="按《古文观止》原书卷次学习古文：原文、点字查义、系统讲解与学习进度。" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+</head>
+<body>
+  <header class="top">
+    <button type="button" class="icon-btn" id="nav-toggle" aria-expanded="false" aria-controls="catalog">目录</button>
+    <a class="brand" href="#/">古文观止</a>
+    <div class="top-progress" id="top-progress" aria-live="polite"></div>
+    <button type="button" class="text-btn" id="continue-btn">从首篇读起</button>
+  </header>
+  <div class="shell">
+    <div class="backdrop" id="backdrop" hidden></div>
+    <aside class="catalog" id="catalog" aria-label="篇目目录"></aside>
+    <main class="main" id="main"></main>
+  </div>
+  <div class="popup" id="popup" hidden role="dialog" aria-modal="true" aria-labelledby="popup-title"></div>
+  <script src="js/app.js"></script>
+</body>
+</html>
