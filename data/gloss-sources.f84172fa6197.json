@@ -20,23 +20,11 @@
         "url": "https://zh.wikisource.org/wiki/古文觀止/卷1",
         "via": "两属"
       },
-      "实词|完聚": {
-        "kind": "实词",
-        "source": "汉典文言",
-        "url": "http://wyw.hwxnet.com/view/hwxe5hwxaehwx8c.html",
-        "via": "完：粮食"
-      },
       "实词|克": {
         "kind": "实词",
         "source": "维基文库《古文观止》夹注",
         "url": "https://zh.wikisource.org/wiki/古文觀止/卷1",
         "via": "左传"
-      },
-      "实词|寤生": {
-        "kind": "实词",
-        "source": "汉典文言",
-        "url": "http://wyw.hwxnet.com/view/hwxe5hwxafhwxa4.html",
-        "via": "寤：难产"
       },
       "虚词|焉": {
         "kind": "虚词",
@@ -67,6 +55,12 @@
         "source": "汉典文言",
         "url": "http://wyw.hwxnet.com/view/hwxe9hwx81hwx97.html",
         "via": "遗：赠送"
+      },
+      "通假|寤": {
+        "kind": "通假",
+        "source": "汉典文言",
+        "url": "http://wyw.hwxnet.com/view/hwxe5hwxafhwxa4.html",
+        "via": "寤：逆生"
       },
       "通假|厌": {
         "kind": "通假",
