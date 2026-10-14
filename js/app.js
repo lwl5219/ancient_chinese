@@ -1070,6 +1070,7 @@
     document.title = title + " · 典籍";
     syncChrome();
     window.scrollTo(0, y);
+    scheduleBalance();
   }
 
   function textLink(label, fn) {
@@ -1198,6 +1199,124 @@
 
   const NO_LINE_START = "，。！？；、：」』）】》〉〕〗､";
   const NO_LINE_END = "「『（【《〈〔〖";
+  const PUNCT_OPEN = "「『（【《〈〔〖";
+  const PUNCT_CLOSE = "」』）】》〉〕〗";
+  const PUNCT_STOP = "。！？";
+  const PUNCT_PAUSE = "，、；：､";
+
+  function classifyPunct(span, text) {
+    Array.from(text).forEach(function (ch) {
+      if (PUNCT_OPEN.indexOf(ch) >= 0) span.classList.add("punct-open");
+      else if (PUNCT_CLOSE.indexOf(ch) >= 0) span.classList.add("punct-close");
+      else if (PUNCT_STOP.indexOf(ch) >= 0) span.classList.add("punct-stop");
+      else if (PUNCT_PAUSE.indexOf(ch) >= 0) span.classList.add("punct-pause");
+    });
+  }
+
+  function rubyUnits(orig) {
+    const units = [];
+    Array.from(orig.children).forEach(function (child) {
+      if (!child.classList) return;
+      if (child.classList.contains("keep") || child.classList.contains("punct")) {
+        units.push(child);
+        return;
+      }
+      if (child.classList.contains("word")) {
+        Array.from(child.children).forEach(function (el) {
+          if (!el.classList) return;
+          if (el.classList.contains("zi") || el.classList.contains("keep") || el.classList.contains("punct")) units.push(el);
+        });
+      }
+    });
+    return units;
+  }
+
+  function hanziOf(el) {
+    if (!el || !el.classList) return 0;
+    if (el.classList.contains("zi")) return 1;
+    return el.querySelectorAll(".zi").length;
+  }
+
+  function hanziSpan(units, start, end) {
+    let n = 0;
+    for (let i = start; i <= end; i++) n += hanziOf(units[i]);
+    return n;
+  }
+
+  function lineGroups(units) {
+    const lines = [];
+    let current = null;
+    let bottom = null;
+    units.forEach(function (el, index) {
+      const rect = el.getBoundingClientRect();
+      if (!rect.width && !rect.height) return;
+      const y = rect.bottom;
+      if (bottom === null || y > bottom + 10) {
+        current = [];
+        lines.push(current);
+        bottom = y;
+      } else if (y > bottom) {
+        bottom = y;
+      }
+      current.push(index);
+    });
+    return lines;
+  }
+
+  function shiftOrphan(orig) {
+    const units = rubyUnits(orig);
+    if (units.length < 4) return false;
+    const lines = lineGroups(units);
+    if (lines.length < 2) return false;
+    const last = lines[lines.length - 1];
+    const prev = lines[lines.length - 2];
+    const lastHan = hanziSpan(units, last[0], last[last.length - 1]);
+    const prevHan = hanziSpan(units, prev[0], prev[prev.length - 1]);
+    if (lastHan >= 3 || prevHan < 4) return false;
+    const total = prevHan + lastHan;
+    let desired = Math.max(3, Math.round(total / 2));
+    if (total - desired < 3) desired = total - 3;
+    if (desired < 3) return false;
+    const need = desired - lastHan;
+    if (need < 1) return false;
+    let breakAt = last[0];
+    let pulled = 0;
+    while (breakAt > prev[0] && pulled < need) {
+      breakAt -= 1;
+      pulled += hanziOf(units[breakAt]);
+    }
+    if (pulled < 1) return false;
+    while (breakAt < last[0] && hanziOf(units[breakAt]) === 0) breakAt += 1;
+    if (hanziSpan(units, prev[0], breakAt - 1) < 3) return false;
+    const br = document.createElement("br");
+    br.className = "balance";
+    units[breakAt].before(br);
+    return true;
+  }
+
+  function balanceOrig(orig) {
+    orig.querySelectorAll("br.balance").forEach(function (br) { br.remove(); });
+    let guard = 0;
+    while (guard < 4 && shiftOrphan(orig)) guard += 1;
+  }
+
+  function balanceProse(root) {
+    if (!root) return;
+    root.querySelectorAll(".body.prose .orig").forEach(balanceOrig);
+  }
+
+  let balanceToken = 0;
+  function scheduleBalance() {
+    const token = ++balanceToken;
+    const run = function () {
+      if (token !== balanceToken) return;
+      if (state.view !== "article") return;
+      balanceProse(main);
+    };
+    const kick = function () { requestAnimationFrame(run); };
+    if (document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(kick);
+    else kick();
+  }
 
   function takeEdgeChar(word, edge) {
     if (!word || !word.classList || !word.classList.contains("word")) return null;
@@ -1241,7 +1360,9 @@
       if (tok.punct) {
         const span = document.createElement("span");
         span.className = "punct";
-        span.textContent = state.progress.font === "t" ? tok.t : (tok.s || tok.t);
+        const text = state.progress.font === "t" ? tok.t : (tok.s || tok.t);
+        span.textContent = text;
+        classifyPunct(span, text);
         parent.appendChild(span);
         return;
       }
@@ -1722,6 +1843,7 @@
   window.addEventListener("resize", function () {
     if (!popup.hidden && state.popupTok) placePopup(state.popupTok.anchor);
     fitVerse(document.querySelector(".body.verse"));
+    scheduleBalance();
   });
 
   let swipeX = 0;
