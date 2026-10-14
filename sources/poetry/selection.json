@@ -3,7 +3,7 @@
   "commit": "b8594f81a89752241442f2ce267d6f66f96704ee",
   "license": "MIT",
   "copyright": "Copyright (c) 2016 JackeyGao",
-  "note": "唐诗对照蘅塘退士《唐诗三百首》；已收录篇保持原来的全唐诗用字。宋词对照朱孝臧重编《宋词三百首》。display 是站点上的篇名。",
+  "note": "唐诗对照蘅塘退士《唐诗三百首》和统编课文，课文篇从课文，《静夜思》作床前明月光。宋词对照朱孝臧重编《宋词三百首》，课文篇从课文。display 是站点上的篇名。",
   "tang": [
     {
       "id": "t001",
@@ -2746,6 +2746,54 @@
       "display": "山行",
       "form": "本站原已收录，不在这一版三百首目录里",
       "order": 1329
+    },
+    {
+      "id": "shizhisai",
+      "author": "王維",
+      "title": "使至塞上",
+      "display": "使至塞上",
+      "form": "课本收录，不在这一版三百首目录里",
+      "order": 2000
+    },
+    {
+      "id": "shihao",
+      "author": "杜甫",
+      "title": "石壕吏",
+      "display": "石壕吏",
+      "form": "课本收录，不在这一版三百首目录里",
+      "order": 2001
+    },
+    {
+      "id": "maowu",
+      "author": "杜甫",
+      "title": "茅屋為秋風所破歌",
+      "display": "茅屋為秋風所破歌",
+      "form": "课本收录，不在这一版三百首目录里",
+      "order": 2002
+    },
+    {
+      "id": "maitan",
+      "author": "白居易",
+      "title": "賣炭翁",
+      "display": "賣炭翁",
+      "form": "课本收录，不在这一版三百首目录里",
+      "order": 2003
+    },
+    {
+      "id": "yanmen",
+      "author": "李賀",
+      "title": "雁門太守行",
+      "display": "雁門太守行",
+      "form": "课本收录，不在这一版三百首目录里",
+      "order": 2004
+    },
+    {
+      "id": "chunjiang",
+      "author": "張若虛",
+      "title": "春江花月夜",
+      "display": "春江花月夜",
+      "form": "课本收录，不在这一版三百首目录里",
+      "order": 2005
     }
   ],
   "ci": [
@@ -4896,6 +4944,20 @@
       "tune": "丑奴兒",
       "display": "丑奴兒",
       "order": 1291
+    },
+    {
+      "id": "yijiangnan",
+      "author": "白居易",
+      "tune": "憶江南",
+      "display": "憶江南",
+      "order": 2006
+    },
+    {
+      "id": "xiangjianhuan",
+      "author": "李煜",
+      "tune": "相見歡",
+      "display": "相見歡",
+      "order": 2007
     }
   ]
 }

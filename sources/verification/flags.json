@@ -21,14 +21,14 @@
       },
       {
         "collection": "唐诗",
-        "pieces": 330,
-        "chars": 19752,
+        "pieces": 336,
+        "chars": 20664,
         "unexpected": "0"
       },
       {
         "collection": "宋词",
-        "pieces": 292,
-        "chars": 24774,
+        "pieces": 294,
+        "chars": 24837,
         "unexpected": "0"
       }
     ],

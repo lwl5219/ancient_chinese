@@ -268,8 +268,9 @@
   }
 
   const POETRY = {
-    tang: { file: "data/tang.json", label: "唐诗" },
-    ci: { file: "data/songci.json", label: "宋词" },
+    tang: { file: "data/tang.json", label: "唐诗", unit: "首" },
+    ci: { file: "data/songci.json", label: "宋词", unit: "首" },
+    ke: { file: "data/ke.json", label: "课文", unit: "篇" },
   };
 
   function route() {
@@ -277,8 +278,8 @@
     const read = hash.match(/^#\/read\/((?:v|h|z)\d{2}-\d{2})$/);
     const vol = hash.match(/^#\/gwgz\/(\d{1,2})$/);
     const zjuan = hash.match(/^#\/zztj\/(\d{1,2})$/);
-    const authorPage = hash.match(/^#\/(tang|ci)\/author\/(.+)$/);
-    const piece = hash.match(/^#\/(tang|ci)\/([a-z0-9-]+)$/);
+    const authorPage = hash.match(/^#\/(tang|ci|ke)\/author\/(.+)$/);
+    const piece = hash.match(/^#\/(tang|ci|ke)\/([a-z0-9-]+)$/);
     if (read) showArticle(read[1]);
     else if (vol) showVolume(Number(vol[1]));
     else if (zjuan) showZztjJuan(Number(zjuan[1]));
@@ -287,7 +288,7 @@
     else if (hash === "#/rjch") showRenjian();
     else if (authorPage) showAuthor(authorPage[1], decodeURIComponent(authorPage[2]));
     else if (piece) showPiece(piece[1], piece[2]);
-    else if (hash === "#/tang" || hash === "#/ci") showCollection(hash.slice(2));
+    else if (hash === "#/tang" || hash === "#/ci" || hash === "#/ke") showCollection(hash.slice(2));
     else showHub();
   }
 
@@ -887,7 +888,7 @@
   function appendCatalogTools(wrap, kind) {
     const bar = document.createElement("div");
     bar.className = "catalog-tools";
-    if (kind === "tang" || kind === "ci") {
+    if (kind === "tang" || kind === "ci" || kind === "ke") {
       const mode = document.createElement("div");
       mode.className = "tool-seg";
       [["work", "按作品"], ["author", "按作者"]].forEach(function (item) {
@@ -912,7 +913,7 @@
       btn.classList.toggle("on", state.gradeFilter === item[0]);
       btn.addEventListener("click", function () {
         state.gradeFilter = item[0];
-        if (kind === "tang" || kind === "ci") renderCollection(kind);
+        if (kind === "tang" || kind === "ci" || kind === "ke") renderCollection(kind);
         else if (kind === "gwgz") showBook();
         else if (kind === "zztj") showZztj();
         else if (kind === "rjch") showRenjian();
@@ -942,7 +943,7 @@
       title.className = "title";
       title.textContent = group.name;
       const sub = document.createElement("small");
-      sub.textContent = group.items.length + " 首";
+      sub.textContent = group.items.length + " " + (POETRY[kind].unit || "首");
       link.appendChild(title);
       link.appendChild(sub);
       list.appendChild(link);
@@ -970,7 +971,8 @@
     h1.textContent = font === "t" ? data.title.t : data.title.s;
     const lead = document.createElement("p");
     lead.className = "lead";
-    lead.textContent = data.pieces.length + " 首。点开一首，字上是今读，底下有译文和赏析。";
+    const unit = meta.unit || "首";
+    lead.textContent = data.pieces.length + " " + unit + "。点开一篇，字上是今读，底下有译文和赏析。";
     wrap.appendChild(h1);
     wrap.appendChild(lead);
     const lastId = state.progress.collections && state.progress.collections[kind];
@@ -1001,6 +1003,16 @@
     const list = document.createElement("div");
     list.className = "piece-list";
     const visible = data.pieces.filter(function (item) { return gradeMatches(item.id); });
+    if (!visible.length) {
+      const empty = document.createElement("p");
+      empty.className = "catalog-empty";
+      empty.textContent = "没有标上「" + state.gradeFilter + "」的篇目。";
+      wrap.appendChild(empty);
+      main.replaceChildren(wrap);
+      document.title = meta.label + " · 典籍";
+      syncChrome();
+      return;
+    }
     if (state.listMode === "author") {
       renderAuthorIndex(list, kind, visible);
       wrap.appendChild(list);
@@ -1193,7 +1205,17 @@
 
   function renderVerseBody(piece, kind, meta) {
     const body = document.createElement("div");
-    body.className = "body verse " + (kind === "tang" ? "shi" : "ci");
+    if (piece.form === "prose") {
+      body.className = "body prose";
+      piece.lines.forEach(function (line) {
+        const p = document.createElement("p");
+        p.className = "orig para" + (state.progress.pinyin ? " with-py" : "");
+        appendTokens(p, line.tokens);
+        body.appendChild(p);
+      });
+      return body;
+    }
+    body.className = "body verse " + (piece.form === "ci" || kind === "ci" ? "ci" : "shi");
     const counts = kind === "ci" && meta && meta.stanzas && meta.stanzas.length > 1 ? meta.stanzas : null;
     if (!counts) {
       piece.lines.forEach(function (line) { addVerseLines(body, line.tokens); });
@@ -1572,7 +1594,8 @@
     const title = pieceTitle(piece);
     const meta = pieceMeta();
     const wrap = document.createElement("article");
-    wrap.className = "reader " + (kind === "tang" ? "shi-reader" : "ci-reader");
+    const prose = piece.form === "prose";
+    wrap.className = "reader " + (prose ? "prose-reader" : (kind === "tang" || piece.form === "shi" ? "shi-reader" : "ci-reader"));
     const kicker = document.createElement("p");
     kicker.className = "kicker";
     kicker.textContent = (font === "t" ? data.title.t : data.title.s) + " · " + (nav.index + 1) + " / " + nav.total;
@@ -1620,8 +1643,9 @@
     foot.appendChild(prefs);
     const turn = document.createElement("p");
     turn.className = "verse-turn";
-    turn.appendChild(pieceTurn(kind, nav.prev, "上一首"));
-    turn.appendChild(pieceTurn(kind, nav.next, "下一首"));
+    const step = prose ? "篇" : "首";
+    turn.appendChild(pieceTurn(kind, nav.prev, "上一" + step));
+    turn.appendChild(pieceTurn(kind, nav.next, "下一" + step));
     foot.appendChild(turn);
     const hint = document.createElement("p");
     hint.className = "py-hint";
@@ -1631,8 +1655,8 @@
     appendReadingBar(wrap);
     const pager = document.createElement("nav");
     pager.className = "pager";
-    pager.appendChild(piecePager(kind, nav.prev, "上一首"));
-    pager.appendChild(piecePager(kind, nav.next, "下一首"));
+    pager.appendChild(piecePager(kind, nav.prev, "上一" + step));
+    pager.appendChild(piecePager(kind, nav.next, "下一" + step));
     wrap.appendChild(pager);
     main.replaceChildren(wrap);
     fitVerse(body);

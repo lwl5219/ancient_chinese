@@ -487,9 +487,9 @@ def check_poetry(canonical: dict) -> tuple[list[dict], list[dict]]:
             got = poetry_han(piece, field)
             edition = "chinese-poetry %s（commit %s）" % (label, commit[:12])
             if kind == "ci":
-                note = "目录是朱孝臧重编《宋词三百首》。新收词的简体按《简化字总表》通行归并。已收录的词保持原来的用字。注释和赏析是本书编写的。"
+                note = "目录是朱孝臧重编《宋词三百首》。正文用这一版的通行文字；和课文不同的，课文篇改从课文，异文另注。注释和赏析是本书编写的。"
             else:
-                note = "目录是蘅塘退士《唐诗三百首》。已收录的诗保持全唐诗用字，例如《静夜思》作看月光。新收诗的简体按《简化字总表》通行归并。注释和赏析是本书编写的。"
+                note = "目录是蘅塘退士《唐诗三百首》。正文用这一版和课文的通行文字，例如《静夜思》作床前明月光、举头望明月。全唐诗不同的字记为异文。注释和赏析是本书编写的。"
             pieces.append({
                 "id": piece["id"],
                 "collection": label,

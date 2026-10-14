@@ -645,6 +645,270 @@
       "grade": "选修",
       "title": "上枢密韩太尉书",
       "source": "统编版语文通行目录"
+    },
+    "shizhisai": {
+      "stage": "初中",
+      "title": "使至塞上",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "上"
+    },
+    "shihao": {
+      "stage": "初中",
+      "title": "石壕吏",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "下"
+    },
+    "maowu": {
+      "stage": "初中",
+      "title": "茅屋为秋风所破歌",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "下"
+    },
+    "maitan": {
+      "stage": "初中",
+      "title": "卖炭翁",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "下"
+    },
+    "yanmen": {
+      "stage": "初中",
+      "title": "雁门太守行",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "下"
+    },
+    "chunjiang": {
+      "stage": "高中",
+      "title": "春江花月夜",
+      "source": "统编版语文通行目录"
+    },
+    "yijiangnan": {
+      "stage": "小学",
+      "title": "忆江南",
+      "source": "统编版语文通行目录",
+      "grade": "四",
+      "volume": "下"
+    },
+    "xiangjianhuan": {
+      "stage": "初中",
+      "title": "相见欢",
+      "source": "统编版语文通行目录",
+      "grade": "九",
+      "volume": "上"
+    },
+    "bochuan": {
+      "stage": "小学",
+      "title": "泊船瓜洲",
+      "source": "统编版语文通行目录",
+      "grade": "六",
+      "volume": "上"
+    },
+    "yinhu": {
+      "stage": "小学",
+      "title": "饮湖上初晴后雨",
+      "source": "统编版语文通行目录",
+      "grade": "三",
+      "volume": "上"
+    },
+    "xilin": {
+      "stage": "小学",
+      "title": "题西林壁",
+      "source": "统编版语文通行目录",
+      "grade": "四",
+      "volume": "上"
+    },
+    "guancanghai": {
+      "stage": "初中",
+      "title": "观沧海",
+      "source": "统编版语文通行目录",
+      "grade": "七",
+      "volume": "上"
+    },
+    "tianjingsha": {
+      "stage": "初中",
+      "title": "天净沙·秋思",
+      "source": "统编版语文通行目录",
+      "grade": "七",
+      "volume": "上"
+    },
+    "mulan": {
+      "stage": "初中",
+      "title": "木兰诗",
+      "source": "统编版语文通行目录",
+      "grade": "七",
+      "volume": "下"
+    },
+    "shiwu": {
+      "stage": "初中",
+      "title": "十五从军征",
+      "source": "统编版语文通行目录"
+    },
+    "zhushi": {
+      "stage": "小学",
+      "title": "竹石",
+      "source": "统编版语文通行目录",
+      "grade": "六",
+      "volume": "下"
+    },
+    "shihui": {
+      "stage": "小学",
+      "title": "石灰吟",
+      "source": "统编版语文通行目录",
+      "grade": "六",
+      "volume": "上"
+    },
+    "jihai": {
+      "stage": "初中",
+      "title": "己亥杂诗",
+      "source": "统编版语文通行目录",
+      "grade": "七",
+      "volume": "下"
+    },
+    "lingding": {
+      "stage": "初中",
+      "title": "过零丁洋",
+      "source": "统编版语文通行目录",
+      "grade": "九",
+      "volume": "下"
+    },
+    "shier": {
+      "stage": "小学",
+      "title": "示儿",
+      "source": "统编版语文通行目录",
+      "grade": "六"
+    },
+    "youshanxi": {
+      "stage": "初中",
+      "title": "游山西村",
+      "source": "统编版语文通行目录",
+      "grade": "七",
+      "volume": "下"
+    },
+    "yinjiu": {
+      "stage": "初中",
+      "title": "饮酒",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "上"
+    },
+    "xiaoshitan": {
+      "stage": "初中",
+      "title": "小石潭记",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "下"
+    },
+    "lian": {
+      "stage": "初中",
+      "title": "爱莲说",
+      "source": "统编版语文通行目录",
+      "grade": "七",
+      "volume": "下"
+    },
+    "sanxia": {
+      "stage": "初中",
+      "title": "三峡",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "上"
+    },
+    "daxie": {
+      "stage": "初中",
+      "title": "答谢中书书",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "上"
+    },
+    "chengtian": {
+      "stage": "初中",
+      "title": "记承天寺夜游",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "上"
+    },
+    "huxinting": {
+      "stage": "初中",
+      "title": "湖心亭看雪",
+      "source": "统编版语文通行目录",
+      "grade": "九",
+      "volume": "上"
+    },
+    "hezhou": {
+      "stage": "初中",
+      "title": "核舟记",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "下"
+    },
+    "maiyou": {
+      "stage": "初中",
+      "title": "卖油翁",
+      "source": "统编版语文通行目录",
+      "grade": "七",
+      "volume": "下"
+    },
+    "lang": {
+      "stage": "初中",
+      "title": "狼",
+      "source": "统编版语文通行目录",
+      "grade": "七",
+      "volume": "上"
+    },
+    "jiezi": {
+      "stage": "初中",
+      "title": "诫子书",
+      "source": "统编版语文通行目录",
+      "grade": "七",
+      "volume": "上"
+    },
+    "youhuan": {
+      "stage": "初中",
+      "title": "生于忧患，死于安乐",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "上"
+    },
+    "dedao": {
+      "stage": "初中",
+      "title": "得道多助，失道寡助",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "上"
+    },
+    "yuwosuoyu": {
+      "stage": "初中",
+      "title": "鱼我所欲也",
+      "source": "统编版语文通行目录",
+      "grade": "九",
+      "volume": "下"
+    },
+    "fugui": {
+      "stage": "初中",
+      "title": "富贵不能淫",
+      "source": "统编版语文通行目录",
+      "grade": "八",
+      "volume": "上"
+    },
+    "quanxue": {
+      "stage": "高中",
+      "title": "劝学",
+      "source": "统编版语文通行目录",
+      "grade": "必修",
+      "volume": "上"
+    },
+    "dengtaishan": {
+      "stage": "高中",
+      "title": "登泰山记",
+      "source": "统编版语文通行目录"
+    },
+    "xiangjixuan": {
+      "stage": "高中",
+      "title": "项脊轩志",
+      "source": "统编版语文通行目录"
     }
   }
 }
