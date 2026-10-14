@@ -600,28 +600,25 @@ h1 {
 .body.prose .para { margin: 0 0 1.15em; text-align: left; }
 .body.prose .para:last-child { margin-bottom: 0; }
 .read-tools {
-  position: sticky;
-  top: var(--header);
-  z-index: 12;
-  display: flex;
+  display: none;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0 0 12px;
-  padding: 8px 0;
-  background: rgba(243, 244, 246, 0.96);
-  text-align: left;
+  gap: 6px;
+  margin-left: auto;
+  flex: none;
 }
+.read-tools:not([hidden]) { display: flex; }
+.top.has-tools .top-progress { margin-left: 12px; }
 .read-tools .tool-py,
-.tool-seg button {
+.read-tools .tool-seg button {
   min-height: 40px;
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--muted);
+  font-size: 0.92rem;
 }
 .read-tools .tool-py {
   border-radius: 999px;
-  padding: 0 14px;
+  padding: 0 12px;
 }
 .read-tools .tool-py.on {
   color: var(--accent);
@@ -629,19 +626,19 @@ h1 {
   border-color: #b7c8de;
   font-weight: 650;
 }
-.tool-seg {
+.read-tools .tool-seg {
   display: flex;
   border: 1px solid var(--line);
   border-radius: 999px;
   overflow: hidden;
   background: var(--surface);
 }
-.tool-seg button {
+.read-tools .tool-seg button {
   border: 0;
-  min-width: 64px;
-  padding: 0 12px;
+  min-width: 52px;
+  padding: 0 10px;
 }
-.tool-seg button.on {
+.read-tools .tool-seg button.on {
   background: var(--accent);
   color: #fff;
   font-weight: 650;
@@ -1039,6 +1036,9 @@ h1 {
   .reader .jump { margin: 0 0 8px; }
   .pair { margin-bottom: 12px; padding-bottom: 10px; }
   .top { padding: 0 8px 0 12px; min-height: 48px; }
+  .top.has-tools { min-height: 52px; gap: 6px; padding-right: 8px; }
+  .read-tools .tool-py,
+  .read-tools .tool-seg button { min-height: 44px; }
   .top.has-back .brand { display: none; }
   .top-progress { display: none; }
   .crumb a { display: none; }

@@ -35,14 +35,15 @@
       raw.learned = raw.learned || {};
       raw.font = raw.font === "t" ? "t" : "s";
       raw.mode = raw.mode || "read";
-      raw.sentence = !!raw.sentence;
+      raw.sentenceSet = !!raw.sentenceSet;
+      raw.sentence = raw.sentenceSet ? !!raw.sentence : true;
       raw.pinyinSet = !!raw.pinyinSet;
       if (!raw.pinyinSet) raw.pinyin = true;
       else raw.pinyin = !!raw.pinyin;
       raw.collections = raw.collections && typeof raw.collections === "object" ? raw.collections : {};
       return raw;
     } catch (err) {
-      return { learned: {}, font: "s", mode: "read", sentence: false, last: "", pinyin: true, pinyinSet: false, collections: {} };
+      return { learned: {}, font: "s", mode: "read", sentence: true, sentenceSet: false, last: "", pinyin: true, pinyinSet: false, collections: {} };
     }
   }
 
@@ -646,43 +647,20 @@
     return !!state.progress.sentence;
   }
 
-  function appendReadTools(wrap) {
-    const bar = document.createElement("div");
-    bar.className = "read-tools";
-    const py = document.createElement("button");
-    py.type = "button";
-    py.className = "tool-py" + (state.progress.pinyin ? " on" : "");
-    py.textContent = "拼音";
+  function syncReadTools(show) {
+    const bar = document.getElementById("read-tools");
+    if (!bar) return;
+    bar.hidden = !show;
+    document.querySelector(".top").classList.toggle("has-tools", !!show);
+    if (!show) return;
+    const py = document.getElementById("tool-py");
+    py.classList.toggle("on", !!state.progress.pinyin);
     py.setAttribute("aria-pressed", state.progress.pinyin ? "true" : "false");
-    py.addEventListener("click", function () {
-      state.progress.pinyin = !state.progress.pinyin;
-      state.progress.pinyinSet = true;
-      saveProgress();
-      refreshReading();
-    });
-    const seg = document.createElement("div");
-    seg.className = "tool-seg";
-    seg.setAttribute("role", "group");
-    seg.setAttribute("aria-label", "阅读方式");
-    [["full", "全文"], ["sentence", "逐句"]].forEach(function (item) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = item[1];
-      const on = (item[0] === "sentence") === sentenceMode();
+    bar.querySelectorAll(".tool-seg button").forEach(function (btn) {
+      const on = (btn.dataset.mode === "sentence") === sentenceMode();
       btn.classList.toggle("on", on);
       btn.setAttribute("aria-pressed", on ? "true" : "false");
-      btn.addEventListener("click", function () {
-        const next = item[0] === "sentence";
-        if (sentenceMode() === next) return;
-        state.progress.sentence = next;
-        saveProgress();
-        refreshReading();
-      });
-      seg.appendChild(btn);
     });
-    bar.appendChild(py);
-    bar.appendChild(seg);
-    wrap.appendChild(bar);
   }
 
   function appendSentenceGloss(pair, translation, glosses) {
@@ -1089,7 +1067,6 @@
     h1.textContent = title;
     wrap.appendChild(kicker);
     wrap.appendChild(h1);
-    appendReadTools(wrap);
     const card = document.createElement("button");
     card.type = "button";
     card.className = "author-card";
@@ -1636,6 +1613,7 @@
       crumbEl.appendChild(a);
     });
     document.querySelector(".top").classList.toggle("has-back", crumbs.length > 0);
+    syncReadTools(onArticle && !!state.article);
     const tabbar = document.getElementById("tabbar");
     const dock = document.getElementById("dock");
     tabbar.hidden = reading;
@@ -1764,6 +1742,23 @@
     if (dx < 0 && nav.next) location.hash = "#/read/" + nav.next.id;
     if (dx > 0 && nav.prev) location.hash = "#/read/" + nav.prev.id;
   }, { passive: true });
+
+  document.getElementById("tool-py").addEventListener("click", function () {
+    state.progress.pinyin = !state.progress.pinyin;
+    state.progress.pinyinSet = true;
+    saveProgress();
+    if (state.view === "article" && state.article) renderArticle(true);
+  });
+  document.querySelectorAll("#read-tools .tool-seg button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      const next = btn.dataset.mode === "sentence";
+      if (sentenceMode() === next) return;
+      state.progress.sentence = next;
+      state.progress.sentenceSet = true;
+      saveProgress();
+      if (state.view === "article" && state.article) renderArticle(true);
+    });
+  });
 
   boot().catch(function (err) {
     main.innerHTML = "<p class='empty'>页面数据没有载入。请用本地服务器打开本站，不要直接双击文件。</p>";
