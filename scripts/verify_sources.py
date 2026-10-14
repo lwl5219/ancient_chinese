@@ -155,17 +155,58 @@ def check_gwgz() -> tuple[list[dict], list[dict]]:
             art = load_article(ARTICLES / f"{item['id']}.json")
             expect = only_han("".join(item["paragraphs"]))
             got = published_han(art)
+            note = "正文汉字与这一底本一致。白话、注释和赏析是本书编写的。"
+            if item["id"] == "v06-15":
+                note = "卷页作費褘。正文改从维基文库《前出師表》的費禕。夹注删掉后留下的「三分、。」已去掉句号。白话、注释和赏析是本书编写的。"
+            elif item["id"] == "v04-01":
+                note = "夹注删掉后留下的「高飛、。」已去掉句号。白话、注释和赏析是本书编写的。"
+            elif item["id"] in {"v02-14", "v05-06", "v04-17"}:
+                note = "简体不把乾（qián）收成干，也不把乐律流徵收成流征。白话、注释和赏析是本书编写的。"
+            elif item["id"] == "v03-06":
+                note = "卷页「禁罝䍡」夹注「作罜、音主」。罝是兔网，这里是小网。正文改从维基文库《里革斷罟匡君》的罜。前面「禁罝罗」仍是兔网，不改。白话、注释和赏析是本书编写的。"
             pieces.append({
                 "id": item["id"],
                 "collection": "古文观止",
                 "edition": "维基文库《古文观止》卷%d" % vol,
                 "url": GWGZ_URL.format(vol=vol),
-                "note": "正文汉字与这一底本一致。白话、注释和赏析是本书编写的。",
+                "note": note,
                 "chars": len(got),
             })
             if expect != got:
                 unexpected.append({"id": item["id"], "title": item["title"], "detail": first_diff(expect, got)})
     return pieces, unexpected
+
+
+def check_traps() -> list[dict]:
+    """OpenCC 和夹注删削造成的错字、错标点。出现就失败。"""
+    problems = []
+    for path in article_files():
+        art = load_article(path)
+        trad = []
+        simp = []
+        for para in art["paragraphs"]:
+            for sent in para["sentences"]:
+                for tok in sent["tokens"]:
+                    trad.append(tok.get("t") or "")
+                    simp.append(tok.get("s") or tok.get("t") or "")
+                trad.append("\n")
+                simp.append("\n")
+        trad_text = "".join(trad)
+        simp_text = "".join(simp)
+        blob = trad_text + simp_text
+        if "、。" in blob:
+            problems.append({"id": art["id"], "detail": "正文还有「、。」"})
+        if "褘" in trad_text or "袆" in simp_text:
+            problems.append({"id": art["id"], "detail": "费祎仍作褘/袆"})
+        if "乾坤" in trad_text and "干坤" in simp_text:
+            problems.append({"id": art["id"], "detail": "乾坤被简成干坤"})
+        if "乾谿" in trad_text and "干谿" in simp_text:
+            problems.append({"id": art["id"], "detail": "乾谿被简成干谿"})
+        if "流徵" in trad_text and "流征" in simp_text:
+            problems.append({"id": art["id"], "detail": "流徵被简成流征"})
+        if "罝䍡" in trad_text:
+            problems.append({"id": art["id"], "detail": "小网仍作罝䍡，应作罜"})
+    return problems
 
 
 def check_zztj() -> tuple[list[dict], list[dict], list[dict]]:
@@ -628,9 +669,10 @@ def render_report(summary: dict, resolved: list[dict], flags: list[dict]) -> str
         "## 译文和注释",
         "",
         "课注条目（实词、虚词、古今异义、通假、活用、句式、背景、主旨、手法）共 %d 条。" % summary["glosses"],
-        "没有把这些句子逐条对照某一种注本。读音和通假能用汉典字头核对的，已经记在上面。其余释义未核定，不在页面上改成另一种说法。",
+        "古文观止课注里能对上维基文库夹注、汉典文言或《说文》的，记在 `sources/verification/GLOSSES.md`。对不上的留在那份清单里，不改写成另一种说法。",
+        "译文还没有逐句对上注本。",
         "",
-        "机器可读的同一份清单：`sources/verification/flags.json`。",
+        "机器可读的读音清单：`sources/verification/flags.json`。",
         "",
     ])
     return "\n".join(lines)
@@ -654,7 +696,51 @@ def main() -> int:
     renjian, renjian_bad, renjian_resolved = check_renjian()
     poetry, poetry_bad = check_poetry(canonical)
     unexpected = gwgz_bad + zztj_bad + renjian_bad + poetry_bad
-    resolved = zztj_resolved + renjian_resolved
+    resolved = zztj_resolved + renjian_resolved + [
+        {
+            "id": "v06-15",
+            "collection": "古文观止",
+            "change": "費褘 → 費禕（简体袆 → 祎）",
+            "resolution": "古文观止卷页把费祎写成衣字旁的褘。维基文库《前出師表》作費禕。OpenCC 把褘收成袆，所以和卷页缓存逐字比较看不出错。正文改从《前出師表》。",
+        },
+        {
+            "id": "v06-15",
+            "collection": "古文观止",
+            "change": "今天下三分、。 → 今天下三分、",
+            "resolution": "夹注「蜀、吴、魏」删掉后，顿号和夹注外的句号粘在一起。这一句后面紧接益州，句号去掉。",
+        },
+        {
+            "id": "v04-01",
+            "collection": "古文观止",
+            "change": "不可以高飛、。 → 不可以高飛、",
+            "resolution": "夹注「此句是喻、起下三句」插在顿号和句号之间，删注后剩下「、。」。句号去掉，顿号仍作这一版本的逗号。",
+        },
+        {
+            "id": "v05-06",
+            "collection": "古文观止",
+            "change": "简体干坤 → 乾坤",
+            "resolution": "乾坤的乾读 qián。OpenCC 把所有乾收成干。干是干燥，这里改回乾。",
+        },
+        {
+            "id": "v02-14",
+            "collection": "古文观止",
+            "change": "简体干谿 → 乾谿",
+            "resolution": "地名乾谿读 qián。简体不写作干谿。",
+        },
+        {
+            "id": "v04-17",
+            "collection": "古文观止",
+            "change": "简体流征 → 流徵",
+            "resolution": "流徵是乐律，徵读 zhǐ，不简作征。",
+        },
+        {
+            "id": "v03-06",
+            "collection": "古文观止",
+            "change": "禁罝䍡 → 禁罜䍡",
+            "resolution": "卷页写成罝，夹注「作罜、音主」。罝读嗟，是兔网；这一处是小网。维基文库《里革斷罟匡君》作罜。前面禁罝罗仍是兔网，不改。",
+        },
+    ]
+    traps = check_traps()
 
     handian = load_handian()
     shuowen = load_shuowen()
@@ -727,9 +813,11 @@ def main() -> int:
     print("pieces", len(pieces), "unexpected", len(unexpected), "flags", len(flags))
     for row in groups:
         print(" ", row["collection"], row["pieces"], "chars", row["chars"], "diff", row["unexpected"])
-    if unexpected:
+    if unexpected or traps:
         for item in unexpected[:12]:
             print("DIFF", item)
+        for item in traps:
+            print("TRAP", item)
         return 1
     return 0
 

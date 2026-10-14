@@ -878,6 +878,8 @@ h1 {
   color: var(--warn);
   font-size: 0.86rem;
 }
+.gloss-source { margin: 2px 0 0; color: var(--muted); font-size: 0.78rem; }
+.gloss-source a { color: var(--accent); }
 .sheet-notes { list-style: none; margin: 0; padding: 0; }
 .sheet-notes li { margin: 0 0 10px; }
 .sheet-notes b {

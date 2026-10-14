@@ -40,7 +40,20 @@ BOOK_FIX = {
 
 
 def simplify(text: str) -> str:
-    return T2S.convert(text or "")
+    """简体。乾读 qián、徵作乐律时不按 OpenCC 收成干、征。"""
+    raw = text or ""
+    out = []
+    for i, ch in enumerate(raw):
+        nxt = raw[i + 1] if i + 1 < len(raw) else ""
+        prev = raw[i - 1] if i else ""
+        if ch == "乾" and nxt in ("坤", "谿"):
+            out.append("乾")
+        elif ch == "徵" and prev == "流":
+            out.append("徵")
+        else:
+            simp = T2S.convert(ch)
+            out.append(simp if len(simp) == 1 else ch)
+    return "".join(out)
 
 
 def pinyin_of(text: str) -> str:

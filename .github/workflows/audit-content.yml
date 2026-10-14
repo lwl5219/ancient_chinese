@@ -16,3 +16,5 @@ jobs:
         run: python3 -m pip install opencc-python-reimplemented
       - name: Diff texts against cached sources
         run: python3 scripts/verify_sources.py
+      - name: Check which lesson notes have a cited source
+        run: python3 scripts/verify_glosses.py
