@@ -21,6 +21,8 @@
     renjian: null,
     renjianQuery: "",
     zztj: null,
+    provenance: null,
+    readingPolicy: null,
   };
   let loadToken = 0;
 
@@ -135,12 +137,14 @@
 
   async function boot() {
     skeleton("正在载入");
-    const [catRes, booksRes, authorsRes, renjianRes, zztjRes] = await Promise.all([
+    const [catRes, booksRes, authorsRes, renjianRes, zztjRes, provRes, readRes] = await Promise.all([
       fetch(assetUrl("data/catalog.json")),
       fetch(assetUrl("data/books.json")),
       fetch(assetUrl("data/prose-authors.json")),
       fetch(assetUrl("data/renjian.json")),
       fetch(assetUrl("data/zztj.json")),
+      fetch(assetUrl("data/provenance.json")),
+      fetch(assetUrl("data/reading-policy.json")),
     ]);
     if (!catRes.ok) {
       main.innerHTML = "<p class='empty'>没有读到目录。请在仓库根目录运行本地服务器后再打开本页。</p>";
@@ -151,6 +155,8 @@
     if (authorsRes.ok) state.proseAuthors = await authorsRes.json();
     if (renjianRes.ok) state.renjian = await renjianRes.json();
     if (zztjRes.ok) state.zztj = await zztjRes.json();
+    if (provRes.ok) state.provenance = await provRes.json();
+    if (readRes.ok) state.readingPolicy = await readRes.json();
     if (state.progress.last) {
       const meta = findArticleMeta(state.progress.last);
       if (meta) state.openVol = Number(meta.id.slice(1, 3));
@@ -1086,6 +1092,7 @@
       panel.appendChild(h);
       panel.appendChild(sub);
       panel.appendChild(bio);
+      appendProvenance(panel, state.piece.id);
       return;
     }
     const p = document.createElement("p");
@@ -1096,6 +1103,7 @@
       credit.className = "sheet-credit";
       credit.textContent = bi(state.notes.credit);
       panel.appendChild(credit);
+      appendProvenance(panel, state.piece.id);
     }
   }
 
@@ -1139,6 +1147,33 @@
     const p = document.createElement("p");
     p.textContent = text;
     return p;
+  }
+
+  function appendProvenance(panel, id) {
+    const src = state.provenance && state.provenance.pieces && state.provenance.pieces[id];
+    if (!src) return;
+    const p = document.createElement("p");
+    p.className = "sheet-credit";
+    const b = document.createElement("b");
+    b.textContent = "出处 ";
+    p.appendChild(b);
+    if (src.url) {
+      const a = document.createElement("a");
+      a.href = src.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = src.edition;
+      p.appendChild(a);
+    } else {
+      p.appendChild(document.createTextNode(src.edition));
+    }
+    if (src.note) p.appendChild(document.createTextNode(" " + src.note));
+    panel.appendChild(p);
+  }
+
+  function readingNote(ch) {
+    const chars = state.readingPolicy && state.readingPolicy.chars;
+    return chars ? chars[ch] : null;
   }
 
   function sheetH(text) {
@@ -1229,11 +1264,13 @@
       panel.appendChild(h);
       if (sub.textContent) panel.appendChild(sub);
       panel.appendChild(sheetP(info.bio || ("选本题「" + art.author + "」。")));
+      appendProvenance(panel, art.id);
       return;
     }
     if (tab === "background") {
       if (lesson && lesson.background) panel.appendChild(sheetP(lesson.background));
       else panel.appendChild(sheetP("本篇选自《" + book + "》·" + head + "。《古文观止》题" + info.name + "。"));
+      appendProvenance(panel, art.id);
       return;
     }
     if (lesson && lesson.theme) panel.appendChild(sheetP(lesson.theme));
@@ -2060,6 +2097,13 @@
     block.appendChild(h4);
     if (bits.length) block.appendChild(sub);
     block.appendChild(ben);
+    const note = readingNote(focus);
+    if (note && note.status === "review") {
+      const flag = document.createElement("p");
+      flag.className = "reading-flag";
+      flag.textContent = "待复核：汉典文言缓存列了 " + (note.han || []).join("、") + "，说文音 " + (note.shuowen || "") + " 不在其中。这一处仍用现在的读音。";
+      block.appendChild(flag);
+    }
     dictSec.appendChild(block);
     popup.appendChild(dictSec);
     placePopup(anchor);
