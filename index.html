@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-build="">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,6 +7,31 @@
   <meta name="description" content="按原书读经典。先读《古文观止》，接着读唐诗和宋词。点开字，看读音和本义。" />
   <link rel="stylesheet" href="css/app.css" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <script src="js/asset-urls.js"></script>
+  <script>
+    (function () {
+      var build = document.documentElement.getAttribute("data-build") || window.SITE_BUILD || "";
+      function check() {
+        if (!build) return;
+        fetch("version.json", { cache: "no-store" }).then(function (res) {
+          if (!res.ok) return null;
+          return res.json();
+        }).then(function (data) {
+          if (!data || !data.build || data.build === build) return;
+          try {
+            if (sessionStorage.getItem("gwgz-build-reload") === data.build) return;
+            sessionStorage.setItem("gwgz-build-reload", data.build);
+          } catch (err) {}
+          location.reload();
+        }).catch(function () {});
+      }
+      check();
+      window.addEventListener("focus", check);
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") check();
+      });
+    })();
+  </script>
 </head>
 <body>
   <header class="top">

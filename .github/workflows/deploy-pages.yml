@@ -1,0 +1,43 @@
+name: Deploy to Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage and stamp content hashes
+        run: |
+          rm -rf site
+          mkdir -p site
+          cp index.html favicon.svg .nojekyll site/
+          cp -a css js data site/
+          python3 scripts/stamp_assets.py site
+          test -f site/version.json
+          grep -q 'css/app\.[0-9a-f]\{12\}\.css' site/index.html
+          grep -q 'js/app\.[0-9a-f]\{12\}\.js' site/index.html
+          grep -q 'data-build="[0-9a-f]\{12\}"' site/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
