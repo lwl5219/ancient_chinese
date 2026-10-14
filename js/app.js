@@ -1874,10 +1874,10 @@
     return body;
   }
 
-  const NO_LINE_START = "，。！？；、：」』）】》〉〕〗､";
-  const NO_LINE_END = "「『（【《〈〔〖";
-  const PUNCT_OPEN = "「『（【《〈〔〖";
-  const PUNCT_CLOSE = "」』）】》〉〕〗";
+  const NO_LINE_START = "，。！？；、：」』）】》〉〕〗､”’";
+  const NO_LINE_END = "「『（【《〈〔〖“‘";
+  const PUNCT_OPEN = "「『（【《〈〔〖“‘";
+  const PUNCT_CLOSE = "」』）】》〉〕〗”’";
   const PUNCT_STOP = "。！？";
   const PUNCT_PAUSE = "，、；：､";
 
