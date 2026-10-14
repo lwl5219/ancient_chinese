@@ -56,6 +56,12 @@
     return Object.keys(state.progress.learned || {}).length;
   }
 
+  function assetUrl(path) {
+    const map = window.ASSET_URLS;
+    if (map && Object.prototype.hasOwnProperty.call(map, path)) return map[path];
+    return path;
+  }
+
   function flatArticles() {
     const list = [];
     (state.catalog.volumes || []).forEach(function (vol) {
@@ -85,9 +91,9 @@
   async function boot() {
     skeleton("正在载入");
     const [catRes, booksRes, authorsRes] = await Promise.all([
-      fetch("data/catalog.json"),
-      fetch("data/books.json"),
-      fetch("data/prose-authors.json"),
+      fetch(assetUrl("data/catalog.json")),
+      fetch(assetUrl("data/books.json")),
+      fetch(assetUrl("data/prose-authors.json")),
     ]);
     if (!catRes.ok) {
       main.innerHTML = "<p class='empty'>没有读到目录。请在仓库根目录运行本地服务器后再打开本页。</p>";
@@ -101,7 +107,7 @@
       if (meta) state.openVol = Number(meta.id.slice(1, 3));
     }
     route();
-    fetch("data/dict.json")
+    fetch(assetUrl("data/dict.json"))
       .then(function (r) { return r.json(); })
       .then(function (data) {
         state.dict = data.chars || {};
@@ -429,7 +435,7 @@
     const meta = POETRY[kind];
     skeleton("正在打开" + meta.label);
     syncChrome();
-    const res = await fetch(meta.file);
+    const res = await fetch(assetUrl(meta.file));
     if (token !== loadToken) return false;
     if (!res.ok) {
       main.innerHTML = "<p class='empty'>" + meta.label + "还没有生成。在仓库根目录运行 python3 scripts/build_poetry.py。</p>";
@@ -566,7 +572,7 @@
 
   async function ensureNotes(token) {
     if (state.notes) return true;
-    const res = await fetch("data/poetry-notes.json");
+    const res = await fetch(assetUrl("data/poetry-notes.json"));
     if (token !== loadToken) return false;
     state.notes = res.ok ? await res.json() : { authors: {}, pieces: {}, credit: { s: "", t: "" } };
     return token === loadToken;
@@ -1001,7 +1007,7 @@
     state.openVol = Number(id.slice(1, 3));
     skeleton("正在打开篇目");
     syncChrome();
-    const res = await fetch("data/articles/" + id + ".json");
+    const res = await fetch(assetUrl("data/articles/" + id + ".json"));
     if (token !== loadToken) return;
     if (!res.ok) {
       main.innerHTML = "<p class='empty'>没有这一篇。</p>";

@@ -45,20 +45,21 @@ jobs:
           mkdir -p site
           cp index.html favicon.svg site/
           cp -a css js data site/
+          python3 scripts/stamp_assets.py site
           echo "Staged $(find site -type f | wc -l) files"
-          find site -type f | sort
+          test -f site/version.json
+          grep -q 'css/app\.[0-9a-f]\{12\}\.css' site/index.html
 
       - name: Sync to OSS
         shell: bash
         run: |
           set -euo pipefail
           dest="oss://${OSS_BUCKET}"
-          # HTML is revalidated every visit. Unhashed CSS/JS/JSON/SVG keep a
-          # week-long cache: a year would pin the previous app.js and article
-          # JSON, because those filenames are not content-hashed. A filename
-          # that already contains a content hash is cached for a year.
-          html_cache="no-cache"
-          static_cache="public, max-age=604800"
+          # HTML and version.json must revalidate every visit. Unhashed
+          # CSS/JS/JSON stay no-cache so an old URL cannot sit for a week.
+          # Only names with a 12-hex content hash are immutable.
+          html_cache="no-cache, must-revalidate"
+          static_cache="no-cache"
           hashed_cache="public, max-age=31536000, immutable"
 
           content_type() {
@@ -124,7 +125,7 @@ jobs:
 
           while IFS= read -r -d '' file; do
             base="$(basename "${file}")"
-            if [[ ! "${base}" =~ (^|[._-])[a-fA-F0-9]{8,}([._-]|$) ]]; then
+            if [[ ! "${base}" =~ \.[0-9a-f]{12}\.[A-Za-z0-9]+$ ]]; then
               continue
             fi
             rel="${file#site/}"
