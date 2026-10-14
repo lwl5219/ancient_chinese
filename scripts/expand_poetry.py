@@ -81,6 +81,9 @@ def zhonghua_simp(trad: str) -> str:
         elif src == "鑪":
             # OpenCC 收成扩展区的𬬻。中华书局简体通行作炉。
             dst = "炉"
+        elif src == "輮":
+            # OpenCC 收成扩展区的𫐓。课文保留「輮」。
+            dst = "輮"
         out.append(dst)
     return "".join(out)
 
