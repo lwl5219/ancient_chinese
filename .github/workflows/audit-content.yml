@@ -1,0 +1,14 @@
+name: audit-content
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Guwen Guanzhi fields
+        run: python3 scripts/audit_content.py
