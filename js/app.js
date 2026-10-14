@@ -17,6 +17,7 @@
     kind: "",
     notes: null,
     verseTab: "",
+    proseAuthors: null,
   };
   let loadToken = 0;
 
@@ -81,9 +82,10 @@
 
   async function boot() {
     skeleton("正在载入");
-    const [catRes, booksRes] = await Promise.all([
+    const [catRes, booksRes, authorsRes] = await Promise.all([
       fetch("data/catalog.json"),
       fetch("data/books.json"),
+      fetch("data/prose-authors.json"),
     ]);
     if (!catRes.ok) {
       main.innerHTML = "<p class='empty'>没有读到目录。请在仓库根目录运行本地服务器后再打开本页。</p>";
@@ -91,6 +93,7 @@
     }
     state.catalog = await catRes.json();
     if (booksRes.ok) state.books = await booksRes.json();
+    if (authorsRes.ok) state.proseAuthors = await authorsRes.json();
     if (state.progress.last) {
       const meta = findArticleMeta(state.progress.last);
       if (meta) state.openVol = Number(meta.id.slice(1, 3));
@@ -223,9 +226,9 @@
 
     const list = document.createElement("div");
     list.className = "book-list";
-    bookList().forEach(function (book, index) {
+    bookList().forEach(function (book) {
       const card = document.createElement("a");
-      card.className = "book-row" + (index === 0 && !last ? " primary" : "");
+      card.className = "book-row";
       card.href = book.href;
       const strong = document.createElement("strong");
       strong.textContent = book.title;
@@ -698,6 +701,151 @@
     }
   }
 
+  function refreshReading() {
+    if (state.view === "article") renderArticle(true);
+    else renderPiece(true);
+  }
+
+  function appendReadingBar(wrap) {
+    const bar = document.createElement("nav");
+    bar.className = "verse-bar";
+    bar.setAttribute("aria-label", "译文和赏析");
+    VERSE_TABS.forEach(function (item) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = item[1];
+      btn.classList.toggle("on", state.verseTab === item[0]);
+      btn.addEventListener("click", function () {
+        state.verseTab = state.verseTab === item[0] ? "" : item[0];
+        refreshReading();
+      });
+      bar.appendChild(btn);
+    });
+    wrap.appendChild(bar);
+    const panel = document.createElement("section");
+    panel.className = "verse-panel";
+    panel.hidden = !state.verseTab;
+    if (state.verseTab) {
+      if (state.view === "article") fillArticlePanel(panel, state.verseTab);
+      else fillVersePanel(panel, state.verseTab);
+    }
+    wrap.appendChild(panel);
+  }
+
+  function sheetP(text) {
+    const p = document.createElement("p");
+    p.textContent = text;
+    return p;
+  }
+
+  function sheetH(text) {
+    const h = document.createElement("h3");
+    h.textContent = text;
+    return h;
+  }
+
+  function addSheetNotes(panel, title, items) {
+    if (!items || !items.length) return false;
+    panel.appendChild(sheetH(title));
+    const list = document.createElement("ul");
+    list.className = "sheet-notes";
+    items.forEach(function (item) {
+      const li = document.createElement("li");
+      const term = document.createElement("b");
+      term.textContent = item.term;
+      li.appendChild(term);
+      li.appendChild(document.createTextNode(item.gloss));
+      list.appendChild(li);
+    });
+    panel.appendChild(list);
+    return true;
+  }
+
+  function proseAuthor(art) {
+    const known = state.proseAuthors && state.proseAuthors[art.author];
+    return {
+      name: known && known.name ? bi(known.name) : art.author,
+      years: known && known.years ? known.years : "",
+      card: known ? bi(known.card) : "",
+      bio: known ? bi(known.bio) : "",
+    };
+  }
+
+  function fillArticlePanel(panel, tab) {
+    panel.replaceChildren();
+    const art = state.article;
+    const font = state.progress.font;
+    const book = font === "t" ? art.book.t : art.book.s;
+    const head = font === "t" ? art.sourceHead.t : art.sourceHead.s;
+    const info = proseAuthor(art);
+    const lesson = art.lesson;
+    if (tab === "vernacular") {
+      let any = false;
+      art.paragraphs.forEach(function (para) {
+        const text = para.sentences.map(function (sent) { return sent.tr || ""; }).join("");
+        if (!text) return;
+        any = true;
+        panel.appendChild(sheetP(text));
+      });
+      if (!any) panel.appendChild(sheetP("这一篇还没有逐句白话。可以先读原文，点开字看《说文》。"));
+      return;
+    }
+    if (tab === "notes") {
+      let any = false;
+      if (lesson) {
+        any = addSheetNotes(panel, "实词", (lesson.keyContentWords || []).map(function (item) {
+          return { term: item.word, gloss: (item.reading ? item.reading + "　" : "") + item.note };
+        })) || any;
+        any = addSheetNotes(panel, "虚词", (lesson.keyFunctionWords || []).map(function (item) {
+          return { term: item.word, gloss: (item.reading ? item.reading + "　" : "") + item.note };
+        })) || any;
+        any = addSheetNotes(panel, "古今异义", (lesson.ancientModern || []).map(function (item) {
+          return { term: item.word, gloss: item.note };
+        })) || any;
+        any = addSheetNotes(panel, "通假", (lesson.phoneticLoans || []).map(function (item) {
+          return { term: item.word + " / " + item.loan, gloss: item.note };
+        })) || any;
+        any = addSheetNotes(panel, "活用", (lesson.flexibleUsage || []).map(function (item) {
+          return { term: item.word, gloss: item.note };
+        })) || any;
+        any = addSheetNotes(panel, "句式", (lesson.specialSyntax || []).map(function (item) {
+          return { term: item.name, gloss: item.note };
+        })) || any;
+      }
+      if (!any) panel.appendChild(sheetP("这一篇还没有逐句注释。点开字，看《说文》本义，不等于已经核定的句中义。"));
+      return;
+    }
+    if (tab === "author") {
+      const h = document.createElement("h2");
+      h.textContent = info.name;
+      const sub = document.createElement("p");
+      sub.className = "sheet-sub";
+      sub.textContent = [info.years, book, head].filter(Boolean).join(" · ");
+      panel.appendChild(h);
+      if (sub.textContent) panel.appendChild(sub);
+      panel.appendChild(sheetP(info.bio || ("选本题「" + art.author + "」。")));
+      return;
+    }
+    if (tab === "background") {
+      if (lesson && lesson.background) panel.appendChild(sheetP(lesson.background));
+      else panel.appendChild(sheetP("本篇选自《" + book + "》·" + head + "。《古文观止》题" + info.name + "。"));
+      return;
+    }
+    if (lesson && lesson.theme) panel.appendChild(sheetP(lesson.theme));
+    if (lesson && lesson.technique) panel.appendChild(sheetP(lesson.technique));
+    const comment = bi(art.classicComment);
+    if (comment) {
+      panel.appendChild(sheetH("选本评点"));
+      panel.appendChild(sheetP(comment));
+    }
+    const credit = document.createElement("p");
+    credit.className = "sheet-credit";
+    credit.textContent = lesson
+      ? "主旨、手法和白话是本书编写的。选本评点是《古文观止》所附的旧评，不是现代赏析网站的原文。"
+      : "选本评点是《古文观止》所附的旧评，不是现代赏析网站的原文。";
+    panel.appendChild(credit);
+  }
+
   function renderPiece(keepScroll) {
     const y = keepScroll ? window.scrollY : 0;
     const piece = state.piece;
@@ -732,7 +880,7 @@
       card.appendChild(blurb);
       card.addEventListener("click", function () {
         state.verseTab = state.verseTab === "author" ? "" : "author";
-        renderPiece(true);
+        refreshReading();
       });
       wrap.appendChild(card);
     }
@@ -764,26 +912,7 @@
     hint.textContent = "点一个字，看《说文》。左右滑动可以换一首。";
     foot.appendChild(hint);
     wrap.appendChild(foot);
-    const bar = document.createElement("nav");
-    bar.className = "verse-bar";
-    bar.setAttribute("aria-label", "译文和赏析");
-    VERSE_TABS.forEach(function (item) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = item[1];
-      btn.classList.toggle("on", state.verseTab === item[0]);
-      btn.addEventListener("click", function () {
-        state.verseTab = state.verseTab === item[0] ? "" : item[0];
-        renderPiece(true);
-      });
-      bar.appendChild(btn);
-    });
-    wrap.appendChild(bar);
-    const panel = document.createElement("section");
-    panel.className = "verse-panel";
-    panel.hidden = !state.verseTab;
-    if (state.verseTab) fillVersePanel(panel, state.verseTab);
-    wrap.appendChild(panel);
+    appendReadingBar(wrap);
     const pager = document.createElement("nav");
     pager.className = "pager";
     pager.appendChild(piecePager(kind, nav.prev, "上一首"));
@@ -828,6 +957,7 @@
     const token = ++loadToken;
     closePopup();
     state.view = "article";
+    state.verseTab = "";
     state.article = null;
     state.openVol = Number(id.slice(1, 3));
     skeleton("正在打开篇目");
@@ -854,68 +984,59 @@
     const y = keepScroll ? window.scrollY : 0;
     const art = state.article;
     const font = state.progress.font;
-    const storedMode = state.progress.mode || "parallel";
-    const mode = art.lesson && storedMode === "lesson" ? "lesson" : (art.annotated && storedMode === "read" ? "read" : (art.annotated ? "parallel" : "read"));
     const title = font === "t" ? art.title.t : art.title.s;
     const book = font === "t" ? art.book.t : art.book.s;
     const head = font === "t" ? art.sourceHead.t : art.sourceHead.s;
+    const info = proseAuthor(art);
     const list = flatArticles();
     const pos = list.findIndex(function (item) { return item.id === art.id; });
+    const nav = neighbors(art.id);
     const wrap = document.createElement("article");
-    wrap.className = "reader";
+    wrap.className = "reader prose-reader";
     const kicker = document.createElement("p");
     kicker.className = "kicker";
     kicker.textContent = art.volumeTitle + " · " + art.volumeSubtitle + " · " + (pos + 1) + " / " + list.length;
     const h1 = document.createElement("h1");
     h1.textContent = title;
-    const meta = document.createElement("p");
-    meta.className = "meta";
-    const metaBits = [book, head, art.author].filter(Boolean);
-    if (state.progress.learned[art.id]) metaBits.push("已读完");
-    meta.textContent = metaBits.join(" · ");
     wrap.appendChild(kicker);
     wrap.appendChild(h1);
-    wrap.appendChild(meta);
-    if (art.lesson) {
-      const jump = document.createElement("p");
-      jump.className = "jump";
-      jump.appendChild(textLink(mode === "lesson" ? "回到正文" : "看系统讲解", function () {
-        state.progress.mode = mode === "lesson" ? "parallel" : "lesson";
-        saveProgress();
-        renderArticle(true);
-      }));
-      wrap.appendChild(jump);
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "author-card";
+    const name = document.createElement("strong");
+    name.textContent = info.name;
+    const sub = document.createElement("span");
+    sub.textContent = [book, head, info.years].filter(Boolean).join(" · ");
+    card.appendChild(name);
+    if (sub.textContent) card.appendChild(sub);
+    if (info.card) {
+      const blurb = document.createElement("em");
+      blurb.textContent = info.card;
+      card.appendChild(blurb);
     }
-
-    if (mode === "lesson") {
-      wrap.appendChild(renderLesson(art));
-      if (!art.lesson) wrap.appendChild(renderBody(art, "read"));
-    } else {
-      wrap.appendChild(renderBody(art, mode));
-    }
-
-    const comment = art.classicComment && (font === "t" ? art.classicComment.t : art.classicComment.s);
-    if (comment) {
-      const box = document.createElement("section");
-      box.className = "comment";
-      const h2 = document.createElement("h2");
-      h2.textContent = "原书评点";
+    card.addEventListener("click", function () {
+      state.verseTab = state.verseTab === "author" ? "" : "author";
+      refreshReading();
+    });
+    wrap.appendChild(card);
+    const body = document.createElement("div");
+    body.className = "body prose";
+    art.paragraphs.forEach(function (para) {
       const p = document.createElement("p");
-      p.textContent = comment;
-      box.appendChild(h2);
-      box.appendChild(p);
-      wrap.appendChild(box);
-    }
-
-    wrap.appendChild(readerFoot(art, mode, font));
-
-    const nav = neighbors(art.id);
+      p.className = "orig para" + (state.progress.pinyin ? " with-py" : "");
+      para.sentences.forEach(function (sent) {
+        appendTokens(p, sent.tokens);
+      });
+      body.appendChild(p);
+    });
+    wrap.appendChild(body);
+    wrap.appendChild(readerFoot(art, font, nav));
+    appendReadingBar(wrap);
     const pager = document.createElement("nav");
     pager.className = "pager";
     pager.appendChild(pagerLink(nav.prev, "上一篇"));
     pager.appendChild(pagerLink(nav.next, "下一篇"));
     wrap.appendChild(pager);
-
     main.replaceChildren(wrap);
     document.title = title + " · 典籍";
     syncChrome();
@@ -931,7 +1052,7 @@
     return btn;
   }
 
-  function readerFoot(art, mode, font) {
+  function readerFoot(art, font, nav) {
     const foot = document.createElement("div");
     foot.className = "reader-foot";
     const learned = !!state.progress.learned[art.id];
@@ -948,13 +1069,6 @@
     foot.appendChild(mark);
     const prefs = document.createElement("div");
     prefs.className = "foot-links";
-    if (art.annotated && mode !== "lesson") {
-      prefs.appendChild(textLink(mode === "read" ? "显示白话" : "只看原文", function () {
-        state.progress.mode = mode === "read" ? "parallel" : "read";
-        saveProgress();
-        renderArticle(true);
-      }));
-    }
     prefs.appendChild(textLink(font === "t" ? "看简体" : "看繁体", function () {
       state.progress.font = font === "t" ? "s" : "t";
       saveProgress();
@@ -967,13 +1081,27 @@
       renderArticle(true);
     }));
     foot.appendChild(prefs);
-    if (!art.annotated && state.progress.pinyin) {
-      const note = document.createElement("p");
-      note.className = "py-hint";
-      note.textContent = "字上是今读。点开字可以核对《说文》。";
-      foot.appendChild(note);
-    }
+    const turn = document.createElement("p");
+    turn.className = "verse-turn";
+    turn.appendChild(articleTurn(nav.prev, "上一篇"));
+    turn.appendChild(articleTurn(nav.next, "下一篇"));
+    foot.appendChild(turn);
+    const note = document.createElement("p");
+    note.className = "py-hint";
+    note.textContent = "点一个字，看《说文》。左右滑动换一篇。";
+    foot.appendChild(note);
     return foot;
+  }
+
+  function articleTurn(meta, label) {
+    const a = document.createElement("a");
+    a.textContent = label;
+    if (!meta) {
+      a.className = "off";
+      return a;
+    }
+    a.href = "#/read/" + meta.id;
+    return a;
   }
 
   function renderBody(art, mode) {
@@ -1397,9 +1525,10 @@
     const tabbar = document.getElementById("tabbar");
     const dock = document.getElementById("dock");
     tabbar.hidden = reading;
-    dock.hidden = !reading || onPiece;
+    dock.hidden = true;
     document.body.classList.toggle("is-reading", reading);
     document.body.classList.toggle("is-piece", onPiece);
+    document.body.classList.toggle("sheet-open", reading && !!state.verseTab);
     tabbar.querySelectorAll("a").forEach(function (a) {
       a.classList.toggle("on", a.dataset.tab === tab);
     });
@@ -1502,16 +1631,24 @@
     swipeY = event.touches[0].clientY;
   }, { passive: true });
   main.addEventListener("touchend", function (event) {
-    if (state.view !== "piece" || !state.piece) return;
-    if (event.target.closest && event.target.closest(".verse-panel, .verse-bar, .author-card, .verse-turn, .foot-links")) return;
+    const readingPiece = state.view === "piece" && !!state.piece;
+    const readingArticle = state.view === "article" && !!state.article;
+    if (!readingPiece && !readingArticle) return;
+    if (event.target.closest && event.target.closest(".verse-panel, .verse-bar, .author-card, .verse-turn, .foot-links, .mark")) return;
     const touch = event.changedTouches[0];
     const dx = touch.clientX - swipeX;
     const dy = touch.clientY - swipeY;
     if (Math.abs(dx) < 72 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
     lastSwipeAt = Date.now();
-    const nav = pieceNeighbors(state.kind, state.piece.id);
-    if (dx < 0 && nav.next) location.hash = "#/" + state.kind + "/" + nav.next.id;
-    if (dx > 0 && nav.prev) location.hash = "#/" + state.kind + "/" + nav.prev.id;
+    if (readingPiece) {
+      const nav = pieceNeighbors(state.kind, state.piece.id);
+      if (dx < 0 && nav.next) location.hash = "#/" + state.kind + "/" + nav.next.id;
+      if (dx > 0 && nav.prev) location.hash = "#/" + state.kind + "/" + nav.prev.id;
+      return;
+    }
+    const nav = neighbors(state.article.id);
+    if (dx < 0 && nav.next) location.hash = "#/read/" + nav.next.id;
+    if (dx > 0 && nav.prev) location.hash = "#/read/" + nav.prev.id;
   }, { passive: true });
 
   boot().catch(function (err) {
