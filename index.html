@@ -3,27 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>古文观止 · 系统学习</title>
-  <meta name="description" content="按《古文观止》原书卷次学习古文：原文、点字查义、系统讲解与学习进度。" />
+  <title>典籍</title>
+  <meta name="description" content="按原书读经典。先读《古文观止》，下一本是《三字经》。点开字，看读音和本义。" />
   <link rel="stylesheet" href="css/app.css" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 </head>
 <body>
   <header class="top">
-    <button type="button" class="icon-btn" id="nav-toggle" aria-expanded="false" aria-controls="catalog" aria-label="打开目录">目录</button>
-    <a class="brand" href="#/">古文观止</a>
+    <a class="brand" href="#/">典籍</a>
+    <nav class="crumb" id="crumb" aria-label="当前位置"></nav>
     <p class="top-progress" id="top-progress" aria-live="polite"></p>
-    <button type="button" class="text-btn" id="continue-btn">从首篇读起</button>
     <div class="top-meter" aria-hidden="true"><i id="top-meter-fill"></i></div>
   </header>
   <div class="shell">
-    <div class="backdrop" id="backdrop" hidden></div>
-    <aside class="catalog" id="catalog" aria-label="篇目目录"></aside>
+    <aside class="catalog" id="catalog" aria-label="本卷篇目"></aside>
     <main class="main" id="main"></main>
   </div>
-  <nav class="dock" id="dock" hidden aria-label="阅读操作">
+  <nav class="tabbar" id="tabbar" aria-label="典籍">
+    <a href="#/" data-tab="home">典籍</a>
+    <a href="#/gwgz" data-tab="gwgz">观止</a>
+    <a href="#/szj" data-tab="szj">三字经</a>
+  </nav>
+  <nav class="dock" id="dock" hidden aria-label="翻篇">
     <button type="button" id="dock-prev">上一篇</button>
-    <button type="button" id="dock-py" aria-pressed="false">拼音</button>
     <button type="button" id="dock-next">下一篇</button>
   </nav>
   <div class="scrim" id="scrim" hidden></div>
