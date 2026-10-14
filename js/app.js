@@ -812,7 +812,7 @@
       if (tok.punct) {
         const span = document.createElement("span");
         span.className = "punct";
-        span.textContent = tok.t;
+        span.textContent = state.progress.font === "t" ? tok.t : (tok.s || tok.t);
         parent.appendChild(span);
         return;
       }
@@ -820,37 +820,26 @@
       word.className = "word";
       const chars = Array.from(tok.t);
       const shown = Array.from(fontOf(tok));
-      if (shown.length !== chars.length) {
+      const glyphs = shown.length ? shown : chars;
+      const reading = readingOf(tok);
+      const aligned = glyphs.length === chars.length && reading.parts.length === chars.length;
+      glyphs.forEach(function (glyph, index) {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "zi";
-        const whole = readingOf(tok);
-        if (state.progress.pinyin && whole.text) {
+        const syllable = aligned ? reading.parts[index] : "";
+        if (state.progress.pinyin && syllable) {
           const ruby = document.createElement("i");
           ruby.className = "py-ruby";
-          ruby.textContent = whole.text;
+          ruby.textContent = syllable;
           btn.appendChild(ruby);
         }
-        btn.appendChild(document.createTextNode(fontOf(tok)));
-        btn.addEventListener("click", function () { openPopup(tok, 0, btn); });
-        word.appendChild(btn);
-      } else {
-        const reading = readingOf(tok);
-        chars.forEach(function (ch, index) {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "zi";
-          if (state.progress.pinyin && reading.parts[index]) {
-            const ruby = document.createElement("i");
-            ruby.className = "py-ruby";
-            ruby.textContent = reading.parts[index];
-            btn.appendChild(ruby);
-          }
-          btn.appendChild(document.createTextNode(shown[index]));
-          btn.addEventListener("click", function () { openPopup(tok, index, btn); });
-          word.appendChild(btn);
+        btn.appendChild(document.createTextNode(glyph));
+        btn.addEventListener("click", function () {
+          openPopup(tok, aligned ? index : Math.min(index, chars.length - 1), btn);
         });
-      }
+        word.appendChild(btn);
+      });
       parent.appendChild(word);
     });
   }

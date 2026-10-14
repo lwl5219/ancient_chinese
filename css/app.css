@@ -418,15 +418,13 @@ h1 {
 }
 .tabbar a {
   flex: 1;
-  min-height: 56px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--muted);
   font-size: 0.92rem;
 }
-.body.verse .para { margin: 0 0 0.55em; }
-.body.verse .orig.with-py { line-height: 1.45; }
 .tabbar a.on { color: var(--accent); font-weight: 650; }
 .dock { display: none; }
 
@@ -473,77 +471,93 @@ h1 {
   font-size: 0.82rem;
 }
 
-.para { margin: 0 0 1.25em; }
+.para { margin: 0 0 0.85em; }
 .orig {
   font-family: var(--serif);
-  font-size: 1.35rem;
-  line-height: 2.15;
+  font-size: 1.32rem;
+  line-height: 1.85;
   margin: 0;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
-.orig.compact { font-size: 1.15rem; line-height: 1.9; }
-.orig.with-py { line-height: 1.55; }
+.orig.compact { font-size: 1.12rem; line-height: 1.75; }
+.orig.with-py { line-height: 1.2; }
 .py-ruby {
   font-family: var(--sans);
   font-style: normal;
   font-weight: 650;
-  font-size: 0.68rem;
-  line-height: 1.15;
+  font-size: 0.58rem;
+  line-height: 1;
   letter-spacing: 0;
   color: var(--accent);
   white-space: nowrap;
 }
 .pair {
-  margin: 0 0 12px;
-  padding: 14px 16px 12px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  margin: 0 0 14px;
+  padding: 0 0 12px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
 }
+.body > .pair:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
 .vern {
-  margin: 10px 0 0;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
-  color: #343c46;
-  font-size: 0.98rem;
-  line-height: 1.7;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 0;
+  color: #3a424c;
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
-.word { white-space: nowrap; }
+.word { white-space: normal; }
 .zi, .word > button {
   font: inherit;
   color: inherit;
   background: transparent;
   border: 0;
   border-radius: 4px;
-  padding: 0.28em 0.06em;
-  margin: -0.28em 0;
+  padding: 0.12em 0;
+  margin: 0;
   line-height: inherit;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .zi:hover, .word > button:hover, .zi.on, .word.on > button {
   background: var(--accent-soft);
   color: var(--accent);
 }
-.orig.with-py .word {
-  display: inline-flex;
-  align-items: flex-end;
-  vertical-align: bottom;
-}
+.orig.with-py .word { display: inline; }
 .orig.with-py .zi {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  line-height: 1.2;
-  padding: 0.04em 0.05em 0.02em;
-  margin: 0 0 0.08em;
+  position: relative;
+  display: inline-block;
+  box-sizing: content-box;
+  width: 1.68em;
+  min-width: 1.68em;
+  max-width: 1.68em;
+  padding: 0.62em 0 0;
+  margin: 0 0 0.42em;
+  line-height: 1.15;
+  text-align: center;
+  vertical-align: bottom;
+  overflow: visible;
+}
+.orig.with-py .py-ruby {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: none;
+  pointer-events: none;
 }
 .orig.with-py .punct {
   display: inline-block;
   vertical-align: bottom;
-  line-height: 1.2;
-  padding-bottom: 0.18em;
+  line-height: 1.15;
+  padding: 0.62em 0 0;
+  margin: 0 0 0.42em;
 }
 .punct { font-family: var(--serif); }
+.body.verse .para { margin: 0 0 0.15em; }
 
 .lesson { display: flex; flex-direction: column; gap: 12px; }
 .note-card {
@@ -780,7 +794,14 @@ h1 {
 }
 
 @media (max-width: 860px) {
-  .top { padding: 0 8px 0 12px; }
+  :root { --header: 48px; }
+  .main { padding: 12px 14px 92px; }
+  .reader h1 { font-size: 1.5rem; line-height: 1.25; margin-bottom: 4px; }
+  .reader .kicker { margin-bottom: 2px; font-size: 0.78rem; }
+  .reader .meta { margin: 0 0 12px; font-size: 0.86rem; }
+  .reader .jump { margin: 0 0 8px; }
+  .pair { margin-bottom: 12px; padding-bottom: 10px; }
+  .top { padding: 0 8px 0 12px; min-height: 48px; }
   .top.has-back .brand { display: none; }
   .top-progress { display: none; }
   .crumb a { display: none; }
@@ -804,7 +825,7 @@ h1 {
     bottom: 0;
     z-index: 18;
     gap: 8px;
-    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+    padding: 6px 12px calc(6px + env(safe-area-inset-bottom));
     background: rgba(255, 255, 255, 0.96);
     border-top: 1px solid var(--line);
     backdrop-filter: blur(12px);
@@ -812,15 +833,15 @@ h1 {
   .dock button {
     flex: 1;
     min-width: 0;
-    min-height: 56px;
+    min-height: 48px;
     border: 1px solid var(--line);
     background: var(--surface);
-    border-radius: 14px;
+    border-radius: 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 6px 8px;
+    padding: 4px 8px;
   }
   .dock button small { font-size: 0.72rem; color: var(--muted); line-height: 1.2; }
   .dock button b {
