@@ -462,7 +462,7 @@ h1 {
   align-items: center;
   justify-content: center;
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.88rem;
 }
 .tabbar a.on { color: var(--accent); font-weight: 650; }
 .dock { display: none; }
