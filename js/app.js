@@ -663,7 +663,7 @@
     });
   }
 
-  function appendSentenceGloss(pair, translation, glosses) {
+  function appendSentenceGloss(pair, translation) {
     if (translation) {
       const vern = document.createElement("p");
       vern.className = "vern";
@@ -672,40 +672,12 @@
       vern.appendChild(lab);
       vern.appendChild(document.createTextNode(translation));
       pair.appendChild(vern);
+      return;
     }
-    if (glosses && glosses.length) {
-      const label = document.createElement("p");
-      label.className = "pair-label";
-      label.textContent = "注释";
-      pair.appendChild(label);
-      const list = document.createElement("ul");
-      list.className = "pair-notes";
-      glosses.forEach(function (item) {
-        const li = document.createElement("li");
-        const term = document.createElement("b");
-        term.textContent = item.term;
-        li.appendChild(term);
-        li.appendChild(document.createTextNode(item.gloss));
-        list.appendChild(li);
-      });
-      pair.appendChild(list);
-    }
-    if (!translation && (!glosses || !glosses.length)) {
-      const missing = document.createElement("p");
-      missing.className = "pair-missing";
-      missing.textContent = "这一句还没有白话和注释。";
-      pair.appendChild(missing);
-    }
-  }
-
-  function proseGlosses(tokens) {
-    const items = [];
-    tokens.forEach(function (tok) {
-      if (tok.punct || !tok.ctx) return;
-      const term = state.progress.font === "t" ? tok.t : (tok.s || tok.t);
-      items.push({ term: term, gloss: tok.extra ? tok.ctx + "（" + tok.extra + "）" : tok.ctx });
-    });
-    return items;
+    const missing = document.createElement("p");
+    missing.className = "pair-missing";
+    missing.textContent = "这一句还没有译文。";
+    pair.appendChild(missing);
   }
 
   function pieceMeta() {
@@ -1157,10 +1129,8 @@
 
   function renderProseBody(art) {
     const body = document.createElement("div");
-    const glossed = art.paragraphs.some(function (para) {
-      return para.sentences.some(function (sent) {
-        return sent.tr || sent.tokens.some(function (tok) { return !tok.punct && tok.ctx; });
-      });
+    const hasTr = art.paragraphs.some(function (para) {
+      return para.sentences.some(function (sent) { return !!(sent.tr || "").trim(); });
     });
     if (!sentenceMode()) {
       body.className = "body prose";
@@ -1173,10 +1143,10 @@
       return body;
     }
     body.className = "body prose sentence";
-    if (!glossed) {
+    if (!hasTr) {
       const banner = document.createElement("p");
       banner.className = "pair-missing";
-      banner.textContent = "这一篇还没有逐句白话和注释。下面按句断开，点开字看《说文》。";
+      banner.textContent = "这一篇还没有逐句译文。下面按句断开，点开字看《说文》。注释在底部。";
       body.appendChild(banner);
     }
     art.paragraphs.forEach(function (para) {
@@ -1187,8 +1157,7 @@
         orig.className = "orig" + (state.progress.pinyin ? " with-py" : "");
         appendTokens(orig, sent.tokens);
         pair.appendChild(orig);
-        const glosses = proseGlosses(sent.tokens);
-        if (glossed) appendSentenceGloss(pair, sent.tr || "", glosses);
+        if (hasTr) appendSentenceGloss(pair, (sent.tr || "").trim());
         body.appendChild(pair);
       });
     });
@@ -1227,6 +1196,46 @@
     return body;
   }
 
+  const NO_LINE_START = "，。！？；、：」』）】》〉〕〗､";
+  const NO_LINE_END = "「『（【《〈〔〖";
+
+  function takeEdgeChar(word, edge) {
+    if (!word || !word.classList || !word.classList.contains("word")) return null;
+    const zi = edge === "last" ? word.lastElementChild : word.firstElementChild;
+    if (!zi) return null;
+    return zi;
+  }
+
+  function bindKinsoku(parent) {
+    const puncts = Array.from(parent.querySelectorAll(":scope > .punct"));
+    puncts.forEach(function (el) {
+      const text = el.textContent || "";
+      const chars = Array.from(text);
+      const glueLeft = chars.some(function (ch) { return NO_LINE_START.indexOf(ch) >= 0; });
+      const glueRight = chars.some(function (ch) { return NO_LINE_END.indexOf(ch) >= 0; });
+      if (!glueLeft && !glueRight) return;
+      const prev = el.previousElementSibling;
+      const next = el.nextElementSibling;
+      const left = glueLeft ? takeEdgeChar(prev, "last") : null;
+      const right = glueRight ? takeEdgeChar(next, "first") : null;
+      if (!left && !right) return;
+      const keep = document.createElement("span");
+      keep.className = "keep";
+      if (left) {
+        left.replaceWith(keep);
+        keep.appendChild(left);
+        if (prev && prev.classList.contains("word") && !prev.childElementCount) prev.remove();
+      } else {
+        el.replaceWith(keep);
+      }
+      if (!keep.contains(el)) keep.appendChild(el);
+      if (right) {
+        keep.appendChild(right);
+        if (next && next.classList.contains("word") && !next.childElementCount) next.remove();
+      }
+    });
+  }
+
   function appendTokens(parent, tokens) {
     tokens.forEach(function (tok) {
       if (tok.punct) {
@@ -1263,6 +1272,7 @@
       });
       parent.appendChild(word);
     });
+    bindKinsoku(parent);
   }
 
   function renderLesson(art) {

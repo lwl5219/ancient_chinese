@@ -602,7 +602,7 @@ h1 {
 .read-tools {
   display: none;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-left: auto;
   flex: none;
 }
@@ -610,39 +610,57 @@ h1 {
 .top.has-tools .top-progress { margin-left: 12px; }
 .read-tools .tool-py,
 .read-tools .tool-seg button {
-  min-height: 40px;
-  border: 1px solid var(--line);
-  background: var(--surface);
+  min-height: 44px;
+  min-width: 44px;
+  border: 0;
+  background: transparent;
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.84rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 .read-tools .tool-py {
-  border-radius: 999px;
+  border-radius: 10px;
   padding: 0 12px;
 }
 .read-tools .tool-py.on {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: #b7c8de;
+  color: var(--ink);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--line), 0 1px 2px rgba(23, 25, 28, 0.05);
   font-weight: 650;
+}
+.read-tools .tool-py.on::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 6px 1px 0;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
 }
 .read-tools .tool-seg {
   display: flex;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--surface);
+  align-items: stretch;
+  height: 44px;
+  padding: 3px;
+  border: 0;
+  border-radius: 12px;
+  background: #e7eaee;
 }
 .read-tools .tool-seg button {
-  border: 0;
+  border-radius: 9px;
   min-width: 52px;
-  padding: 0 10px;
+  padding: 0 12px;
 }
 .read-tools .tool-seg button.on {
-  background: var(--accent);
-  color: #fff;
+  background: #fff;
+  color: var(--ink);
   font-weight: 650;
+  box-shadow: 0 1px 2px rgba(23, 25, 28, 0.08);
 }
+.keep { white-space: nowrap; }
 .body.prose.sentence .pair { text-align: left; }
 .body.prose.sentence .pair.para-end { margin-bottom: 22px; }
 .pair-label {
@@ -1036,9 +1054,10 @@ h1 {
   .reader .jump { margin: 0 0 8px; }
   .pair { margin-bottom: 12px; padding-bottom: 10px; }
   .top { padding: 0 8px 0 12px; min-height: 48px; }
-  .top.has-tools { min-height: 52px; gap: 6px; padding-right: 8px; }
+  .top.has-tools { min-height: 56px; gap: 6px; padding-right: 8px; }
   .read-tools .tool-py,
   .read-tools .tool-seg button { min-height: 44px; }
+  .read-tools .tool-seg { height: 44px; }
   .top.has-back .brand { display: none; }
   .top-progress { display: none; }
   .crumb a { display: none; }
