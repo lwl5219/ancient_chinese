@@ -1,0 +1,144 @@
+name: Deploy to OSS
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-oss
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
+      OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+      OSS_ENDPOINT: https://oss-cn-hongkong.aliyuncs.com
+      OSS_REGION: cn-hongkong
+      OSS_BUCKET: guwen-lucca
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require OSS secrets
+        run: |
+          if [ -z "${OSS_ACCESS_KEY_ID}" ] || [ -z "${OSS_ACCESS_KEY_SECRET}" ]; then
+            echo "OSS_ACCESS_KEY_ID or OSS_ACCESS_KEY_SECRET is not set on this repository."
+            exit 1
+          fi
+
+      - name: Install ossutil 2.4.0
+        run: |
+          curl -fsSL -o /tmp/ossutil.zip https://gosspublic.alicdn.com/ossutil/v2/2.4.0/ossutil-2.4.0-linux-amd64.zip
+          echo "85edf66b2fb7238f5c7e25cab820cf29312319fe4935b7c86a6b8485eb434f3c  /tmp/ossutil.zip" | sha256sum -c
+          unzip -q /tmp/ossutil.zip -d /tmp
+          sudo mv /tmp/ossutil-2.4.0-linux-amd64/ossutil /usr/local/bin/ossutil
+          ossutil version
+
+      - name: Stage the public site
+        run: |
+          rm -rf site
+          mkdir -p site
+          cp index.html favicon.svg site/
+          cp -a css js data site/
+          echo "Staged $(find site -type f | wc -l) files"
+          find site -type f | sort
+
+      - name: Sync to OSS
+        shell: bash
+        run: |
+          set -euo pipefail
+          dest="oss://${OSS_BUCKET}"
+          # HTML is revalidated every visit. Unhashed CSS/JS/JSON/SVG keep a
+          # week-long cache: a year would pin the previous app.js and article
+          # JSON, because those filenames are not content-hashed. A filename
+          # that already contains a content hash is cached for a year.
+          html_cache="no-cache"
+          static_cache="public, max-age=604800"
+          hashed_cache="public, max-age=31536000, immutable"
+
+          content_type() {
+            case "$1" in
+              *.html) echo "text/html; charset=utf-8" ;;
+              *.css) echo "text/css; charset=utf-8" ;;
+              *.js|*.mjs) echo "text/javascript; charset=utf-8" ;;
+              *.json|*.map) echo "application/json; charset=utf-8" ;;
+              *.svg) echo "image/svg+xml" ;;
+              *.png) echo "image/png" ;;
+              *.jpg|*.jpeg) echo "image/jpeg" ;;
+              *.webp) echo "image/webp" ;;
+              *.gif) echo "image/gif" ;;
+              *.ico) echo "image/x-icon" ;;
+              *.woff) echo "font/woff" ;;
+              *.woff2) echo "font/woff2" ;;
+              *.txt) echo "text/plain; charset=utf-8" ;;
+              *.xml) echo "application/xml; charset=utf-8" ;;
+              *) echo "application/octet-stream" ;;
+            esac
+          }
+
+          sync_ext() {
+            local ext="$1"
+            local cache="$2"
+            local sample
+            sample="$(find site -type f -name "*.${ext}" -print -quit)"
+            if [[ -z "${sample}" ]]; then
+              return 0
+            fi
+            ossutil sync site "${dest}" \
+              --include "*.${ext}" \
+              --content-type "$(content_type "${sample}")" \
+              --cache-control "${cache}" \
+              --force \
+              --no-progress
+          }
+
+          sync_ext html "${html_cache}"
+          for ext in css js mjs json svg png jpg jpeg webp gif ico woff woff2 txt xml map; do
+            sync_ext "${ext}" "${static_cache}"
+          done
+
+          # Anything else staged still gets a type and a cache header.
+          other="$(find site -type f \
+            ! -name '*.html' ! -name '*.css' ! -name '*.js' ! -name '*.mjs' \
+            ! -name '*.json' ! -name '*.svg' ! -name '*.png' ! -name '*.jpg' \
+            ! -name '*.jpeg' ! -name '*.webp' ! -name '*.gif' ! -name '*.ico' \
+            ! -name '*.woff' ! -name '*.woff2' ! -name '*.txt' ! -name '*.xml' \
+            ! -name '*.map' -print -quit)"
+          if [[ -n "${other}" ]]; then
+            ossutil sync site "${dest}" \
+              --exclude "*.html" --exclude "*.css" --exclude "*.js" --exclude "*.mjs" \
+              --exclude "*.json" --exclude "*.svg" --exclude "*.png" --exclude "*.jpg" \
+              --exclude "*.jpeg" --exclude "*.webp" --exclude "*.gif" --exclude "*.ico" \
+              --exclude "*.woff" --exclude "*.woff2" --exclude "*.txt" --exclude "*.xml" \
+              --exclude "*.map" \
+              --content-type "application/octet-stream" \
+              --cache-control "${static_cache}" \
+              --force \
+              --no-progress
+          fi
+
+          while IFS= read -r -d '' file; do
+            base="$(basename "${file}")"
+            if [[ ! "${base}" =~ (^|[._-])[a-fA-F0-9]{8,}([._-]|$) ]]; then
+              continue
+            fi
+            rel="${file#site/}"
+            ossutil cp "${file}" "${dest}/${rel}" \
+              --content-type "$(content_type "${base}")" \
+              --cache-control "${hashed_cache}" \
+              --force \
+              --no-progress
+          done < <(find site -type f -print0)
+
+          # Drop objects that are no longer in the staged site. Ignore files
+          # already uploaded so this pass does not clear their headers.
+          ossutil sync site "${dest}" \
+            --delete \
+            --ignore-existing \
+            --force \
+            --no-progress
