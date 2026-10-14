@@ -707,7 +707,7 @@ h1 {
 .read-tools .tool-seg {
   display: flex;
   align-items: stretch;
-  height: 44px;
+  height: auto;
   padding: 3px;
   border: 0;
   border-radius: 12px;
@@ -717,6 +717,7 @@ h1 {
   border-radius: 9px;
   min-width: 52px;
   padding: 0 12px;
+  box-sizing: border-box;
 }
 .read-tools .tool-seg button.on {
   background: var(--chip);
@@ -1161,10 +1162,14 @@ h1 {
   .reader .jump { margin: 0 0 8px; }
   .pair { margin-bottom: 12px; padding-bottom: 10px; }
   .top { padding: 0 8px 0 12px; min-height: 48px; }
-  .top.has-tools { min-height: 56px; gap: 6px; padding-right: 8px; }
+  .top.has-tools {
+    min-height: 66px;
+    gap: 6px;
+    padding: 8px 8px 8px 12px;
+  }
   .read-tools .tool-py,
   .read-tools .tool-seg button { min-height: 44px; }
-  .read-tools .tool-seg { height: 44px; }
+  .read-tools .tool-seg { height: auto; }
   .top.has-back .brand { display: none; }
   .top-progress { display: none; }
   .crumb a { display: none; }
