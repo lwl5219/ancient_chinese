@@ -16,10 +16,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
 HASH_LEN = 12
+HASHED_NAME = re.compile(r"^(?P<body>.+)\.(?P<digest>[0-9a-f]{12})(?P<suffix>\.[A-Za-z0-9]+)$")
+CANONICAL_REFS = (
+    ("css/app.css", re.compile(r"css/app\.[0-9a-f]{12}\.css")),
+    ("js/app.js", re.compile(r"js/app\.[0-9a-f]{12}\.js")),
+    ("js/asset-urls.js", re.compile(r"js/asset-urls\.[0-9a-f]{12}\.js")),
+    ("favicon.svg", re.compile(r"favicon\.[0-9a-f]{12}\.svg")),
+)
 
 
 def digest(data: bytes) -> str:
@@ -51,7 +59,22 @@ def collect(root: Path) -> list[Path]:
         if is_hashed_name(path.name):
             continue
         files.append(path)
+    files.sort(key=lambda path: path.relative_to(root).as_posix())
     return files
+
+
+def reset_tree(root: Path) -> None:
+    for path in list(root.rglob("*")):
+        if path.is_file() and HASHED_NAME.match(path.name):
+            path.unlink()
+    index_path = root / "index.html"
+    if not index_path.is_file():
+        return
+    index = index_path.read_text(encoding="utf-8")
+    for canonical, pattern in CANONICAL_REFS:
+        index = pattern.sub(canonical, index)
+    index = re.sub(r'data-build="[0-9a-f]*"', 'data-build=""', index)
+    index_path.write_text(index, encoding="utf-8")
 
 
 def main() -> int:
@@ -63,6 +86,7 @@ def main() -> int:
     if not index_path.is_file():
         print(f"没有 {index_path}", file=sys.stderr)
         return 1
+    reset_tree(root)
 
     originals = collect(root)
     url_map: dict[str, str] = {}
@@ -94,9 +118,6 @@ def main() -> int:
     url_map["js/asset-urls.js"] = asset_rel
 
     index = index_path.read_text(encoding="utf-8")
-    if 'href="css/app.css"' not in index:
-        print("index.html 已经打过内容哈希，拒绝再跑一遍。", file=sys.stderr)
-        return 1
     replacements = {
         "css/app.css": url_map["css/app.css"],
         "js/asset-urls.js": url_map["js/asset-urls.js"],
