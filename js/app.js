@@ -18,6 +18,8 @@
     notes: null,
     verseTab: "",
     proseAuthors: null,
+    renjian: null,
+    renjianQuery: "",
   };
   let loadToken = 0;
 
@@ -70,12 +72,30 @@
     return list;
   }
 
+  function renjianArticles() {
+    const vol = state.renjian && state.renjian.volumes && state.renjian.volumes[0];
+    return vol ? vol.articles : [];
+  }
+
+  function isRenjianId(id) {
+    return /^h\d{2}-\d{2}$/.test(id || "");
+  }
+
+  function learnedIn(list) {
+    return list.filter(function (art) { return state.progress.learned[art.id]; }).length;
+  }
+
   function findArticleMeta(id) {
-    return flatArticles().find(function (art) { return art.id === id; }) || null;
+    const lists = isRenjianId(id) ? [renjianArticles(), flatArticles()] : [flatArticles(), renjianArticles()];
+    for (let i = 0; i < lists.length; i += 1) {
+      const found = lists[i].find(function (art) { return art.id === id; });
+      if (found) return found;
+    }
+    return null;
   }
 
   function neighbors(id) {
-    const list = flatArticles();
+    const list = isRenjianId(id) ? renjianArticles() : flatArticles();
     const i = list.findIndex(function (art) { return art.id === id; });
     return { prev: i > 0 ? list[i - 1] : null, next: i >= 0 && i < list.length - 1 ? list[i + 1] : null };
   }
@@ -90,10 +110,11 @@
 
   async function boot() {
     skeleton("正在载入");
-    const [catRes, booksRes, authorsRes] = await Promise.all([
+    const [catRes, booksRes, authorsRes, renjianRes] = await Promise.all([
       fetch(assetUrl("data/catalog.json")),
       fetch(assetUrl("data/books.json")),
       fetch(assetUrl("data/prose-authors.json")),
+      fetch(assetUrl("data/renjian.json")),
     ]);
     if (!catRes.ok) {
       main.innerHTML = "<p class='empty'>没有读到目录。请在仓库根目录运行本地服务器后再打开本页。</p>";
@@ -102,6 +123,7 @@
     state.catalog = await catRes.json();
     if (booksRes.ok) state.books = await booksRes.json();
     if (authorsRes.ok) state.proseAuthors = await authorsRes.json();
+    if (renjianRes.ok) state.renjian = await renjianRes.json();
     if (state.progress.last) {
       const meta = findArticleMeta(state.progress.last);
       if (meta) state.openVol = Number(meta.id.slice(1, 3));
@@ -163,6 +185,47 @@
     catalogEl.replaceChildren(root);
   }
 
+  function renderRenjianRail() {
+    const articles = renjianArticles();
+    if (!articles.length) {
+      shell.classList.remove("has-rail");
+      catalogEl.replaceChildren();
+      return;
+    }
+    shell.classList.add("has-rail");
+    const root = document.createElement("div");
+    const head = document.createElement("p");
+    head.className = "rail-title";
+    head.textContent = "人间词话 · 六十四则";
+    root.appendChild(head);
+    const list = document.createElement("ol");
+    list.className = "vol-list";
+    articles.forEach(function (art) {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = "#/read/" + art.id;
+      if (state.article && state.article.id === art.id) a.className = "active";
+      const idx = document.createElement("span");
+      idx.className = "idx";
+      idx.textContent = String(art.index);
+      const title = document.createElement("span");
+      title.className = "title";
+      title.textContent = art.title;
+      a.appendChild(idx);
+      a.appendChild(title);
+      if (state.progress.learned[art.id]) {
+        const mark = document.createElement("span");
+        mark.className = "done";
+        mark.textContent = "已读";
+        a.appendChild(mark);
+      }
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+    root.appendChild(list);
+    catalogEl.replaceChildren(root);
+  }
+
   const POETRY = {
     tang: { file: "data/tang.json", label: "唐诗" },
     ci: { file: "data/songci.json", label: "宋词" },
@@ -170,12 +233,13 @@
 
   function route() {
     const hash = location.hash || "#/";
-    const read = hash.match(/^#\/read\/(v\d{2}-\d{2})$/);
+    const read = hash.match(/^#\/read\/((?:v|h)\d{2}-\d{2})$/);
     const vol = hash.match(/^#\/gwgz\/(\d{1,2})$/);
     const piece = hash.match(/^#\/(tang|ci)\/([a-z0-9-]+)$/);
     if (read) showArticle(read[1]);
     else if (vol) showVolume(Number(vol[1]));
     else if (hash === "#/gwgz") showBook();
+    else if (hash === "#/rjch") showRenjian();
     else if (piece) showPiece(piece[1], piece[2]);
     else if (hash === "#/tang" || hash === "#/ci") showCollection(hash.slice(2));
     else showHub();
@@ -185,6 +249,7 @@
     if (state.books && state.books.books) return state.books.books;
     return [
       { id: "gwgz", title: "古文观止", href: "#/gwgz", meta: "十二卷 · 二百二十二篇", detail: "先读这一本。" },
+      { id: "rjch", title: "人间词话", href: "#/rjch", meta: "王国维 · 六十四则", detail: "一九〇八年至一九〇九年《国粹学报》本。" },
       { id: "tang", title: "唐诗", href: "#/tang", meta: "精选名篇", detail: "从《静夜思》读起。" },
       { id: "ci", title: "宋词", href: "#/ci", meta: "精选名篇", detail: "从《水调歌头》读起。" },
     ];
@@ -220,7 +285,9 @@
       const rh = document.createElement("h2");
       rh.textContent = last.title;
       const rs = document.createElement("p");
-      rs.textContent = "古文观止 · 已读 " + n + " / " + total;
+      const resumeList = isRenjianId(last.id) ? renjianArticles() : flatArticles();
+      const resumeBook = isRenjianId(last.id) ? "人间词话" : "古文观止";
+      rs.textContent = resumeBook + " · 已读 " + learnedIn(resumeList) + " / " + resumeList.length;
       const go = document.createElement("span");
       go.className = "go";
       go.textContent = "继续";
@@ -427,6 +494,82 @@
     wrap.appendChild(list);
     main.replaceChildren(wrap);
     document.title = vol.title + " · 古文观止";
+    syncChrome();
+  }
+
+  function showRenjian() {
+    loadToken += 1;
+    closePopup();
+    state.view = "renjian";
+    state.article = null;
+    const articles = renjianArticles();
+    const wrap = document.createElement("article");
+    wrap.className = "home";
+    const h1 = document.createElement("h1");
+    h1.textContent = "人间词话";
+    const lead = document.createElement("p");
+    lead.className = "lead";
+    lead.textContent = articles.length
+      ? "王国维 · 六十四则。一九〇八年至一九〇九年刊于《国粹学报》。已读 " + learnedIn(articles) + " / " + articles.length + "。"
+      : "目录还没有载入。";
+    wrap.appendChild(h1);
+    wrap.appendChild(lead);
+    if (!articles.length) {
+      main.replaceChildren(wrap);
+      document.title = "人间词话 · 典籍";
+      syncChrome();
+      return;
+    }
+    const last = state.progress.last && isRenjianId(state.progress.last) ? findArticleMeta(state.progress.last) : null;
+    const resume = document.createElement("a");
+    resume.className = "resume";
+    resume.href = "#/read/" + (last ? last.id : articles[0].id);
+    const copy = document.createElement("div");
+    const rk = document.createElement("p");
+    rk.className = "kicker";
+    rk.textContent = last ? "继续这一则" : "从第一则开始";
+    const rh = document.createElement("h2");
+    rh.textContent = last ? last.title : articles[0].title;
+    copy.appendChild(rk);
+    copy.appendChild(rh);
+    const go = document.createElement("span");
+    go.className = "go";
+    go.textContent = last ? "继续" : "开始";
+    resume.appendChild(copy);
+    resume.appendChild(go);
+    wrap.appendChild(resume);
+    const input = document.createElement("input");
+    input.className = "catalog-search";
+    input.placeholder = "搜索则目";
+    input.value = state.renjianQuery;
+    input.setAttribute("aria-label", "搜索则目");
+    input.addEventListener("input", function () {
+      state.renjianQuery = input.value;
+      showRenjian();
+      const next = main.querySelector(".catalog-search");
+      if (next) {
+        next.focus();
+        const len = next.value.length;
+        next.setSelectionRange(len, len);
+      }
+    });
+    wrap.appendChild(input);
+    const q = state.renjianQuery.trim();
+    const shown = q ? articles.filter(function (art) {
+      return (art.title + (art.titleT || "")).indexOf(q) >= 0;
+    }) : articles;
+    const list = document.createElement("div");
+    list.className = "piece-list";
+    if (!shown.length) {
+      const empty = document.createElement("p");
+      empty.className = "catalog-empty";
+      empty.textContent = "没有匹配的则目。";
+      list.appendChild(empty);
+    }
+    shown.forEach(function (art) { list.appendChild(pieceLink(art, false)); });
+    wrap.appendChild(list);
+    main.replaceChildren(wrap);
+    document.title = "人间词话 · 典籍";
     syncChrome();
   }
 
@@ -885,9 +1028,13 @@
     }
     const credit = document.createElement("p");
     credit.className = "sheet-credit";
-    credit.textContent = lesson
-      ? "主旨、手法和白话是本书编写的。选本评点是《古文观止》所附的旧评，不是现代赏析网站的原文。"
-      : "选本评点是《古文观止》所附的旧评，不是现代赏析网站的原文。";
+    if (isRenjianId(art.id)) {
+      credit.textContent = "白话、注释和赏析是本书编写的。正文用王国维《人间词话》一九〇八年至一九〇九年《国粹学报》已刊六十四则。";
+    } else {
+      credit.textContent = lesson
+        ? "主旨、手法和白话是本书编写的。选本评点是《古文观止》所附的旧评，不是现代赏析网站的原文。"
+        : "选本评点是《古文观止》所附的旧评，不是现代赏析网站的原文。";
+    }
     panel.appendChild(credit);
   }
 
@@ -1033,7 +1180,7 @@
     const book = font === "t" ? art.book.t : art.book.s;
     const head = font === "t" ? art.sourceHead.t : art.sourceHead.s;
     const info = proseAuthor(art);
-    const list = flatArticles();
+    const list = isRenjianId(art.id) ? renjianArticles() : flatArticles();
     const pos = list.findIndex(function (item) { return item.id === art.id; });
     const nav = neighbors(art.id);
     const wrap = document.createElement("article");
@@ -1724,6 +1871,9 @@
       tab = state.kind;
       crumbs.push({ href: "#/", label: "典籍" });
       if (onPiece) crumbs.push({ href: "#/" + state.kind, label: poetry.label });
+    } else if (state.view === "renjian" || hash === "#/rjch") {
+      tab = "rjch";
+      crumbs.push({ href: "#/", label: "典籍" });
     } else if (state.view === "book" || hash === "#/gwgz") {
       tab = "gwgz";
       crumbs.push({ href: "#/", label: "典籍" });
@@ -1732,14 +1882,20 @@
       crumbs.push({ href: "#/", label: "典籍" });
       crumbs.push({ href: "#/gwgz", label: "古文观止" });
       rail = state.openVol;
-    } else if (onArticle) {
-      tab = "gwgz";
-      const vol = state.openVol || 1;
-      const volMeta = state.catalog && state.catalog.volumes.find(function (item) { return item.volume === vol; });
+    } else if (onArticle && state.article) {
+      const renjian = isRenjianId(state.article.id);
+      tab = renjian ? "rjch" : "gwgz";
       crumbs.push({ href: "#/", label: "典籍" });
-      crumbs.push({ href: "#/gwgz", label: "古文观止" });
-      crumbs.push({ href: "#/gwgz/" + vol, label: volMeta ? volMeta.title : "本卷" });
-      rail = vol;
+      if (renjian) {
+        crumbs.push({ href: "#/rjch", label: "人间词话" });
+        rail = "rj";
+      } else {
+        const vol = state.openVol || 1;
+        const volMeta = state.catalog && state.catalog.volumes.find(function (item) { return item.volume === vol; });
+        crumbs.push({ href: "#/gwgz", label: "古文观止" });
+        crumbs.push({ href: "#/gwgz/" + vol, label: volMeta ? volMeta.title : "本卷" });
+        rail = vol;
+      }
     }
     const crumbEl = document.getElementById("crumb");
     crumbEl.replaceChildren();
@@ -1761,11 +1917,14 @@
     tabbar.querySelectorAll("a").forEach(function (a) {
       a.classList.toggle("on", a.dataset.tab === tab);
     });
-    const total = state.catalog ? state.catalog.articleCount : 0;
-    const n = learnedCount();
-    topProgress.textContent = tab === "gwgz" && total ? "已读 " + n + " / " + total : "";
-    meter.style.width = tab === "gwgz" && total ? Math.round((n / total) * 100) + "%" : "0%";
-    if (rail) renderRail(rail);
+    const onRenjian = tab === "rjch";
+    const total = onRenjian ? renjianArticles().length : (state.catalog ? state.catalog.articleCount : 0);
+    const n = onRenjian ? learnedIn(renjianArticles()) : learnedCount();
+    const showMeter = (tab === "gwgz" || tab === "rjch") && total;
+    topProgress.textContent = showMeter ? "已读 " + n + " / " + total : "";
+    meter.style.width = showMeter ? Math.round((n / total) * 100) + "%" : "0%";
+    if (rail === "rj") renderRenjianRail();
+    else if (rail) renderRail(rail);
     else {
       shell.classList.remove("has-rail");
       catalogEl.replaceChildren();
