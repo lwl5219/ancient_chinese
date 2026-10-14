@@ -613,8 +613,13 @@ h1 {
   display: inline-block;
   vertical-align: bottom;
   line-height: 1.15;
-  padding: 0.62em 0 0;
+  padding: 0.62em 0.04em 0;
   margin: 0 0 0.42em;
+  width: max-content;
+  min-width: 0.5em;
+  letter-spacing: 0;
+  text-align: center;
+  overflow: visible;
 }
 .body.prose .orig {
   font-size: 1.28rem;
@@ -636,31 +641,28 @@ h1 {
   top: 0.12em;
 }
 .body.prose .orig.with-py .punct {
-  width: 0.5em;
-  padding: 0.82em 0 0;
+  width: max-content;
+  min-width: 0.5em;
+  padding: 0.82em 0.04em 0;
   margin: 0 0 0.28em;
   line-height: 1.12;
   text-align: center;
   font-size: 0.92em;
+  letter-spacing: 0;
   overflow: visible;
 }
-.body.prose .orig.with-py .punct.punct-open {
-  width: 0.36em;
-  text-align: right;
-}
-.body.prose .orig.with-py .punct.punct-close {
-  width: 0.38em;
-  text-align: left;
-}
-.body.prose .orig.with-py .punct.punct-pause { width: 0.42em; }
-.body.prose .orig.with-py .punct.punct-stop { width: 0.5em; }
-.body.prose .orig.with-py .punct.punct-open.punct-pause,
-.body.prose .orig.with-py .punct.punct-open.punct-stop,
-.body.prose .orig.with-py .punct.punct-close.punct-pause,
-.body.prose .orig.with-py .punct.punct-close.punct-stop {
-  width: auto;
-  letter-spacing: -0.22em;
-  padding-right: 0.22em;
+.body.prose .orig.with-py .punct.punct-pause { min-width: 0.5em; }
+.body.prose .orig.with-py .punct.punct-stop { min-width: 0.55em; }
+/* 书名号、引号、括号是全角，格子不能窄于字面，也不能用负字距把它们叠进邻字。 */
+.body.prose .orig.with-py .punct.punct-open,
+.body.prose .orig.with-py .punct.punct-close,
+.body.verse .orig.with-py .punct.punct-open,
+.body.verse .orig.with-py .punct.punct-close {
+  width: max-content;
+  min-width: 1em;
+  padding-left: 0.06em;
+  padding-right: 0.06em;
+  letter-spacing: 0;
   text-align: center;
 }
 .punct { font-family: var(--serif); }
