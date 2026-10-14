@@ -12,6 +12,13 @@
   <header class="top">
     <a class="brand" href="#/">典籍</a>
     <nav class="crumb" id="crumb" aria-label="当前位置"></nav>
+    <div class="read-tools" id="read-tools" hidden>
+      <button type="button" class="tool-py" id="tool-py" aria-pressed="true">拼音</button>
+      <div class="tool-seg" role="group" aria-label="阅读方式">
+        <button type="button" data-mode="full">全文</button>
+        <button type="button" data-mode="sentence">逐句</button>
+      </div>
+    </div>
     <p class="top-progress" id="top-progress" aria-live="polite"></p>
     <div class="top-meter" aria-hidden="true"><i id="top-meter-fill"></i></div>
   </header>
