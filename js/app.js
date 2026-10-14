@@ -27,9 +27,10 @@
       raw.learned = raw.learned || {};
       raw.font = raw.font === "t" ? "t" : "s";
       raw.mode = raw.mode || "parallel";
+      raw.pinyin = !!raw.pinyin;
       return raw;
     } catch (err) {
-      return { learned: {}, font: "s", mode: "parallel", last: "" };
+      return { learned: {}, font: "s", mode: "parallel", last: "", pinyin: false };
     }
   }
 
@@ -88,8 +89,11 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         state.dict = data.chars || {};
-        if (!popup.hidden && state.popupTok) {
-          openPopup(state.popupTok.tok, state.popupTok.index, state.popupTok.anchor);
+        const open = state.popupTok;
+        if (state.article && state.progress.pinyin) renderArticle(true);
+        if (open) {
+          const anchor = open.anchor && open.anchor.isConnected ? open.anchor : null;
+          openPopup(open.tok, open.index, anchor);
         }
       })
       .catch(function () { state.dict = {}; });
@@ -182,6 +186,12 @@
       box.appendChild(list);
       root.appendChild(box);
     });
+    if (!root.querySelector(".vol")) {
+      const empty = document.createElement("p");
+      empty.className = "catalog-empty";
+      empty.textContent = "没有匹配的篇目。";
+      root.appendChild(empty);
+    }
     catalogEl.replaceChildren(root);
   }
 
@@ -211,7 +221,7 @@
     h1.textContent = "古文观止";
     const lead = document.createElement("p");
     lead.className = "lead";
-    lead.textContent = "按原书次序读。点开原文里的字，查看本句意思和《说文》本义。卷一十八篇有系统讲解，其余篇目可以先通读原文。";
+    lead.textContent = "按原书次序读。点开原文里的字，查看本句意思、带声调的拼音和《说文》本义。卷一十八篇有系统讲解。";
     wrap.appendChild(kicker);
     wrap.appendChild(h1);
     wrap.appendChild(lead);
@@ -238,14 +248,35 @@
     bar.appendChild(fill);
     wrap.appendChild(bar);
 
-    const actions = document.createElement("p");
-    actions.className = "home-actions";
-    const start = document.createElement("a");
-    start.className = "text-btn primary";
-    start.href = "#/read/" + (last ? last.id : first.id);
-    start.textContent = last ? "继续《" + last.title + "》" : "从《" + first.title + "》读起";
-    actions.appendChild(start);
-    wrap.appendChild(actions);
+    const resume = document.createElement("section");
+    resume.className = "resume";
+    const copy = document.createElement("div");
+    const rk = document.createElement("p");
+    rk.className = "kicker";
+    const rh = document.createElement("h2");
+    const rs = document.createElement("p");
+    if (last) {
+      const vol = state.catalog.volumes.find(function (item) {
+        return item.volume === Number(String(last.id).slice(1, 3));
+      });
+      rk.textContent = "继续读";
+      rh.textContent = last.title;
+      rs.textContent = (vol ? vol.title + " · " + vol.subtitle + " · " : "") + "已读 " + n + " / " + total;
+    } else {
+      rk.textContent = "从这里开始";
+      rh.textContent = first.title;
+      rs.textContent = "卷一第一篇。点开每个字，看本句意思和带声调的读音。";
+    }
+    const go = document.createElement("a");
+    go.className = "text-btn primary";
+    go.href = "#/read/" + (last ? last.id : first.id);
+    go.textContent = last ? "继续" : "开始阅读";
+    copy.appendChild(rk);
+    copy.appendChild(rh);
+    copy.appendChild(rs);
+    resume.appendChild(copy);
+    resume.appendChild(go);
+    wrap.appendChild(resume);
 
     const label = document.createElement("p");
     label.className = "section-label";
@@ -272,6 +303,7 @@
     });
     wrap.appendChild(grid);
     main.appendChild(wrap);
+    updateDock();
     renderCatalog();
   }
 
@@ -297,23 +329,28 @@
     return state.progress.font === "t" ? tok.t : tok.s;
   }
 
-  function renderArticle() {
+  function renderArticle(keepScroll) {
+    const y = keepScroll ? window.scrollY : 0;
     const art = state.article;
     const font = state.progress.font;
     const mode = state.progress.mode || "parallel";
     const title = font === "t" ? art.title.t : art.title.s;
     const book = font === "t" ? art.book.t : art.book.s;
     const head = font === "t" ? art.sourceHead.t : art.sourceHead.s;
+    const list = flatArticles();
+    const pos = list.findIndex(function (item) { return item.id === art.id; });
     const wrap = document.createElement("article");
     wrap.className = "reader";
     const kicker = document.createElement("p");
     kicker.className = "kicker";
-    kicker.textContent = art.volumeTitle + " · " + art.volumeSubtitle + " · 第 " + art.index + " 篇";
+    kicker.textContent = art.volumeTitle + " · " + art.volumeSubtitle + " · " + (pos + 1) + " / " + list.length;
     const h1 = document.createElement("h1");
     h1.textContent = title;
     const meta = document.createElement("p");
     meta.className = "meta";
-    meta.textContent = [book, head, art.author].filter(Boolean).join(" · ");
+    const metaBits = [book, head, art.author].filter(Boolean);
+    if (state.progress.learned[art.id]) metaBits.push("已读完");
+    meta.textContent = metaBits.join(" · ");
     wrap.appendChild(kicker);
     wrap.appendChild(h1);
     wrap.appendChild(meta);
@@ -329,6 +366,18 @@
     tool.className = "tool";
     tool.appendChild(modeSeg(mode));
     tool.appendChild(fontSeg(font));
+    const pyBtn = document.createElement("button");
+    pyBtn.type = "button";
+    const pyOn = !!state.progress.pinyin;
+    pyBtn.textContent = pyOn ? "隐藏拼音" : "显示拼音";
+    pyBtn.setAttribute("aria-pressed", pyOn ? "true" : "false");
+    if (pyOn) pyBtn.className = "primary";
+    pyBtn.addEventListener("click", function () {
+      state.progress.pinyin = !state.progress.pinyin;
+      saveProgress();
+      renderArticle(true);
+    });
+    tool.appendChild(pyBtn);
     const learn = document.createElement("button");
     learn.type = "button";
     const learned = !!state.progress.learned[art.id];
@@ -338,10 +387,18 @@
       if (state.progress.learned[art.id]) delete state.progress.learned[art.id];
       else state.progress.learned[art.id] = Date.now();
       saveProgress();
-      renderArticle();
+      renderArticle(true);
     });
     tool.appendChild(learn);
     wrap.appendChild(tool);
+    if (pyOn) {
+      const hint = document.createElement("p");
+      hint.className = "py-hint";
+      hint.textContent = art.annotated
+        ? "字上的拼音是这一句里的读音，带声调。"
+        : "这一篇还没有逐句审定。字上是字书里的今读，破读可能不准，点开字再核对。";
+      wrap.appendChild(hint);
+    }
 
     if (mode === "lesson") {
       wrap.appendChild(renderLesson(art));
@@ -371,7 +428,8 @@
     wrap.appendChild(pager);
 
     main.replaceChildren(wrap);
-    window.scrollTo(0, 0);
+    updateDock();
+    window.scrollTo(0, y);
   }
 
   function modeSeg(mode) {
@@ -387,7 +445,7 @@
       btn.addEventListener("click", function () {
         state.progress.mode = pair[0];
         saveProgress();
-        renderArticle();
+        renderArticle(true);
       });
       box.appendChild(btn);
     });
@@ -407,7 +465,7 @@
       btn.addEventListener("click", function () {
         state.progress.font = pair[0];
         saveProgress();
-        renderArticle();
+        renderArticle(true);
       });
       box.appendChild(btn);
     });
@@ -423,7 +481,7 @@
           const pair = document.createElement("div");
           pair.className = "pair";
           const orig = document.createElement("p");
-          orig.className = "orig";
+          orig.className = "orig" + (state.progress.pinyin ? " with-py" : "");
           appendTokens(orig, sent.tokens);
           pair.appendChild(orig);
           if (sent.tr) {
@@ -436,7 +494,7 @@
         });
       } else {
         const p = document.createElement("p");
-        p.className = "orig para";
+        p.className = "orig para" + (state.progress.pinyin ? " with-py" : "");
         para.sentences.forEach(function (sent) {
           appendTokens(p, sent.tokens);
         });
@@ -462,15 +520,30 @@
       if (shown.length !== chars.length) {
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.textContent = fontOf(tok);
+        btn.className = "zi";
+        const whole = readingOf(tok);
+        if (state.progress.pinyin && whole.text) {
+          const ruby = document.createElement("i");
+          ruby.className = "py-ruby";
+          ruby.textContent = whole.text;
+          btn.appendChild(ruby);
+        }
+        btn.appendChild(document.createTextNode(fontOf(tok)));
         btn.addEventListener("click", function () { openPopup(tok, 0, btn); });
         word.appendChild(btn);
       } else {
+        const reading = readingOf(tok);
         chars.forEach(function (ch, index) {
           const btn = document.createElement("button");
           btn.type = "button";
           btn.className = "zi";
-          btn.textContent = shown[index];
+          if (state.progress.pinyin && reading.parts[index]) {
+            const ruby = document.createElement("i");
+            ruby.className = "py-ruby";
+            ruby.textContent = reading.parts[index];
+            btn.appendChild(ruby);
+          }
+          btn.appendChild(document.createTextNode(shown[index]));
           btn.addEventListener("click", function () { openPopup(tok, index, btn); });
           word.appendChild(btn);
         });
@@ -524,7 +597,7 @@
         if (!sent.tr) return;
         const li = document.createElement("li");
         const orig = document.createElement("div");
-        orig.className = "orig compact";
+        orig.className = "orig compact" + (state.progress.pinyin ? " with-py" : "");
         appendTokens(orig, sent.tokens);
         const vern = document.createElement("div");
         vern.className = "vern";
@@ -598,26 +671,84 @@
     return state.dict[ch] || null;
   }
 
+  function normalizePy(py) {
+    return String(py || "").replace(/\u0261/g, "g").replace(/\u014b/g, "ng").replace(/\s+/g, " ").trim();
+  }
+
+  function syllables(py) {
+    const n = normalizePy(py);
+    if (!n) return [];
+    const re = /(zh|ch|sh|[bpmfdtnlgkhjqxrzcsyw])?[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜüaeiou]+(?:ng|n|r)?/gi;
+    const out = [];
+    n.split(/[\s·]+/).filter(Boolean).forEach(function (piece) {
+      const found = piece.match(re) || [];
+      if (found.length && found.join("") === piece) out.push.apply(out, found);
+      else out.push(piece);
+    });
+    return out;
+  }
+
+  function charPinyin(ch) {
+    const info = lookup(ch);
+    if (!info || info.pending) return "";
+    return normalizePy(info.py);
+  }
+
+  function readingOf(tok) {
+    const chars = Array.from(tok.t);
+    const curated = syllables(tok.py);
+    if (curated.length === chars.length) {
+      return { parts: curated, source: "sentence", text: curated.join(" ") };
+    }
+    if (chars.length === 1 && curated.length) {
+      const text = curated.join(" ");
+      return { parts: [text], source: "sentence", text: text };
+    }
+    if (curated.length && tok.level === "sentence") {
+      const parts = chars.map(function (ch, i) { return curated[i] || charPinyin(ch); });
+      return { parts: parts, source: "sentence", text: parts.filter(Boolean).join(" ") };
+    }
+    const parts = chars.map(charPinyin);
+    return { parts: parts, source: parts.some(Boolean) ? "dict" : "", text: parts.filter(Boolean).join(" ") };
+  }
+
+  function samePy(a, b) {
+    return normalizePy(a).toLowerCase() === normalizePy(b).toLowerCase();
+  }
+
+  function shownChars(tok) {
+    const trad = Array.from(tok.t);
+    const simp = Array.from(tok.s || tok.t);
+    if (state.progress.font === "t" || simp.length !== trad.length) return trad;
+    return simp;
+  }
+
   function openPopup(tok, index, anchor) {
     state.popupTok = { tok: tok, index: index, anchor: anchor };
     document.querySelectorAll(".zi.on").forEach(function (el) { el.classList.remove("on"); });
     if (anchor) anchor.classList.add("on");
-    const chars = Array.from(tok.t);
-    const focus = chars[index] || chars[0];
-    const entry = lookup(focus);
-    const title = state.progress.font === "t" ? tok.t : (tok.s || tok.t);
-    const py = tok.py || (entry && entry.py) || "";
+    const trad = Array.from(tok.t);
+    const shown = shownChars(tok);
+    const focus = trad[index] || trad[0];
+    const focusShown = shown[index] || shown[0] || focus;
+    const entry = lookup(focus) || {};
+    const reading = readingOf(tok);
+    const syllable = reading.parts[index] || reading.parts[0] || "";
+    const dictPy = entry.pending ? "" : normalizePy(entry.py);
     popup.hidden = false;
     scrim.hidden = false;
     popup.innerHTML = "";
+
     const head = document.createElement("header");
     const titles = document.createElement("div");
     const h3 = document.createElement("h3");
     h3.id = "popup-title";
-    h3.textContent = title;
+    h3.textContent = focusShown;
     const pyEl = document.createElement("p");
     pyEl.className = "py";
-    pyEl.textContent = py || (entry && entry.pending ? "读音载入中" : "读音未收");
+    if (syllable) pyEl.textContent = syllable;
+    else if (entry.pending) pyEl.textContent = "读音载入中";
+    else pyEl.textContent = "读音未收";
     titles.appendChild(h3);
     titles.appendChild(pyEl);
     const close = document.createElement("button");
@@ -630,10 +761,46 @@
     head.appendChild(close);
     popup.appendChild(head);
 
+    if (trad.length > 1) {
+      const wordLine = document.createElement("p");
+      wordLine.className = "word-py";
+      const lab = document.createElement("span");
+      lab.textContent = "词";
+      const name = document.createElement("b");
+      name.textContent = state.progress.font === "t" ? tok.t : (tok.s || tok.t);
+      const wp = document.createElement("i");
+      wp.textContent = reading.text || "读音未收";
+      wordLine.appendChild(lab);
+      wordLine.appendChild(name);
+      wordLine.appendChild(wp);
+      popup.appendChild(wordLine);
+
+      const row = document.createElement("div");
+      row.className = "syl-row";
+      trad.forEach(function (ch, i) {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "syl" + (i === index ? " on" : "");
+        const glyph = document.createElement("b");
+        glyph.textContent = shown[i] || ch;
+        const syl = document.createElement("i");
+        syl.textContent = reading.parts[i] || "·";
+        chip.appendChild(glyph);
+        chip.appendChild(syl);
+        chip.addEventListener("click", function (event) {
+          event.stopPropagation();
+          openPopup(tok, i, anchor);
+        });
+        row.appendChild(chip);
+      });
+      popup.appendChild(row);
+    }
+
     const tags = document.createElement("div");
     tags.className = "tags";
-    if (tok.level === "sentence") tags.appendChild(tag("本句读音", "accent"));
+    if (reading.source === "sentence") tags.appendChild(tag("本句读音", "accent"));
     else tags.appendChild(tag("今读参考", ""));
+    if (focusShown !== focus) tags.appendChild(tag(focus, ""));
     if (tok.pos) tags.appendChild(tag(tok.pos, ""));
     if (tok.extra) tags.appendChild(tag(tok.extra, "accent"));
     popup.appendChild(tags);
@@ -657,32 +824,55 @@
     dictLabel.className = "pop-label";
     dictLabel.textContent = "说文";
     dictSec.appendChild(dictLabel);
-    chars.forEach(function (ch, i) {
-      const info = lookup(ch) || {};
-      const block = document.createElement("div");
-      block.className = "char-block" + (ch === focus ? " focus" : "");
-      const h4 = document.createElement("h4");
-      const shown = state.progress.font === "s" ? (Array.from(tok.s || tok.t)[i] || ch) : ch;
-      const trad = Array.from(tok.t)[i] || ch;
-      h4.textContent = shown + (shown !== trad ? "（" + trad + "）" : "");
-      const sub = document.createElement("p");
-      sub.className = "sub";
-      const bits = [];
-      if (info.py) bits.push(info.py);
-      if (info.fanqie) bits.push("反切 " + info.fanqie);
-      sub.textContent = bits.join(" · ");
-      const ben = document.createElement("p");
-      const benText = state.progress.font === "t" ? (info.ben || "") : (info.benS || info.ben || "");
-      if (info.pending) ben.textContent = "字典正在载入。";
-      else if (!benText) ben.textContent = "《说文解字》未收此字。";
-      else ben.textContent = benText;
-      block.appendChild(h4);
-      if (bits.length) block.appendChild(sub);
-      block.appendChild(ben);
-      dictSec.appendChild(block);
-    });
+    const block = document.createElement("div");
+    block.className = "char-block focus";
+    const h4 = document.createElement("h4");
+    h4.textContent = focusShown + (focusShown !== focus ? "（" + focus + "）" : "");
+    const sub = document.createElement("p");
+    sub.className = "sub";
+    const bits = [];
+    if (dictPy && !samePy(dictPy, syllable)) bits.push("字书 " + dictPy);
+    if (entry.fanqie) bits.push("反切 " + entry.fanqie);
+    sub.textContent = bits.join(" · ");
+    const ben = document.createElement("p");
+    const benText = state.progress.font === "t" ? (entry.ben || "") : (entry.benS || entry.ben || "");
+    if (entry.pending) ben.textContent = "字典正在载入。";
+    else if (!benText) ben.textContent = "《说文解字》未收此字。";
+    else ben.textContent = benText;
+    block.appendChild(h4);
+    if (bits.length) block.appendChild(sub);
+    block.appendChild(ben);
+    dictSec.appendChild(block);
     popup.appendChild(dictSec);
     placePopup(anchor);
+  }
+
+  function updateDock() {
+    const dock = document.getElementById("dock");
+    const reading = !!(state.article && /^#\/read\//.test(location.hash || ""));
+    dock.hidden = !reading;
+    document.body.classList.toggle("is-reading", reading);
+    if (!reading) return;
+    const nav = neighbors(state.article.id);
+    const prev = document.getElementById("dock-prev");
+    const next = document.getElementById("dock-next");
+    const py = document.getElementById("dock-py");
+    prev.disabled = !nav.prev;
+    next.disabled = !nav.next;
+    prev.onclick = function () {
+      if (nav.prev) location.hash = "#/read/" + nav.prev.id;
+    };
+    next.onclick = function () {
+      if (nav.next) location.hash = "#/read/" + nav.next.id;
+    };
+    const on = !!state.progress.pinyin;
+    py.setAttribute("aria-pressed", on ? "true" : "false");
+    py.classList.toggle("on", on);
+    py.onclick = function () {
+      state.progress.pinyin = !state.progress.pinyin;
+      saveProgress();
+      if (state.article) renderArticle(true);
+    };
   }
 
   function tag(text, kind) {
