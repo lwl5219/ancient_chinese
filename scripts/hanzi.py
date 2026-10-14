@@ -10,6 +10,7 @@ def is_han(ch: str) -> bool:
         0x3400 <= o <= 0x4DBF
         or 0x4E00 <= o <= 0x9FFF
         or 0xF900 <= o <= 0xFAFF
+        or 0x20000 <= o <= 0x2EBEF
     )
 
 

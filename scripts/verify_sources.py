@@ -233,13 +233,13 @@ def translation_ref(collection: str) -> dict:
         }
     if collection == "唐诗":
         return {
-            "edition": "中华书局《唐诗三百首》（蘅塘退士孙洙编，通行简体注本）",
-            "status": "选目和译注意义参考这一系统。未逐句抄录注本。本站译文是另写的白话，拿不准的标待复核",
+            "edition": "顾青编注《唐诗三百首》（中华书局中华经典藏书，ISBN 978-7-101-11354-9；底本为四藤吟社本）",
+            "status": "未取得该书，未逐句抄录。本站白话是另写的。拿不准的标待复核",
         }
     if collection == "宋词":
         return {
-            "edition": "唐圭璋《宋词三百首笺注》（据朱孝臧重编《宋词三百首》）",
-            "status": "选目和笺注意义参考这一系统。未逐句抄录笺注。本站译文是另写的白话，拿不准的标待复核",
+            "edition": "唐圭璋《宋词三百首笺注》（1958年中华书局上海编辑所重版、上海古籍出版社重印，82家283首）",
+            "status": "未逐句抄录笺注。正文用字另对《全宋词》，仓库里的数字文本不是该点校本。拿不准的标待复核",
         }
     return {"edition": "未指定译注本", "status": "译文未核定"}
 
@@ -436,37 +436,34 @@ def poetry_han(piece: dict, field: str) -> str:
 
 
 def build_canonical() -> dict:
-    if not POETRY_CACHE.is_dir():
-        raise SystemExit("没有 %s，不能刷新唐诗宋词缓存。" % POETRY_CACHE)
-    from build_poetry import load_dir, match_ci, match_tang
+    """汉字以 sources/poetry/bodies.json 里的繁体为准。没有收进 bodies 的，沿用现成阅读本。"""
+    from expand_poetry import zhonghua_simp
 
     sel = json.loads(SELECTION_PATH.read_text(encoding="utf-8"))
-    tang_src = load_dir(POETRY_CACHE / "tang", "tang-*.json")
-    ci_src = []
-    ci_dir = POETRY_CACHE / "ci"
-    if ci_dir.is_dir():
-        ci_src = load_dir(ci_dir, "ci*.json")
-    if not ci_src and (POETRY_CACHE / "ci300.json").is_file():
-        ci_src = json.loads((POETRY_CACHE / "ci300.json").read_text(encoding="utf-8"))
+    bodies_path = ROOT / "sources" / "poetry" / "bodies.json"
+    bodies = json.loads(bodies_path.read_text(encoding="utf-8")) if bodies_path.is_file() else {}
+    books = {
+        "tang": json.loads((ROOT / "data" / "tang.json").read_text(encoding="utf-8")),
+        "ci": json.loads((ROOT / "data" / "songci.json").read_text(encoding="utf-8")),
+    }
     pieces = {}
-    for spec in sel["tang"]:
-        poem = match_tang(tang_src, spec)
-        pieces[spec["id"]] = {
-            "collection": "唐诗",
-            "script": "t",
-            "author": poem.get("author") or "",
-            "title": poem.get("title") or "",
-            "han": only_han("".join(poem.get("paragraphs") or [])),
-        }
-    for spec in sel["ci"]:
-        poem = match_ci(ci_src, spec)
-        pieces[spec["id"]] = {
-            "collection": "宋词",
-            "script": "s",
-            "author": poem.get("author") or "",
-            "title": poem.get("rhythmic") or "",
-            "han": only_han("".join(poem.get("paragraphs") or [])),
-        }
+    for kind, label, field in (("tang", "唐诗", "t"), ("ci", "宋词", "s")):
+        for piece in books[kind]["pieces"]:
+            body = bodies.get(piece["id"])
+            if body and body.get("trad"):
+                if field == "t":
+                    han = only_han("".join(body["trad"]))
+                else:
+                    han = only_han("".join(zhonghua_simp(line) for line in body["trad"]))
+            else:
+                han = poetry_han(piece, field)
+            pieces[piece["id"]] = {
+                "collection": label,
+                "script": field,
+                "author": piece["author"]["t"],
+                "title": piece["title"]["t"],
+                "han": han,
+            }
     return {
         "repo": sel["repo"],
         "commit": sel["commit"],
@@ -490,9 +487,9 @@ def check_poetry(canonical: dict) -> tuple[list[dict], list[dict]]:
             got = poetry_han(piece, field)
             edition = "chinese-poetry %s（commit %s）" % (label, commit[:12])
             if kind == "ci":
-                note = "正文不改字。对照的是这一缓存的简体。繁体由简体转出。今读里的多音字按篇标注。注释和赏析是本书编写的。"
+                note = "目录是朱孝臧重编《宋词三百首》。新收词的简体按《简化字总表》通行归并。已收录的词保持原来的用字。注释和赏析是本书编写的。"
             else:
-                note = "正文不改字，与这一缓存的繁体一致。今读里的多音字按篇标注。注释和赏析是本书编写的。"
+                note = "目录是蘅塘退士《唐诗三百首》。已收录的诗保持全唐诗用字，例如《静夜思》作看月光。新收诗的简体按《简化字总表》通行归并。注释和赏析是本书编写的。"
             pieces.append({
                 "id": piece["id"],
                 "collection": label,
@@ -799,7 +796,7 @@ def render_report(summary: dict, resolved: list[dict], flags: list[dict]) -> str
         "课注条目（实词、虚词、古今异义、通假、活用、句式、背景、主旨、手法）共 %d 条。" % summary["glosses"],
         "古文观止课注里能对上维基文库夹注、汉典文言或《说文》的，记在 `sources/verification/GLOSSES.md`。对不上的留在那份清单里，不改写成另一种说法。",
         "每篇的「译文参考」写在 data/provenance.json 的 translation 里，页面出处下会显示。",
-        "古文观止对钟基、李先银、王身钢译注本；唐诗对中华书局《唐诗三百首》；宋词对唐圭璋《宋词三百首笺注》。书不在仓库里，没有逐句抄对。",
+        "古文观止对钟基、李先银、王身钢译注本；唐诗对顾青编注《唐诗三百首》（中华书局，ISBN 978-7-101-11354-9）；宋词对唐圭璋《宋词三百首笺注》（1958年中华书局上海编辑所 / 上海古籍出版社重印本）。书不在仓库里，没有逐句抄对。",
         "",
         "## 简体用字",
         "",

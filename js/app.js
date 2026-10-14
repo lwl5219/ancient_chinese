@@ -24,6 +24,9 @@
     provenance: null,
     readingPolicy: null,
     glossSources: null,
+    grades: null,
+    gradeFilter: "",
+    listMode: "work",
   };
   let loadToken = 0;
 
@@ -138,7 +141,7 @@
 
   async function boot() {
     skeleton("正在载入");
-    const [catRes, booksRes, authorsRes, renjianRes, zztjRes, provRes, readRes, glossRes] = await Promise.all([
+    const [catRes, booksRes, authorsRes, renjianRes, zztjRes, provRes, readRes, glossRes, gradeRes] = await Promise.all([
       fetch(assetUrl("data/catalog.json")),
       fetch(assetUrl("data/books.json")),
       fetch(assetUrl("data/prose-authors.json")),
@@ -147,6 +150,7 @@
       fetch(assetUrl("data/provenance.json")),
       fetch(assetUrl("data/reading-policy.json")),
       fetch(assetUrl("data/gloss-sources.json")),
+      fetch(assetUrl("data/grades.json")),
     ]);
     if (!catRes.ok) {
       main.innerHTML = "<p class='empty'>没有读到目录。请在仓库根目录运行本地服务器后再打开本页。</p>";
@@ -160,6 +164,7 @@
     if (provRes.ok) state.provenance = await provRes.json();
     if (readRes.ok) state.readingPolicy = await readRes.json();
     if (glossRes.ok) state.glossSources = await glossRes.json();
+    if (gradeRes.ok) state.grades = await gradeRes.json();
     if (state.progress.last) {
       const meta = findArticleMeta(state.progress.last);
       if (meta) state.openVol = Number(meta.id.slice(1, 3));
@@ -272,6 +277,7 @@
     const read = hash.match(/^#\/read\/((?:v|h|z)\d{2}-\d{2})$/);
     const vol = hash.match(/^#\/gwgz\/(\d{1,2})$/);
     const zjuan = hash.match(/^#\/zztj\/(\d{1,2})$/);
+    const authorPage = hash.match(/^#\/(tang|ci)\/author\/(.+)$/);
     const piece = hash.match(/^#\/(tang|ci)\/([a-z0-9-]+)$/);
     if (read) showArticle(read[1]);
     else if (vol) showVolume(Number(vol[1]));
@@ -279,6 +285,7 @@
     else if (hash === "#/gwgz") showBook();
     else if (hash === "#/zztj") showZztj();
     else if (hash === "#/rjch") showRenjian();
+    else if (authorPage) showAuthor(authorPage[1], decodeURIComponent(authorPage[2]));
     else if (piece) showPiece(piece[1], piece[2]);
     else if (hash === "#/tang" || hash === "#/ci") showCollection(hash.slice(2));
     else showHub();
@@ -405,6 +412,14 @@
       : "目录还没有载入。";
     wrap.appendChild(h1);
     wrap.appendChild(lead);
+    appendCatalogTools(wrap, "zztj");
+    if (state.gradeFilter) {
+      appendGradeHits(wrap, articles, function (art) { return pieceLink(art, false); });
+      main.replaceChildren(wrap);
+      document.title = "资治通鉴 · 典籍";
+      syncChrome();
+      return;
+    }
     if (!data) {
       main.replaceChildren(wrap);
       document.title = "资治通鉴 · 典籍";
@@ -595,6 +610,16 @@
       }
     });
     wrap.appendChild(input);
+    appendCatalogTools(wrap, "gwgz");
+    if (state.gradeFilter && !state.query.trim()) {
+      appendGradeHits(wrap, flatArticles(), function (art) {
+        return pieceLink(art, true);
+      });
+      main.replaceChildren(wrap);
+      document.title = "古文观止 · 典籍";
+      syncChrome();
+      return;
+    }
 
     const q = state.query.trim();
     if (q) {
@@ -609,7 +634,7 @@
         empty.textContent = "没有匹配的篇目。";
         box.appendChild(empty);
       }
-      hits.slice(0, 40).forEach(function (art) {
+      hits.filter(function (art) { return gradeMatches(art.id); }).slice(0, 40).forEach(function (art) {
         box.appendChild(pieceLink(art, true));
       });
       wrap.appendChild(box);
@@ -661,6 +686,7 @@
       sub.textContent = vol ? vol.title : "";
       a.appendChild(sub);
     }
+    appendGradeTag(a, art.id);
     if (state.progress.learned[art.id]) {
       const mark = document.createElement("span");
       mark.className = "done";
@@ -733,6 +759,14 @@
       : "目录还没有载入。";
     wrap.appendChild(h1);
     wrap.appendChild(lead);
+    appendCatalogTools(wrap, "rjch");
+    if (state.gradeFilter) {
+      appendGradeHits(wrap, articles, function (art) { return pieceLink(art, false); });
+      main.replaceChildren(wrap);
+      document.title = "人间词话 · 典籍";
+      syncChrome();
+      return;
+    }
     if (!articles.length) {
       main.replaceChildren(wrap);
       document.title = "人间词话 · 典籍";
@@ -807,6 +841,114 @@
     return token === loadToken;
   }
 
+  function gradeOf(id) {
+    const pieces = state.grades && state.grades.pieces;
+    return pieces ? pieces[id] : null;
+  }
+
+  function gradeLabel(entry) {
+    if (!entry) return "";
+    const grade = entry.grade || "";
+    const vol = entry.volume || "";
+    if (/^[一二三四五六七八九]$/.test(grade)) return entry.stage + grade + "年级" + vol;
+    if (grade) return entry.stage + grade + vol;
+    return entry.stage;
+  }
+
+  function gradeMatches(id) {
+    if (!state.gradeFilter) return true;
+    const entry = gradeOf(id);
+    return !!(entry && entry.stage === state.gradeFilter);
+  }
+
+  function appendGradeTag(parent, id) {
+    const entry = gradeOf(id);
+    if (!entry) return;
+    const tag = document.createElement("span");
+    tag.className = "grade-tag";
+    tag.textContent = gradeLabel(entry);
+    parent.appendChild(tag);
+  }
+
+  function appendGradeHits(wrap, articles, linkFor) {
+    const hits = articles.filter(function (art) { return gradeMatches(art.id); });
+    const box = document.createElement("div");
+    box.className = "piece-list";
+    if (!hits.length) {
+      const empty = document.createElement("p");
+      empty.className = "catalog-empty";
+      empty.textContent = "没有标上「" + state.gradeFilter + "」的篇目。";
+      box.appendChild(empty);
+    }
+    hits.forEach(function (art) { box.appendChild(linkFor(art)); });
+    wrap.appendChild(box);
+  }
+
+  function appendCatalogTools(wrap, kind) {
+    const bar = document.createElement("div");
+    bar.className = "catalog-tools";
+    if (kind === "tang" || kind === "ci") {
+      const mode = document.createElement("div");
+      mode.className = "tool-seg";
+      [["work", "按作品"], ["author", "按作者"]].forEach(function (item) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = item[1];
+        btn.classList.toggle("on", state.listMode === item[0]);
+        btn.addEventListener("click", function () {
+          state.listMode = item[0];
+          renderCollection(kind);
+        });
+        mode.appendChild(btn);
+      });
+      bar.appendChild(mode);
+    }
+    const grades = document.createElement("div");
+    grades.className = "grade-seg";
+    [["", "全部"], ["小学", "小学"], ["初中", "初中"], ["高中", "高中"]].forEach(function (item) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = item[1];
+      btn.classList.toggle("on", state.gradeFilter === item[0]);
+      btn.addEventListener("click", function () {
+        state.gradeFilter = item[0];
+        if (kind === "tang" || kind === "ci") renderCollection(kind);
+        else if (kind === "gwgz") showBook();
+        else if (kind === "zztj") showZztj();
+        else if (kind === "rjch") showRenjian();
+      });
+      grades.appendChild(btn);
+    });
+    bar.appendChild(grades);
+    wrap.appendChild(bar);
+  }
+
+  function renderAuthorIndex(list, kind, pieces) {
+    const groups = [];
+    const index = {};
+    pieces.forEach(function (item) {
+      const name = state.progress.font === "t" ? item.author.t : item.author.s;
+      if (!index[name]) {
+        index[name] = { name: name, key: item.author.s, items: [] };
+        groups.push(index[name]);
+      }
+      index[name].items.push(item);
+    });
+    groups.forEach(function (group) {
+      const link = document.createElement("a");
+      link.className = "piece";
+      link.href = "#/" + kind + "/author/" + encodeURIComponent(group.key);
+      const title = document.createElement("span");
+      title.className = "title";
+      title.textContent = group.name;
+      const sub = document.createElement("small");
+      sub.textContent = group.items.length + " 首";
+      link.appendChild(title);
+      link.appendChild(sub);
+      list.appendChild(link);
+    });
+  }
+
   async function showCollection(kind) {
     const token = ++loadToken;
     closePopup();
@@ -855,9 +997,19 @@
       resume.appendChild(go);
       wrap.appendChild(resume);
     }
+    appendCatalogTools(wrap, kind);
     const list = document.createElement("div");
     list.className = "piece-list";
-    data.pieces.forEach(function (item, index) {
+    const visible = data.pieces.filter(function (item) { return gradeMatches(item.id); });
+    if (state.listMode === "author") {
+      renderAuthorIndex(list, kind, visible);
+      wrap.appendChild(list);
+      main.replaceChildren(wrap);
+      document.title = meta.label + " · 典籍";
+      syncChrome();
+      return;
+    }
+    visible.forEach(function (item, index) {
       const link = document.createElement("a");
       link.className = "piece";
       link.href = "#/" + kind + "/" + item.id;
@@ -872,12 +1024,82 @@
       link.appendChild(idx);
       link.appendChild(title);
       link.appendChild(sub);
+      appendGradeTag(link, item.id);
       list.appendChild(link);
     });
     wrap.appendChild(list);
     main.replaceChildren(wrap);
     document.title = meta.label + " · 典籍";
     syncChrome();
+  }
+
+  async function showAuthor(kind, name) {
+    const token = ++loadToken;
+    closePopup();
+    state.view = "author";
+    state.kind = kind;
+    if (!(await ensureCollection(kind, token))) return;
+    if (!(await ensureNotes(token))) return;
+    const data = state.collections[kind];
+    const pieces = data.pieces.filter(function (item) {
+      return item.author.s === name || item.author.t === name;
+    }).filter(function (item) { return gradeMatches(item.id); });
+    const wrap = document.createElement("article");
+    wrap.className = "home";
+    const font = state.progress.font;
+    const h1 = document.createElement("h1");
+    h1.textContent = pieces[0]
+      ? (font === "t" ? pieces[0].author.t : pieces[0].author.s)
+      : name;
+    wrap.appendChild(h1);
+    const author = authorRecord(name);
+    if (author) {
+      const sub = document.createElement("p");
+      sub.className = "lead";
+      sub.textContent = [bi(author.era), author.years, bi(author.card)].filter(Boolean).join(" · ");
+      const bio = document.createElement("p");
+      bio.textContent = bi(author.bio);
+      wrap.appendChild(sub);
+      wrap.appendChild(bio);
+    } else {
+      const bio = document.createElement("p");
+      bio.className = "lead";
+      bio.textContent = "生卒和仕履还没有核定。这里只列出本书收录的作品。";
+      wrap.appendChild(bio);
+    }
+    const back = document.createElement("a");
+    back.className = "resume";
+    back.href = "#/" + kind;
+    back.textContent = "回到目录";
+    wrap.appendChild(back);
+    const list = document.createElement("div");
+    list.className = "piece-list";
+    pieces.forEach(function (item) {
+      const link = document.createElement("a");
+      link.className = "piece";
+      link.href = "#/" + kind + "/" + item.id;
+      const title = document.createElement("span");
+      title.className = "title";
+      title.textContent = font === "t" ? item.title.t : item.title.s;
+      link.appendChild(title);
+      appendGradeTag(link, item.id);
+      list.appendChild(link);
+    });
+    wrap.appendChild(list);
+    main.replaceChildren(wrap);
+    document.title = name + " · 典籍";
+    syncChrome();
+  }
+
+  function authorRecord(name) {
+    const authors = state.notes && state.notes.authors;
+    if (!authors) return null;
+    if (authors[name]) return authors[name];
+    const keys = Object.keys(authors);
+    for (let i = 0; i < keys.length; i += 1) {
+      if (keys[i] === name) return authors[keys[i]];
+    }
+    return null;
   }
 
   async function showPiece(kind, id) {
@@ -1101,6 +1323,12 @@
     const p = document.createElement("p");
     p.textContent = bi(tab === "analysis" ? meta.analysis : meta.background);
     panel.appendChild(p);
+    if (meta.review) {
+      const flag = document.createElement("p");
+      flag.className = "reading-flag";
+      flag.textContent = "这一首里有拿不准的字句，已标待复核。";
+      panel.appendChild(flag);
+    }
     if (tab === "background") {
       const credit = document.createElement("p");
       credit.className = "sheet-credit";
@@ -1969,6 +2197,42 @@
     return String(py || "").replace(/\u0261/g, "g").replace(/\u014b/g, "ng").replace(/\s+/g, " ").trim();
   }
 
+  const TONE_MARKS = {
+    "ā": ["a", "1"], "á": ["a", "2"], "ǎ": ["a", "3"], "à": ["a", "4"],
+    "ē": ["e", "1"], "é": ["e", "2"], "ě": ["e", "3"], "è": ["e", "4"],
+    "ī": ["i", "1"], "í": ["i", "2"], "ǐ": ["i", "3"], "ì": ["i", "4"],
+    "ō": ["o", "1"], "ó": ["o", "2"], "ǒ": ["o", "3"], "ò": ["o", "4"],
+    "ū": ["u", "1"], "ú": ["u", "2"], "ǔ": ["u", "3"], "ù": ["u", "4"],
+    "ǖ": ["v", "1"], "ǘ": ["v", "2"], "ǚ": ["v", "3"], "ǜ": ["v", "4"],
+  };
+
+  function syllableKey(syl) {
+    let tone = "5";
+    let out = "";
+    String(syl || "").toLowerCase().split("").forEach(function (ch) {
+      if (TONE_MARKS[ch]) {
+        out += TONE_MARKS[ch][0];
+        tone = TONE_MARKS[ch][1];
+      } else if (ch === "ü") out += "v";
+      else out += ch;
+    });
+    return out + tone;
+  }
+
+  let syllableAudio = null;
+
+  function playSyllable(syl) {
+    if (!syl) return;
+    const url = "audio/" + syllableKey(syl) + ".ogg";
+    if (syllableAudio) {
+      syllableAudio.pause();
+    }
+    syllableAudio = new Audio(url);
+    syllableAudio.play().catch(function () {
+      if (syllableAudio) syllableAudio = null;
+    });
+  }
+
   function syllables(py) {
     const n = normalizePy(py);
     if (!n) return [];
@@ -2040,12 +2304,26 @@
     const h3 = document.createElement("h3");
     h3.id = "popup-title";
     h3.textContent = focusShown;
+    const speak = document.createElement("button");
+    speak.type = "button";
+    speak.className = "speak";
+    speak.setAttribute("aria-label", syllable ? "朗读 " + syllable : "没有读音");
+    speak.innerHTML = "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 9.5v5h3.2L12 19V5L7.2 9.5H4z\"/><path d=\"M15.2 9.2a3.6 3.6 0 010 5.6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M17.4 7a6.2 6.2 0 010 10\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/></svg>";
+    speak.disabled = !syllable;
+    speak.addEventListener("click", function (event) {
+      event.stopPropagation();
+      playSyllable(syllable);
+    });
+    const nameRow = document.createElement("div");
+    nameRow.className = "char-name";
+    nameRow.appendChild(h3);
+    nameRow.appendChild(speak);
     const pyEl = document.createElement("p");
     pyEl.className = "py";
     if (syllable) pyEl.textContent = syllable;
     else if (entry.pending) pyEl.textContent = "读音载入中";
     else pyEl.textContent = "读音未收";
-    titles.appendChild(h3);
+    titles.appendChild(nameRow);
     titles.appendChild(pyEl);
     const close = document.createElement("button");
     close.type = "button";

@@ -30,7 +30,7 @@ jobs:
           rm -rf /tmp/site-stamp
           mkdir -p /tmp/site-stamp
           cp index.html favicon.svg .nojekyll /tmp/site-stamp/
-          cp -a css js data /tmp/site-stamp/
+          cp -a css js data audio /tmp/site-stamp/
           python3 scripts/stamp_assets.py /tmp/site-stamp
           rm -rf css js data
           cp -a /tmp/site-stamp/css /tmp/site-stamp/js /tmp/site-stamp/data .
@@ -59,7 +59,7 @@ jobs:
           rm -rf site
           mkdir -p site
           cp index.html favicon.svg .nojekyll site/
-          cp -a css js data site/
+          cp -a css js data audio site/
           python3 scripts/stamp_assets.py site
           test -f site/version.json
           grep -q 'css/app\.[0-9a-f]\{12\}\.css' site/index.html
