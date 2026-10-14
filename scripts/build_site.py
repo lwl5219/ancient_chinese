@@ -40,7 +40,12 @@ BOOK_FIX = {
 
 
 def simplify(text: str) -> str:
-    """简体。乾读 qián、徵作乐律时不按 OpenCC 收成干、征。"""
+    """不要用这个函数发布简体正文。
+
+    OpenCC 会把乾坤收成干坤、流徵收成流征、禕收成袆。
+    已发布的简体字段按《简化字总表》里中华书局简体古籍的通行归并手核，
+    不靠这里整篇转换。
+    """
     raw = text or ""
     out = []
     for i, ch in enumerate(raw):

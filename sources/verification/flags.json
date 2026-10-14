@@ -38,7 +38,100 @@
     "glosses": 8991,
     "lessonFlags": 160,
     "missingChars": 375,
-    "missingHits": 600
+    "missingHits": 600,
+    "simp": [
+      {
+        "trad": "於",
+        "simp": "于",
+        "count": 2031,
+        "note": "介词作于"
+      },
+      {
+        "trad": "後",
+        "simp": "后",
+        "count": 399,
+        "note": "归并"
+      },
+      {
+        "trad": "餘",
+        "simp": "余",
+        "count": 232,
+        "note": "总表正条作余。附注说可能混淆时可用馀。没有中华书局该书，不改成馀"
+      },
+      {
+        "trad": "雲",
+        "simp": "云",
+        "count": 79,
+        "note": "归并"
+      },
+      {
+        "trad": "徵",
+        "simp": "征",
+        "count": 13,
+        "note": "征召、征兆、征逐。不是乐律"
+      },
+      {
+        "trad": "乾",
+        "simp": "乾",
+        "count": 5,
+        "note": "乾坤、乾谿等读 qián，保留乾"
+      },
+      {
+        "trad": "裡",
+        "simp": "里",
+        "count": 5,
+        "note": "归并"
+      },
+      {
+        "trad": "於",
+        "simp": "於",
+        "count": 4,
+        "note": "樊於期保留於"
+      },
+      {
+        "trad": "乾",
+        "simp": "干",
+        "count": 3,
+        "note": "干燥作干"
+      },
+      {
+        "trad": "禕",
+        "simp": "祎",
+        "count": 3,
+        "note": "费祎。不从 OpenCC 把褘收成袆"
+      },
+      {
+        "trad": "隻",
+        "simp": "只",
+        "count": 3,
+        "note": "归并"
+      },
+      {
+        "trad": "幹",
+        "simp": "干",
+        "count": 2,
+        "note": "归并"
+      },
+      {
+        "trad": "徵",
+        "simp": "徵",
+        "count": 1,
+        "note": "流徵保留徵"
+      },
+      {
+        "trad": "祇",
+        "simp": "只",
+        "count": 1,
+        "note": "只辱。神祇不在此列"
+      },
+      {
+        "trad": "祇",
+        "simp": "祇",
+        "count": 1,
+        "note": "神祇保留祇"
+      }
+    ],
+    "simpProblems": []
   },
   "resolved": [
     {
@@ -124,6 +217,12 @@
       "collection": "古文观止",
       "change": "禁罝䍡 → 禁罜䍡",
       "resolution": "卷页写成罝，夹注「作罜、音主」。罝读嗟，是兔网；这一处是小网。维基文库《里革斷罟匡君》作罜。前面禁罝罗仍是兔网，不改。"
+    },
+    {
+      "id": "v07-19",
+      "collection": "古文观止",
+      "change": "简体祇辱 → 只辱",
+      "resolution": "杂说四「祇辱于奴隶人之手」的祇是只、仅。神祇的祇不在此列，仍作祇。"
     }
   ],
   "flags": [
