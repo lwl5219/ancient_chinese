@@ -602,11 +602,7 @@
 
   function renderVerseBody(piece, kind, meta) {
     const body = document.createElement("div");
-    body.className = "body verse " + (kind === "tang" ? "shi" : "ci") + (sentenceMode() ? " sentence" : "");
-    if (sentenceMode()) {
-      renderVerseSentences(body, piece, kind, meta);
-      return body;
-    }
+    body.className = "body verse " + (kind === "tang" ? "shi" : "ci");
     const counts = kind === "ci" && meta && meta.stanzas && meta.stanzas.length > 1 ? meta.stanzas : null;
     if (!counts) {
       piece.lines.forEach(function (line) { addVerseLines(body, line.tokens); });
@@ -630,93 +626,19 @@
     return body;
   }
 
-  function renderVerseSentences(body, piece, kind, meta) {
-    const clauses = [];
-    piece.lines.forEach(function (line, lineIndex) {
-      clauseRows(line.tokens).forEach(function (row) {
-        clauses.push({ row: row, lineIndex: lineIndex });
-      });
-    });
-    const vern = (meta && meta.vernacular) || [];
-    const notes = (meta && meta.notes) || [];
-    const used = {};
-    function notesFor(row) {
-      const textS = row.map(function (tok) { return tok.s || tok.t; }).join("");
-      const textT = row.map(function (tok) { return tok.t; }).join("");
-      const found = [];
-      notes.forEach(function (item, index) {
-        if (used[index] || !item.term) return;
-        const termS = item.term.s || "";
-        const termT = item.term.t || item.term.s || "";
-        if ((termS && textS.indexOf(termS) >= 0) || (termT && textT.indexOf(termT) >= 0)) {
-          used[index] = true;
-          found.push({ term: bi(item.term), gloss: bi(item.gloss) });
-        }
-      });
-      return found;
-    }
-    function addPair(parent, clause, index) {
-      const pair = document.createElement("div");
-      pair.className = "pair";
-      const p = document.createElement("p");
-      p.className = "orig verse-line" + (state.progress.pinyin ? " with-py" : "");
-      appendTokens(p, clause.row);
-      pair.appendChild(p);
-      appendSentenceGloss(pair, vern[index] ? bi(vern[index]) : "", notesFor(clause.row));
-      parent.appendChild(pair);
-    }
-    const counts = kind === "ci" && meta && meta.stanzas && meta.stanzas.length > 1 ? meta.stanzas : null;
-    if (!counts) {
-      clauses.forEach(addPair.bind(null, body));
-    } else {
-      const labels = STANZA_LABELS[state.progress.font === "t" ? "t" : "s"];
-      let lineCursor = 0;
-      counts.forEach(function (count, index) {
-        const block = document.createElement("section");
-        block.className = "stanza";
-        const label = document.createElement("p");
-        label.className = "stanza-label";
-        label.textContent = labels[index] || "";
-        block.appendChild(label);
-        const end = lineCursor + count;
-        clauses.forEach(function (clause, clauseIndex) {
-          if (clause.lineIndex >= lineCursor && clause.lineIndex < end) addPair(block, clause, clauseIndex);
-        });
-        lineCursor = end;
-        body.appendChild(block);
-      });
-    }
-    notes.forEach(function (item, index) {
-      if (used[index]) return;
-      const list = body.querySelector(".pair-notes.leftover") || document.createElement("ul");
-      if (!list.parentNode) {
-        list.className = "pair-notes leftover";
-        body.appendChild(list);
-      }
-      const li = document.createElement("li");
-      const term = document.createElement("b");
-      term.textContent = bi(item.term);
-      li.appendChild(term);
-      li.appendChild(document.createTextNode(bi(item.gloss)));
-      list.appendChild(li);
-    });
-  }
-
   function fitVerse(body) {
     if (!body) return;
     const lines = body.querySelectorAll(".verse-line");
     if (!lines.length) return;
     body.style.fontSize = "";
-    lines.forEach(function (line) { line.style.fontSize = ""; });
     const limit = body.clientWidth;
     let widest = 0;
     lines.forEach(function (line) {
       widest = Math.max(widest, line.scrollWidth);
     });
     if (widest > limit + 1) {
-      const current = parseFloat(getComputedStyle(lines[0]).fontSize);
-      const next = Math.max(14, current * (limit - 1) / widest);
-      lines.forEach(function (line) { line.style.fontSize = next + "px"; });
+      const current = parseFloat(getComputedStyle(body).fontSize);
+      body.style.fontSize = Math.max(14, current * (limit - 1) / widest) + "px";
     }
   }
 
@@ -1031,7 +953,6 @@
     h1.textContent = title;
     wrap.appendChild(kicker);
     wrap.appendChild(h1);
-    appendReadTools(wrap);
     if (meta && state.notes.authors[meta.author]) {
       const author = state.notes.authors[meta.author];
       const card = document.createElement("button");
@@ -1060,6 +981,12 @@
     prefs.className = "foot-links";
     prefs.appendChild(textLink(font === "t" ? "看简体" : "看繁体", function () {
       state.progress.font = font === "t" ? "s" : "t";
+      saveProgress();
+      renderPiece(true);
+    }));
+    prefs.appendChild(textLink(state.progress.pinyin ? "隐藏拼音" : "显示拼音", function () {
+      state.progress.pinyin = !state.progress.pinyin;
+      state.progress.pinyinSet = true;
       saveProgress();
       renderPiece(true);
     }));

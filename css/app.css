@@ -646,8 +646,7 @@ h1 {
   color: #fff;
   font-weight: 650;
 }
-.body.sentence .pair { text-align: left; }
-.reader.shi-reader .body.sentence .verse-line { text-align: center; }
+.body.prose.sentence .pair { text-align: left; }
 .body.prose.sentence .pair.para-end { margin-bottom: 22px; }
 .pair-label {
   margin: 8px 0 2px;
