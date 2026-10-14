@@ -12,3 +12,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check Guwen Guanzhi fields
         run: python3 scripts/audit_content.py
+      - name: Install OpenCC for the source check
+        run: python3 -m pip install opencc-python-reimplemented
+      - name: Diff texts against cached sources
+        run: python3 scripts/verify_sources.py
+      - name: Check which lesson notes have a cited source
+        run: python3 scripts/verify_glosses.py

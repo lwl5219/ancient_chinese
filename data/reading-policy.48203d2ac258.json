@@ -1,0 +1,170 @@
+{
+  "source": "legacy/dict/out_file/ancient_chinese.json",
+  "sourceName": "汉典文言",
+  "rule": "不根据这份缓存改读音。汉典有多个读音、而说文音都不在其中的，弹层标为待复核。",
+  "chars": {
+    "噫": {
+      "status": "review",
+      "py": "",
+      "shuowen": "ǎi",
+      "han": [
+        "yī",
+        "ài"
+      ]
+    },
+    "培": {
+      "status": "review",
+      "py": "",
+      "shuowen": "péi",
+      "han": [
+        "pǒu",
+        "pēi"
+      ]
+    },
+    "塞": {
+      "status": "review",
+      "py": "",
+      "shuowen": "sài",
+      "han": [
+        "sāi",
+        "sè"
+      ]
+    },
+    "奧": {
+      "status": "review",
+      "py": "",
+      "shuowen": "ào",
+      "han": [
+        "yù",
+        "ǎo"
+      ]
+    },
+    "拓": {
+      "status": "review",
+      "py": "",
+      "shuowen": "zhí",
+      "han": [
+        "tuò",
+        "tà"
+      ]
+    },
+    "捲": {
+      "status": "review",
+      "py": "",
+      "shuowen": "quán",
+      "han": [
+        "juàn",
+        "juǎn"
+      ]
+    },
+    "揣": {
+      "status": "review",
+      "py": "",
+      "shuowen": "chuǎi",
+      "han": [
+        "zhuī",
+        "tuán",
+        "chuāi"
+      ]
+    },
+    "昳": {
+      "status": "review",
+      "py": "",
+      "shuowen": "dié",
+      "han": [
+        "diè",
+        "yì"
+      ]
+    },
+    "朴": {
+      "status": "review",
+      "py": "",
+      "shuowen": "pò",
+      "han": [
+        "bú",
+        "pǔ"
+      ]
+    },
+    "榜": {
+      "status": "review",
+      "py": "",
+      "shuowen": "bēng",
+      "han": [
+        "bǎng",
+        "bàng"
+      ]
+    },
+    "橈": {
+      "status": "review",
+      "py": "",
+      "shuowen": "nào",
+      "han": [
+        "ráo",
+        "náo"
+      ]
+    },
+    "禪": {
+      "status": "review",
+      "py": "",
+      "shuowen": "shàn",
+      "han": [
+        "chàn",
+        "chán"
+      ]
+    },
+    "種": {
+      "status": "review",
+      "py": "",
+      "shuowen": "chóng",
+      "han": [
+        "zhǒng",
+        "zhòng"
+      ]
+    },
+    "翟": {
+      "status": "review",
+      "py": "",
+      "shuowen": "dí",
+      "han": [
+        "dì",
+        "zhái"
+      ]
+    },
+    "衰": {
+      "status": "review",
+      "py": "",
+      "shuowen": "suō",
+      "han": [
+        "cuī",
+        "shuāi"
+      ]
+    },
+    "逮": {
+      "status": "review",
+      "py": "",
+      "shuowen": "dài",
+      "han": [
+        "dì",
+        "dǎi"
+      ]
+    },
+    "還": {
+      "status": "review",
+      "py": "",
+      "shuowen": "huán",
+      "han": [
+        "xuán",
+        "hái"
+      ]
+    },
+    "鞅": {
+      "status": "review",
+      "py": "",
+      "shuowen": "yǎng",
+      "han": [
+        "yāng",
+        "yàng"
+      ]
+    }
+  }
+}

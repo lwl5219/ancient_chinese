@@ -235,9 +235,30 @@ def _split_prose_sentences(text: str) -> List[str]:
     return out
 
 
+# 夹注删掉之后，顿号和句号会粘成「、。」。
+# 这两个句号是夹注带出来的，不是正文的句末。
+STRAY_PERIOD = re.compile(r"、(\{\{\*\|(?:(?!\}\}).){0,240}\}\})。")
+
+# 古文观止卷页把费祎写成了衣字旁的褘。前出師表作費禕，简体是祎，不是袆。
+LOOKALIKE = str.maketrans({"褘": "禕"})
+
+# 「禁罝䍡」的夹注是「作罜、音主」。罝读嗟，是兔网；这里是小网，国语作罜。
+# 前面「禁罝罗」的罝读嗟，不改。
+JU_FOR_ZHU = re.compile(r"罝(\{\{\*\|作罜)")
+
+
+def emend_wikitext(text: str) -> str:
+    text = STRAY_PERIOD.sub(lambda match: "、" + match.group(1), text)
+    return JU_FOR_ZHU.sub(r"罜\1", text)
+
+
+def emend_plain(text: str) -> str:
+    return text.translate(LOOKALIKE)
+
+
 def parse_volume(volume: int, wikitext: str) -> List[dict]:
     # 去掉页眉模板，避免干扰
-    body = wikitext
+    body = emend_wikitext(wikitext)
     sections = re.split(r"(?m)^==\s*([^=]+?)\s*==\s*$", body)
     # sections[0] preamble, then title, content, title, content...
     articles = []
@@ -251,7 +272,7 @@ def parse_volume(volume: int, wikitext: str) -> List[dict]:
             continue
         note = first_star_note(content)
         source_head, book = split_source(note)
-        plain = clean_inline(strip_templates(content))
+        plain = emend_plain(clean_inline(strip_templates(content)))
         paras, comment = split_body_and_comment(plain)
         vol_title, vol_sub = VOL_META[volume]
         articles.append(

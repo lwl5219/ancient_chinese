@@ -21,6 +21,9 @@
     renjian: null,
     renjianQuery: "",
     zztj: null,
+    provenance: null,
+    readingPolicy: null,
+    glossSources: null,
   };
   let loadToken = 0;
 
@@ -135,12 +138,15 @@
 
   async function boot() {
     skeleton("正在载入");
-    const [catRes, booksRes, authorsRes, renjianRes, zztjRes] = await Promise.all([
+    const [catRes, booksRes, authorsRes, renjianRes, zztjRes, provRes, readRes, glossRes] = await Promise.all([
       fetch(assetUrl("data/catalog.json")),
       fetch(assetUrl("data/books.json")),
       fetch(assetUrl("data/prose-authors.json")),
       fetch(assetUrl("data/renjian.json")),
       fetch(assetUrl("data/zztj.json")),
+      fetch(assetUrl("data/provenance.json")),
+      fetch(assetUrl("data/reading-policy.json")),
+      fetch(assetUrl("data/gloss-sources.json")),
     ]);
     if (!catRes.ok) {
       main.innerHTML = "<p class='empty'>没有读到目录。请在仓库根目录运行本地服务器后再打开本页。</p>";
@@ -151,6 +157,9 @@
     if (authorsRes.ok) state.proseAuthors = await authorsRes.json();
     if (renjianRes.ok) state.renjian = await renjianRes.json();
     if (zztjRes.ok) state.zztj = await zztjRes.json();
+    if (provRes.ok) state.provenance = await provRes.json();
+    if (readRes.ok) state.readingPolicy = await readRes.json();
+    if (glossRes.ok) state.glossSources = await glossRes.json();
     if (state.progress.last) {
       const meta = findArticleMeta(state.progress.last);
       if (meta) state.openVol = Number(meta.id.slice(1, 3));
@@ -1086,6 +1095,7 @@
       panel.appendChild(h);
       panel.appendChild(sub);
       panel.appendChild(bio);
+      appendProvenance(panel, state.piece.id);
       return;
     }
     const p = document.createElement("p");
@@ -1096,6 +1106,7 @@
       credit.className = "sheet-credit";
       credit.textContent = bi(state.notes.credit);
       panel.appendChild(credit);
+      appendProvenance(panel, state.piece.id);
     }
   }
 
@@ -1141,6 +1152,60 @@
     return p;
   }
 
+  function appendProvenance(panel, id) {
+    const src = state.provenance && state.provenance.pieces && state.provenance.pieces[id];
+    if (!src) return;
+    const p = document.createElement("p");
+    p.className = "sheet-credit";
+    const b = document.createElement("b");
+    b.textContent = "出处 ";
+    p.appendChild(b);
+    if (src.url) {
+      const a = document.createElement("a");
+      a.href = src.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = src.edition;
+      p.appendChild(a);
+    } else {
+      p.appendChild(document.createTextNode(src.edition));
+    }
+    if (src.note) p.appendChild(document.createTextNode(" " + src.note));
+    panel.appendChild(p);
+  }
+
+  function readingNote(ch) {
+    const chars = state.readingPolicy && state.readingPolicy.chars;
+    return chars ? chars[ch] : null;
+  }
+
+  function glossCredit(kind, word) {
+    const pieces = state.glossSources && state.glossSources.pieces;
+    const art = state.article;
+    if (!pieces || !art) return null;
+    const piece = pieces[art.id];
+    return piece ? piece[kind + "|" + word] : null;
+  }
+
+  function appendGlossCredit(parent, kind, word) {
+    const src = glossCredit(kind, word);
+    if (!src) return;
+    const p = document.createElement("p");
+    p.className = "gloss-source";
+    p.appendChild(document.createTextNode("出处 "));
+    if (src.url) {
+      const a = document.createElement("a");
+      a.href = src.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = src.source;
+      p.appendChild(a);
+    } else {
+      p.appendChild(document.createTextNode(src.source));
+    }
+    parent.appendChild(p);
+  }
+
   function sheetH(text) {
     const h = document.createElement("h3");
     h.textContent = text;
@@ -1158,6 +1223,7 @@
       term.textContent = item.term;
       li.appendChild(term);
       li.appendChild(document.createTextNode(item.gloss));
+      if (item.kind && item.word) appendGlossCredit(li, item.kind, item.word);
       list.appendChild(li);
     });
     panel.appendChild(list);
@@ -1197,24 +1263,24 @@
       let any = false;
       if (lesson) {
         any = addSheetNotes(panel, "实词", (lesson.keyContentWords || []).map(function (item) {
-          return { term: item.word, gloss: (item.reading ? item.reading + "　" : "") + item.note };
+          return { term: item.word, gloss: (item.reading ? item.reading + "　" : "") + item.note, kind: "实词", word: item.word };
         })) || any;
         any = addSheetNotes(panel, "虚词", (lesson.keyFunctionWords || []).map(function (item) {
-          return { term: item.word, gloss: (item.reading ? item.reading + "　" : "") + item.note };
+          return { term: item.word, gloss: (item.reading ? item.reading + "　" : "") + item.note, kind: "虚词", word: item.word };
         })) || any;
         any = addSheetNotes(panel, "古今异义", (lesson.ancientModern || []).map(function (item) {
-          return { term: item.word, gloss: item.note };
+          return { term: item.word, gloss: item.note, kind: "古今异义", word: item.word };
         })) || any;
         any = addSheetNotes(panel, "通假", (lesson.phoneticLoans || []).map(function (item) {
           const term = item.loan ? item.word + " / " + item.loan : item.word;
           const gloss = (item.reading ? item.reading + "　" : "") + item.note;
-          return { term: term, gloss: gloss };
+          return { term: term, gloss: gloss, kind: "通假", word: item.word };
         })) || any;
         any = addSheetNotes(panel, "活用", (lesson.flexibleUsage || []).map(function (item) {
-          return { term: item.word, gloss: item.note };
+          return { term: item.word, gloss: item.note, kind: "活用", word: item.word };
         })) || any;
         any = addSheetNotes(panel, "句式", (lesson.specialSyntax || []).map(function (item) {
-          return { term: item.name, gloss: item.note };
+          return { term: item.name, gloss: item.note, kind: "句式", word: item.name };
         })) || any;
       }
       if (!any) panel.appendChild(sheetP("这一篇还没有逐句注释。点开字，看《说文》本义，不等于已经核定的句中义。"));
@@ -1229,11 +1295,13 @@
       panel.appendChild(h);
       if (sub.textContent) panel.appendChild(sub);
       panel.appendChild(sheetP(info.bio || ("选本题「" + art.author + "」。")));
+      appendProvenance(panel, art.id);
       return;
     }
     if (tab === "background") {
       if (lesson && lesson.background) panel.appendChild(sheetP(lesson.background));
       else panel.appendChild(sheetP("本篇选自《" + book + "》·" + head + "。《古文观止》题" + info.name + "。"));
+      appendProvenance(panel, art.id);
       return;
     }
     if (lesson && lesson.theme) panel.appendChild(sheetP(lesson.theme));
@@ -1781,22 +1849,22 @@
     const lesson = art.lesson;
     addProse(box, "作者与背景", lesson.background);
     addGloss(box, "重点实词", lesson.keyContentWords, function (item) {
-      return { term: item.word, reading: item.reading, note: item.note };
+      return { term: item.word, reading: item.reading, note: item.note, kind: "实词", word: item.word };
     });
     addGloss(box, "重点虚词", lesson.keyFunctionWords, function (item) {
-      return { term: item.word, reading: item.reading, note: item.note };
+      return { term: item.word, reading: item.reading, note: item.note, kind: "虚词", word: item.word };
     });
     addGloss(box, "古今异义", lesson.ancientModern, function (item) {
-      return { term: item.word, note: item.note };
+      return { term: item.word, note: item.note, kind: "古今异义", word: item.word };
     });
     addGloss(box, "通假字", lesson.phoneticLoans, function (item) {
-      return { term: item.word + " / " + item.loan, note: item.note };
+      return { term: item.loan ? item.word + " / " + item.loan : item.word, note: item.note, kind: "通假", word: item.word };
     });
     addGloss(box, "词类活用", lesson.flexibleUsage, function (item) {
-      return { term: item.word, note: item.note };
+      return { term: item.word, note: item.note, kind: "活用", word: item.word };
     });
     addGloss(box, "特殊句式", lesson.specialSyntax, function (item) {
-      return { term: item.name, note: item.note };
+      return { term: item.name, note: item.note, kind: "句式", word: item.name };
     });
     addProse(box, "文章主旨", lesson.theme);
     addProse(box, "写作手法", lesson.technique);
@@ -1863,6 +1931,7 @@
       const note = document.createElement("p");
       note.textContent = row.note;
       li.appendChild(note);
+      if (row.kind && row.word) appendGlossCredit(li, row.kind, row.word);
       ul.appendChild(li);
     });
     sec.appendChild(h2);
@@ -2060,6 +2129,13 @@
     block.appendChild(h4);
     if (bits.length) block.appendChild(sub);
     block.appendChild(ben);
+    const note = readingNote(focus);
+    if (note && note.status === "review") {
+      const flag = document.createElement("p");
+      flag.className = "reading-flag";
+      flag.textContent = "待复核：汉典文言缓存列了 " + (note.han || []).join("、") + "，说文音 " + (note.shuowen || "") + " 不在其中。这一处仍用现在的读音。";
+      block.appendChild(flag);
+    }
     dictSec.appendChild(block);
     popup.appendChild(dictSec);
     placePopup(anchor);
