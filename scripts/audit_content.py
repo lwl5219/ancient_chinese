@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""检查古文观止 222 篇和人间词话 64 则是否都有逐句译文、注释、赏析、背景和作者。
+"""检查古文观止、人间词话，以及已收入的资治通鉴是否都有逐句译文、注释、赏析、背景和作者。
 
 用法：python3 scripts/audit_content.py
 有缺口时退出码为 1，并逐篇打印缺什么。
@@ -37,6 +37,7 @@ def main() -> int:
     gaps = []
     gaps.extend(audit_group(authors, re.compile(r"v\d{2}-\d{2}\.json"), 222, "古文观止"))
     gaps.extend(audit_group(authors, re.compile(r"h01-\d{2}\.json"), 64, "人间词话"))
+    gaps.extend(audit_group(authors, re.compile(r"z\d{2}-\d{2}\.json"), 182, "资治通鉴"))
     for art_id, title, found in gaps:
         print(f"{art_id}\t{title}\t" + "；".join(found))
     if gaps:

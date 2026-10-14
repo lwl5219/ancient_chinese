@@ -352,6 +352,27 @@ h1 {
   border-bottom: 1.5px solid var(--muted);
   transform: rotate(-45deg);
 }
+.era-block { margin: 0 0 12px; }
+.era-block h2, .later-head {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-weight: 650;
+  margin: 0 0 6px;
+}
+.later-head { margin-top: 2px; }
+.later-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.later-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.later-chip b { color: var(--ink-soft); font-weight: 650; }
 .vol-rows {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1130,7 +1151,17 @@ h1 {
 @media (max-width: 860px) {
   :root { --header: 48px; }
   .main { padding: 12px 14px 92px; }
-  .home h1 { font-size: 1.7rem; }
+  .home h1 { font-size: 1.32rem; margin-bottom: 2px; }
+  .home .lead { font-size: 0.84rem; line-height: 1.35; margin: 0 0 10px; }
+  .book-row { min-height: 0; padding: 7px 28px 7px 12px; gap: 0; }
+  .book-row strong { font-size: 1.08rem; line-height: 1.25; }
+  .book-row span { font-size: 0.75rem; line-height: 1.3; }
+  .book-row em { display: none; }
+  .tabbar a { font-size: 0.78rem; min-height: 44px; }
+  .resume { margin: 0 0 8px; padding: 0 0 8px; }
+  .resume h2 { font-size: 1.02rem; margin: 0; }
+  .era-block .vol-row { min-height: 42px; padding: 6px 12px; }
+  .era-block .vol-row strong { font-size: 0.98rem; min-width: 3.2em; }
   body.is-reading .main { padding: 8px 16px 120px; }
   body.is-reading.sheet-open .main {
     padding-bottom: calc(56px + min(48vh, 420px) + env(safe-area-inset-bottom));
