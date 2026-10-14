@@ -1,8 +1,8 @@
 # 典籍
 
-按原书次序读经典。现在先读《古文观止》：十二卷、二百二十二篇，从卷一《郑伯克段于鄢》开始。点开字，看带声调的拼音、《说文解字》本义和本句意思；卷一十八篇另有系统讲解。下一本是《三字经》，开篇二十二句已经可以读。学习进度记在浏览器本地。
+按原书次序读经典。先读《古文观止》：十二卷、二百二十二篇，从卷一《郑伯克段于鄢》开始。点开字，看带声调的拼音、《说文解字》本义和本句意思；卷一十八篇另有系统讲解。接着是唐诗三十六首、宋词二十三首，从《静夜思》和《水调歌头》读起。学习进度记在浏览器本地。
 
-这是一个纯静态网站，不需要构建工具就能打开。手机上从底部切换典籍、观止和三字经；读文章时，底部是上一篇和下一篇。
+这是一个纯静态网站，不需要构建工具就能打开。手机上从底部切换典籍、观止、唐诗和宋词；读文章或诗词时，底部是上一篇和下一篇。
 
 ## 本地运行
 
@@ -12,16 +12,15 @@
 python3 -m http.server 8765
 ```
 
-打开 <http://127.0.0.1:8765/> 。目录在左侧；手机上点左上角「目录」。
+打开 <http://127.0.0.1:8765/> 。电脑上读《古文观止》的某一卷时，这一卷的篇目在左侧。
 
 ## 怎么读
 
-- 首页是典籍。进入《古文观止》后按卷选择，再点开篇目。
-- 拼音默认显示在字的上方。文白对照是卷一的默认读法；系统讲解在篇末的「看系统讲解」。简繁、隐藏拼音和「这篇读完了」也放在篇末，不挡正文。
-- 点原文中的字：弹出该字在本句中的读音和义项；下面附《说文》字头的今读参考、反切和本义。未做逐句审定的篇目，弹出的是《说文》本义，并标明还不是核定过的句中义。
+- 首页是典籍。进入《古文观止》后按卷选择，再点开篇目。唐诗、宋词各是一份篇目，点开就能读。
+- 拼音默认显示在字的上方。文白对照是卷一的默认读法；系统讲解在篇末的「看系统讲解」。简繁、隐藏拼音和「这篇读完了」也放在篇末，不挡正文。诗词页可以切换简繁和拼音，不记入古文观止的已读篇数。
+- 点原文中的字：弹出该字在本句中的读音和义项；下面附《说文》字头的今读参考、反切和本义。未做逐句审定的篇目和诗词，弹出的是《说文》本义，并标明还不是核定过的句中义。诗词字上的拼音是现代汉语今读。
 - 「这篇读完了」和上次读到的篇目存在 `localStorage`（键名 `gwgz-progress-v1`），只留在这台浏览器里。
-- 底本是繁体，简体由 OpenCC 转换。
-- 《三字经》开篇在 `#/szj`。字上是现代汉语今读。
+- 底本是繁体，简体由 OpenCC 转换。宋词上游文本是简体，繁体由 OpenCC 转出。
 
 ## 部署到 GitHub Pages
 
@@ -39,6 +38,7 @@ python3 -m http.server 8765
 | 十二卷二百二十二篇原文 | [维基文库《古文观止》](https://zh.wikisource.org/wiki/古文觀止) | 古籍原文已进入公有领域。维基文库页面文本依其站点条款，使用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)。抓取记录在 `sources/wikisource/vol01.wikitext` 至 `vol12.wikitext`。 |
 | 字头、今读参考、反切、本义 | [shuowenjiezi/shuowen](https://github.com/shuowenjiezi/shuowen) | [Apache-2.0](https://github.com/shuowenjiezi/shuowen/blob/master/LICENSE)。站点只编入正文里出现的字，见 `data/dict.json`。 |
 | 卷一逐句义、白话和系统讲解 | 本仓库 `annotations/v1_01.py` 至 `v1_18.py` | 与本仓库代码一起提供。句中义按该句语境写，不把《说文》本义直接当成句中义。 |
+| 唐诗三十六首、宋词二十三首 | [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry) commit `b8594f81` | 古籍原文为公有领域。JSON 汇编为 [MIT](sources/poetry/chinese-poetry-LICENSE.txt)，Copyright (c) 2016 JackeyGao。篇目清单在 `sources/poetry/selection.json`。正文保持该提交的用字，不改成课本通行本。 |
 
 维基文库个别篇目的引号不完整。导入时只补标点，不改汉字。卷一标注与底本逐字对齐，由 `scripts/build_site.py` 在生成时检查。
 
@@ -50,8 +50,10 @@ python3 -m http.server 8765
 python3 scripts/fetch_wikisource.py
 git clone --depth 1 https://github.com/shuowenjiezi/shuowen.git /tmp/shuowen
 python3 scripts/build_site.py
-python3 scripts/build_sanzijing.py
+python3 scripts/build_poetry.py
 ```
+
+`scripts/build_poetry.py` 读取 `/tmp/poetry/tang/tang-*.json` 和 `/tmp/poetry/ci/ci-*.json`（[chinese-poetry](https://github.com/chinese-poetry/chinese-poetry) 的全唐诗、宋词分片，不提交进本仓库），按 `sources/poetry/selection.json` 抽出当前这一批，写成 `data/tang.json` 和 `data/songci.json`。要加一首，在清单里补一条能唯一对上的作者、篇名或首句，再运行脚本。
 
 依赖：Python 3，以及 `opencc`、`pypinyin`。
 
@@ -66,13 +68,13 @@ pip install opencc-python-reimplemented pypinyin
 - `index.html`、`css/app.css`、`js/app.js`：阅读界面。
 - `data/books.json`：站点上的书。
 - `data/catalog.json`：古文观止十二卷目录。
-- `data/sanzijing.json`：三字经开篇，由 `sources/sanzijing/text.txt` 生成。
-- `data/articles/`：每篇一篇 JSON。
+- `data/tang.json`、`data/songci.json`：唐诗、宋词这一批。
+- `data/articles/`：古文观止每篇一篇 JSON。
 - `data/dict.json`：正文用字的《说文》索引。
 - `annotations/`：卷一讲解。
 - `scripts/`：抓取、解析和构建。
 - `sources/wikisource/`：维基文库原始维基文本。
-- `sources/sanzijing/text.txt`：三字经开篇和后续章节的底稿。
+- `sources/poetry/`：唐诗宋词的选篇清单，以及 chinese-poetry 的 MIT 许可文本。
 - `legacy/`：本仓库原先的词典爬虫。新站点不使用它。
 
 ## 关于旧代码

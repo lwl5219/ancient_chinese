@@ -354,7 +354,7 @@ h1 {
   overflow: hidden;
 }
 .piece .idx {
-  width: 1.6em;
+  width: 2.1em;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   flex: none;
@@ -423,8 +423,10 @@ h1 {
   align-items: center;
   justify-content: center;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
 }
+.body.verse .para { margin: 0 0 0.55em; }
+.body.verse .orig.with-py { line-height: 1.45; }
 .tabbar a.on { color: var(--accent); font-weight: 650; }
 .dock { display: none; }
 
