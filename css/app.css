@@ -599,6 +599,94 @@ h1 {
 .reader.prose-reader { text-align: left; }
 .body.prose .para { margin: 0 0 1.15em; text-align: left; }
 .body.prose .para:last-child { margin-bottom: 0; }
+.read-tools {
+  position: sticky;
+  top: var(--header);
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 8px 0;
+  background: rgba(243, 244, 246, 0.96);
+  text-align: left;
+}
+.read-tools .tool-py,
+.tool-seg button {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+}
+.read-tools .tool-py {
+  border-radius: 999px;
+  padding: 0 14px;
+}
+.read-tools .tool-py.on {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: #b7c8de;
+  font-weight: 650;
+}
+.tool-seg {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.tool-seg button {
+  border: 0;
+  min-width: 64px;
+  padding: 0 12px;
+}
+.tool-seg button.on {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 650;
+}
+.body.sentence .pair { text-align: left; }
+.reader.shi-reader .body.sentence .verse-line { text-align: center; }
+.body.prose.sentence .pair.para-end { margin-bottom: 22px; }
+.pair-label {
+  margin: 8px 0 2px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+}
+.vern i {
+  display: inline-block;
+  min-width: 2.4em;
+  margin-right: 6px;
+  color: var(--muted);
+  font-style: normal;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  font-family: var(--sans);
+}
+.pair-notes {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  text-align: left;
+}
+.pair-notes li { margin: 0 0 4px; }
+.pair-notes b {
+  display: inline-block;
+  min-width: 2.2em;
+  margin-right: 8px;
+  font-family: var(--serif);
+  font-weight: 650;
+}
+.pair-missing {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  text-align: left;
+}
 .author-card {
   display: block;
   width: 100%;

@@ -34,14 +34,15 @@
       const raw = JSON.parse(localStorage.getItem(KEY) || "{}");
       raw.learned = raw.learned || {};
       raw.font = raw.font === "t" ? "t" : "s";
-      raw.mode = raw.mode || "parallel";
+      raw.mode = raw.mode || "read";
+      raw.sentence = !!raw.sentence;
       raw.pinyinSet = !!raw.pinyinSet;
       if (!raw.pinyinSet) raw.pinyin = true;
       else raw.pinyin = !!raw.pinyin;
       raw.collections = raw.collections && typeof raw.collections === "object" ? raw.collections : {};
       return raw;
     } catch (err) {
-      return { learned: {}, font: "s", mode: "parallel", last: "", pinyin: true, pinyinSet: false, collections: {} };
+      return { learned: {}, font: "s", mode: "read", sentence: false, last: "", pinyin: true, pinyinSet: false, collections: {} };
     }
   }
 
@@ -601,7 +602,11 @@
 
   function renderVerseBody(piece, kind, meta) {
     const body = document.createElement("div");
-    body.className = "body verse " + (kind === "tang" ? "shi" : "ci");
+    body.className = "body verse " + (kind === "tang" ? "shi" : "ci") + (sentenceMode() ? " sentence" : "");
+    if (sentenceMode()) {
+      renderVerseSentences(body, piece, kind, meta);
+      return body;
+    }
     const counts = kind === "ci" && meta && meta.stanzas && meta.stanzas.length > 1 ? meta.stanzas : null;
     if (!counts) {
       piece.lines.forEach(function (line) { addVerseLines(body, line.tokens); });
@@ -625,20 +630,182 @@
     return body;
   }
 
+  function renderVerseSentences(body, piece, kind, meta) {
+    const clauses = [];
+    piece.lines.forEach(function (line, lineIndex) {
+      clauseRows(line.tokens).forEach(function (row) {
+        clauses.push({ row: row, lineIndex: lineIndex });
+      });
+    });
+    const vern = (meta && meta.vernacular) || [];
+    const notes = (meta && meta.notes) || [];
+    const used = {};
+    function notesFor(row) {
+      const textS = row.map(function (tok) { return tok.s || tok.t; }).join("");
+      const textT = row.map(function (tok) { return tok.t; }).join("");
+      const found = [];
+      notes.forEach(function (item, index) {
+        if (used[index] || !item.term) return;
+        const termS = item.term.s || "";
+        const termT = item.term.t || item.term.s || "";
+        if ((termS && textS.indexOf(termS) >= 0) || (termT && textT.indexOf(termT) >= 0)) {
+          used[index] = true;
+          found.push({ term: bi(item.term), gloss: bi(item.gloss) });
+        }
+      });
+      return found;
+    }
+    function addPair(parent, clause, index) {
+      const pair = document.createElement("div");
+      pair.className = "pair";
+      const p = document.createElement("p");
+      p.className = "orig verse-line" + (state.progress.pinyin ? " with-py" : "");
+      appendTokens(p, clause.row);
+      pair.appendChild(p);
+      appendSentenceGloss(pair, vern[index] ? bi(vern[index]) : "", notesFor(clause.row));
+      parent.appendChild(pair);
+    }
+    const counts = kind === "ci" && meta && meta.stanzas && meta.stanzas.length > 1 ? meta.stanzas : null;
+    if (!counts) {
+      clauses.forEach(addPair.bind(null, body));
+    } else {
+      const labels = STANZA_LABELS[state.progress.font === "t" ? "t" : "s"];
+      let lineCursor = 0;
+      counts.forEach(function (count, index) {
+        const block = document.createElement("section");
+        block.className = "stanza";
+        const label = document.createElement("p");
+        label.className = "stanza-label";
+        label.textContent = labels[index] || "";
+        block.appendChild(label);
+        const end = lineCursor + count;
+        clauses.forEach(function (clause, clauseIndex) {
+          if (clause.lineIndex >= lineCursor && clause.lineIndex < end) addPair(block, clause, clauseIndex);
+        });
+        lineCursor = end;
+        body.appendChild(block);
+      });
+    }
+    notes.forEach(function (item, index) {
+      if (used[index]) return;
+      const list = body.querySelector(".pair-notes.leftover") || document.createElement("ul");
+      if (!list.parentNode) {
+        list.className = "pair-notes leftover";
+        body.appendChild(list);
+      }
+      const li = document.createElement("li");
+      const term = document.createElement("b");
+      term.textContent = bi(item.term);
+      li.appendChild(term);
+      li.appendChild(document.createTextNode(bi(item.gloss)));
+      list.appendChild(li);
+    });
+  }
+
   function fitVerse(body) {
     if (!body) return;
     const lines = body.querySelectorAll(".verse-line");
     if (!lines.length) return;
     body.style.fontSize = "";
+    lines.forEach(function (line) { line.style.fontSize = ""; });
     const limit = body.clientWidth;
     let widest = 0;
     lines.forEach(function (line) {
       widest = Math.max(widest, line.scrollWidth);
     });
     if (widest > limit + 1) {
-      const current = parseFloat(getComputedStyle(body).fontSize);
-      body.style.fontSize = Math.max(14, current * (limit - 1) / widest) + "px";
+      const current = parseFloat(getComputedStyle(lines[0]).fontSize);
+      const next = Math.max(14, current * (limit - 1) / widest);
+      lines.forEach(function (line) { line.style.fontSize = next + "px"; });
     }
+  }
+
+  function sentenceMode() {
+    return !!state.progress.sentence;
+  }
+
+  function appendReadTools(wrap) {
+    const bar = document.createElement("div");
+    bar.className = "read-tools";
+    const py = document.createElement("button");
+    py.type = "button";
+    py.className = "tool-py" + (state.progress.pinyin ? " on" : "");
+    py.textContent = "拼音";
+    py.setAttribute("aria-pressed", state.progress.pinyin ? "true" : "false");
+    py.addEventListener("click", function () {
+      state.progress.pinyin = !state.progress.pinyin;
+      state.progress.pinyinSet = true;
+      saveProgress();
+      refreshReading();
+    });
+    const seg = document.createElement("div");
+    seg.className = "tool-seg";
+    seg.setAttribute("role", "group");
+    seg.setAttribute("aria-label", "阅读方式");
+    [["full", "全文"], ["sentence", "逐句"]].forEach(function (item) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = item[1];
+      const on = (item[0] === "sentence") === sentenceMode();
+      btn.classList.toggle("on", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.addEventListener("click", function () {
+        const next = item[0] === "sentence";
+        if (sentenceMode() === next) return;
+        state.progress.sentence = next;
+        saveProgress();
+        refreshReading();
+      });
+      seg.appendChild(btn);
+    });
+    bar.appendChild(py);
+    bar.appendChild(seg);
+    wrap.appendChild(bar);
+  }
+
+  function appendSentenceGloss(pair, translation, glosses) {
+    if (translation) {
+      const vern = document.createElement("p");
+      vern.className = "vern";
+      const lab = document.createElement("i");
+      lab.textContent = "译文";
+      vern.appendChild(lab);
+      vern.appendChild(document.createTextNode(translation));
+      pair.appendChild(vern);
+    }
+    if (glosses && glosses.length) {
+      const label = document.createElement("p");
+      label.className = "pair-label";
+      label.textContent = "注释";
+      pair.appendChild(label);
+      const list = document.createElement("ul");
+      list.className = "pair-notes";
+      glosses.forEach(function (item) {
+        const li = document.createElement("li");
+        const term = document.createElement("b");
+        term.textContent = item.term;
+        li.appendChild(term);
+        li.appendChild(document.createTextNode(item.gloss));
+        list.appendChild(li);
+      });
+      pair.appendChild(list);
+    }
+    if (!translation && (!glosses || !glosses.length)) {
+      const missing = document.createElement("p");
+      missing.className = "pair-missing";
+      missing.textContent = "这一句还没有白话和注释。";
+      pair.appendChild(missing);
+    }
+  }
+
+  function proseGlosses(tokens) {
+    const items = [];
+    tokens.forEach(function (tok) {
+      if (tok.punct || !tok.ctx) return;
+      const term = state.progress.font === "t" ? tok.t : (tok.s || tok.t);
+      items.push({ term: term, gloss: tok.extra ? tok.ctx + "（" + tok.extra + "）" : tok.ctx });
+    });
+    return items;
   }
 
   function pieceMeta() {
@@ -864,6 +1031,7 @@
     h1.textContent = title;
     wrap.appendChild(kicker);
     wrap.appendChild(h1);
+    appendReadTools(wrap);
     if (meta && state.notes.authors[meta.author]) {
       const author = state.notes.authors[meta.author];
       const card = document.createElement("button");
@@ -892,12 +1060,6 @@
     prefs.className = "foot-links";
     prefs.appendChild(textLink(font === "t" ? "看简体" : "看繁体", function () {
       state.progress.font = font === "t" ? "s" : "t";
-      saveProgress();
-      renderPiece(true);
-    }));
-    prefs.appendChild(textLink(state.progress.pinyin ? "隐藏拼音" : "显示拼音", function () {
-      state.progress.pinyin = !state.progress.pinyin;
-      state.progress.pinyinSet = true;
       saveProgress();
       renderPiece(true);
     }));
@@ -1000,6 +1162,7 @@
     h1.textContent = title;
     wrap.appendChild(kicker);
     wrap.appendChild(h1);
+    appendReadTools(wrap);
     const card = document.createElement("button");
     card.type = "button";
     card.className = "author-card";
@@ -1019,17 +1182,7 @@
       refreshReading();
     });
     wrap.appendChild(card);
-    const body = document.createElement("div");
-    body.className = "body prose";
-    art.paragraphs.forEach(function (para) {
-      const p = document.createElement("p");
-      p.className = "orig para" + (state.progress.pinyin ? " with-py" : "");
-      para.sentences.forEach(function (sent) {
-        appendTokens(p, sent.tokens);
-      });
-      body.appendChild(p);
-    });
-    wrap.appendChild(body);
+    wrap.appendChild(renderProseBody(art));
     wrap.appendChild(readerFoot(art, font, nav));
     appendReadingBar(wrap);
     const pager = document.createElement("nav");
@@ -1074,12 +1227,6 @@
       saveProgress();
       renderArticle(true);
     }));
-    prefs.appendChild(textLink(state.progress.pinyin ? "隐藏拼音" : "显示拼音", function () {
-      state.progress.pinyin = !state.progress.pinyin;
-      state.progress.pinyinSet = true;
-      saveProgress();
-      renderArticle(true);
-    }));
     foot.appendChild(prefs);
     const turn = document.createElement("p");
     turn.className = "verse-turn";
@@ -1102,6 +1249,46 @@
     }
     a.href = "#/read/" + meta.id;
     return a;
+  }
+
+  function renderProseBody(art) {
+    const body = document.createElement("div");
+    const glossed = art.paragraphs.some(function (para) {
+      return para.sentences.some(function (sent) {
+        return sent.tr || sent.tokens.some(function (tok) { return !tok.punct && tok.ctx; });
+      });
+    });
+    if (!sentenceMode()) {
+      body.className = "body prose";
+      art.paragraphs.forEach(function (para) {
+        const p = document.createElement("p");
+        p.className = "orig para" + (state.progress.pinyin ? " with-py" : "");
+        para.sentences.forEach(function (sent) { appendTokens(p, sent.tokens); });
+        body.appendChild(p);
+      });
+      return body;
+    }
+    body.className = "body prose sentence";
+    if (!glossed) {
+      const banner = document.createElement("p");
+      banner.className = "pair-missing";
+      banner.textContent = "这一篇还没有逐句白话和注释。下面按句断开，点开字看《说文》。";
+      body.appendChild(banner);
+    }
+    art.paragraphs.forEach(function (para) {
+      para.sentences.forEach(function (sent, index) {
+        const pair = document.createElement("div");
+        pair.className = "pair" + (index === para.sentences.length - 1 ? " para-end" : "");
+        const orig = document.createElement("p");
+        orig.className = "orig" + (state.progress.pinyin ? " with-py" : "");
+        appendTokens(orig, sent.tokens);
+        pair.appendChild(orig);
+        const glosses = proseGlosses(sent.tokens);
+        if (glossed) appendSentenceGloss(pair, sent.tr || "", glosses);
+        body.appendChild(pair);
+      });
+    });
+    return body;
   }
 
   function renderBody(art, mode) {
@@ -1634,7 +1821,7 @@
     const readingPiece = state.view === "piece" && !!state.piece;
     const readingArticle = state.view === "article" && !!state.article;
     if (!readingPiece && !readingArticle) return;
-    if (event.target.closest && event.target.closest(".verse-panel, .verse-bar, .author-card, .verse-turn, .foot-links, .mark")) return;
+    if (event.target.closest && event.target.closest(".verse-panel, .verse-bar, .author-card, .verse-turn, .foot-links, .mark, .read-tools")) return;
     const touch = event.changedTouches[0];
     const dx = touch.clientX - swipeX;
     const dy = touch.clientY - swipeY;
