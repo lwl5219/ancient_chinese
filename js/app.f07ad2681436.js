@@ -1172,6 +1172,15 @@
     }
     if (src.note) p.appendChild(document.createTextNode(" " + src.note));
     panel.appendChild(p);
+    const tr = src.translation;
+    if (!tr) return;
+    const q = document.createElement("p");
+    q.className = "sheet-credit";
+    const label = document.createElement("b");
+    label.textContent = "译文参考 ";
+    q.appendChild(label);
+    q.appendChild(document.createTextNode(tr.edition + (tr.status ? "。" + tr.status + "。" : "")));
+    panel.appendChild(q);
   }
 
   function readingNote(ch) {

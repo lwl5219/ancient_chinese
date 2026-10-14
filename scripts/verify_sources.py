@@ -9,7 +9,12 @@
 - 唐诗、宋词：sources/poetry/canonical.json
   （chinese-poetry 指定 commit 的选篇缓存）
 
-中华书局点校本没有收进仓库，这里不做逐字对照，也不把差异当成已经改对。
+维基文库是繁体公有领域正文，不是简体定本。简体由规定的转换得到。
+中华书局简体注本没有收进仓库，不做逐字对照，也不把没看到的注当成已经改对。
+手头若有钟基、李先银、王身钢译注《古文观止》（中华书局，简体横排，
+ISBN 978-7-101-07898-5；同人译注的藏书升级版 ISBN 978-7-101-11362-4），
+课注和译文以这一本为准。安平秋点校的繁体竖排本，以及《资治通鉴》点校本，
+同样没有收进仓库。
 
 读音对照 legacy/dict/out_file/ancient_chinese.json（汉典文言字头）。
 这份缓存常常只留下一个音，不能拿来改页面上的今读。
@@ -207,6 +212,128 @@ def check_traps() -> list[dict]:
         if "罝䍡" in trad_text:
             problems.append({"id": art["id"], "detail": "小网仍作罝䍡，应作罜"})
     return problems
+
+
+def translation_ref(collection: str) -> dict:
+    """译文该对哪一本。书不在仓库里的，不写成已经对过。"""
+    if collection == "古文观止":
+        return {
+            "edition": "中华书局钟基、李先银、王身钢译注《古文观止》（简体横排，ISBN 978-7-101-07898-5）",
+            "status": "未取得该书，本站译文未按该本逐句核定",
+        }
+    if collection == "资治通鉴":
+        return {
+            "edition": "没有可核对的通行白话译本",
+            "status": "中华书局点校本是正文校点，不是译文。本站译文未按某一译注本核定",
+        }
+    if collection == "人间词话":
+        return {
+            "edition": "未取得中华书局《人间词话》注译本",
+            "status": "本站译文未按该本逐句核定",
+        }
+    if collection == "唐诗":
+        return {
+            "edition": "中华书局《唐诗三百首》（蘅塘退士孙洙编，通行简体注本）",
+            "status": "选目和译注意义参考这一系统。未逐句抄录注本。本站译文是另写的白话，拿不准的标待复核",
+        }
+    if collection == "宋词":
+        return {
+            "edition": "唐圭璋《宋词三百首笺注》（据朱孝臧重编《宋词三百首》）",
+            "status": "选目和笺注意义参考这一系统。未逐句抄录笺注。本站译文是另写的白话，拿不准的标待复核",
+        }
+    return {"edition": "未指定译注本", "status": "译文未核定"}
+
+
+def audit_simplified() -> tuple[list[dict], list[dict]]:
+    """简体按《简化字总表》的通行归并核，不把 OpenCC 整篇结果当定本。
+
+    中华书局简体古籍通常：雲后裏只余于征归并；乾（qián）、乐律徵、樊於期、神祇不归并。
+    馀的正条是余，附注说可能混淆时可用馀。没有中华书局该书，馀不改成馀字。
+    """
+    from collections import Counter
+
+    counts = Counter()
+    problems = []
+    for path in article_files():
+        art = load_article(path)
+        chars = []
+        for para in art["paragraphs"]:
+            for sent in para["sentences"]:
+                for tok in sent["tokens"]:
+                    if tok.get("punct"):
+                        continue
+                    trad = tok.get("t") or ""
+                    simp = tok.get("s") or ""
+                    if len(trad) != len(simp):
+                        if any(ch in trad + simp for ch in "乾於徵禕褘雲後裏裡餘馀祇只"):
+                            problems.append({"id": art["id"], "detail": "繁简长度不同：%s / %s" % (trad, simp)})
+                        continue
+                    chars.extend(zip(trad, simp))
+        for i, (src, dst) in enumerate(chars):
+            prev = chars[i - 1][0] if i else ""
+            window = "".join(ch for ch, _ in chars[max(0, i - 1) : i + 2])
+            if src == "雲" and dst != "云":
+                problems.append({"id": art["id"], "detail": "雲没有作云"})
+            elif src == "後" and dst != "后":
+                problems.append({"id": art["id"], "detail": "後没有作后"})
+            elif src in ("裏", "裡") and dst != "里":
+                problems.append({"id": art["id"], "detail": "裏没有作里"})
+            elif src == "餘" and dst != "余":
+                problems.append({"id": art["id"], "detail": "餘没有作余"})
+            elif src == "隻" and dst != "只":
+                problems.append({"id": art["id"], "detail": "隻没有作只"})
+            elif src == "幹" and dst != "干":
+                problems.append({"id": art["id"], "detail": "幹没有作干"})
+            elif src == "禕" and dst != "祎":
+                problems.append({"id": art["id"], "detail": "禕没有作祎"})
+            elif src == "褘" or dst == "袆":
+                problems.append({"id": art["id"], "detail": "仍有褘/袆"})
+            elif src == "於" and dst == "於" and "樊於期" not in window and "於期" not in window:
+                problems.append({"id": art["id"], "detail": "於没有作于"})
+            elif src == "於" and dst not in ("于", "於"):
+                problems.append({"id": art["id"], "detail": "於简成了%s" % dst})
+            elif src == "徵" and dst == "徵" and prev != "流":
+                problems.append({"id": art["id"], "detail": "徵没有作征"})
+            elif src == "徵" and dst == "征" and prev == "流":
+                problems.append({"id": art["id"], "detail": "流徵被简成流征"})
+            elif src == "祇" and dst == "只" and prev == "神":
+                problems.append({"id": art["id"], "detail": "神祇被简成神只"})
+            elif src == "祇" and dst == "祇" and prev != "神":
+                problems.append({"id": art["id"], "detail": "祇没有作只"})
+            elif src == "乾" and dst not in ("乾", "干"):
+                problems.append({"id": art["id"], "detail": "乾简成了%s" % dst})
+            if src in ("於", "後", "餘", "雲", "裡", "裏", "徵", "乾", "禕", "隻", "幹", "祇") and src != dst:
+                counts[(src, dst)] += 1
+            elif src == "祇" and dst == "祇":
+                counts[(src, dst)] += 1
+            elif src == "徵" and dst == "徵":
+                counts[(src, dst)] += 1
+            elif src == "乾" and dst == "乾":
+                counts[(src, dst)] += 1
+            elif src == "於" and dst == "於":
+                counts[(src, dst)] += 1
+    notes = {
+        ("於", "于"): "介词作于",
+        ("於", "於"): "樊於期保留於",
+        ("後", "后"): "归并",
+        ("餘", "余"): "总表正条作余。附注说可能混淆时可用馀。没有中华书局该书，不改成馀",
+        ("雲", "云"): "归并",
+        ("裡", "里"): "归并",
+        ("裏", "里"): "归并",
+        ("徵", "征"): "征召、征兆、征逐。不是乐律",
+        ("徵", "徵"): "流徵保留徵",
+        ("乾", "干"): "干燥作干",
+        ("乾", "乾"): "乾坤、乾谿等读 qián，保留乾",
+        ("禕", "祎"): "费祎。不从 OpenCC 把褘收成袆",
+        ("隻", "只"): "归并",
+        ("幹", "干"): "归并",
+        ("祇", "只"): "只辱。神祇不在此列",
+        ("祇", "祇"): "神祇保留祇",
+    }
+    rows = []
+    for key, num in sorted(counts.items(), key=lambda item: (-item[1], item[0])):
+        rows.append({"trad": key[0], "simp": key[1], "count": num, "note": notes.get(key, "")})
+    return rows, problems
 
 
 def check_zztj() -> tuple[list[dict], list[dict], list[dict]]:
@@ -609,7 +736,8 @@ def render_report(summary: dict, resolved: list[dict], flags: list[dict]) -> str
     lines = [
         "# 底本与读音核对",
         "",
-        "这一份是机械核对的结果。中华书局点校本没有收进仓库，正文没有拿它逐字比较。",
+        "这一份是机械核对的结果。维基文库底本是繁体，用来对公有领域正文；简体由规定的转换得到，不把繁体字形当成简体定本。",
+        "中华书局简体注本没有收进仓库，正文、课注和译文都没有拿它逐字比较。手头若有钟基、李先银、王身钢译注《古文观止》（中华书局，简体横排，ISBN 978-7-101-07898-5；藏书升级版 ISBN 978-7-101-11362-4 同此译注），课注和译文以这一本为准。安平秋点校的繁体竖排本，以及《资治通鉴》点校本，也没有收进仓库。",
         "读音对照的是仓库里的汉典文言缓存（`legacy/dict/out_file/ancient_chinese.json`），不是《古汉语常用字字典》的全文。",
         "白话、注释和赏析是本书编写的。下面标成未核定的，没有改写成看起来正确的句子。",
         "",
@@ -670,7 +798,25 @@ def render_report(summary: dict, resolved: list[dict], flags: list[dict]) -> str
         "",
         "课注条目（实词、虚词、古今异义、通假、活用、句式、背景、主旨、手法）共 %d 条。" % summary["glosses"],
         "古文观止课注里能对上维基文库夹注、汉典文言或《说文》的，记在 `sources/verification/GLOSSES.md`。对不上的留在那份清单里，不改写成另一种说法。",
-        "译文还没有逐句对上注本。",
+        "每篇的「译文参考」写在 data/provenance.json 的 translation 里，页面出处下会显示。",
+        "古文观止对钟基、李先银、王身钢译注本；唐诗对中华书局《唐诗三百首》；宋词对唐圭璋《宋词三百首笺注》。书不在仓库里，没有逐句抄对。",
+        "",
+        "## 简体用字",
+        "",
+        "按《简化字总表》的通行归并核对正文繁简对。乾（qián）、流徵、樊於期、神祇保留。馀的正条是余；附注允许在可能混淆时用馀。没有中华书局该书，不把余改成馀。",
+        "",
+        "| 繁 | 简 | 次数 | 说明 |",
+        "| --- | --- | ---: | --- |",
+    ])
+    for row in summary.get("simp") or []:
+        lines.append("| %s | %s | %d | %s |" % (row["trad"], row["simp"], row["count"], row["note"]))
+    if summary.get("simpProblems"):
+        lines.extend(["", "简体不合上表的：", ""])
+        for item in summary["simpProblems"]:
+            lines.append("- %s：%s" % (item["id"], item["detail"]))
+    else:
+        lines.extend(["", "没有不合上表的简体。", ""])
+    lines.extend([
         "",
         "机器可读的读音清单：`sources/verification/flags.json`。",
         "",
@@ -739,8 +885,16 @@ def main() -> int:
             "change": "禁罝䍡 → 禁罜䍡",
             "resolution": "卷页写成罝，夹注「作罜、音主」。罝读嗟，是兔网；这一处是小网。维基文库《里革斷罟匡君》作罜。前面禁罝罗仍是兔网，不改。",
         },
+        {
+            "id": "v07-19",
+            "collection": "古文观止",
+            "change": "简体祇辱 → 只辱",
+            "resolution": "杂说四「祇辱于奴隶人之手」的祇是只、仅。神祇的祇不在此列，仍作祇。",
+        },
     ]
     traps = check_traps()
+    simp_rows, simp_problems = audit_simplified()
+    traps.extend({"id": item["id"], "detail": item["detail"]} for item in simp_problems)
 
     handian = load_handian()
     shuowen = load_shuowen()
@@ -749,8 +903,14 @@ def main() -> int:
     flags = dict_flags + lesson
     pieces = gwgz + zztj + renjian + poetry
     provenance = {
-        "note": "每篇出处。正文对照的是仓库里的底本缓存。",
-        "pieces": {item["id"]: {k: item[k] for k in ("collection", "edition", "url", "note")} for item in pieces},
+        "note": "每篇出处。正文对照的是仓库里的底本缓存。译文参考是命名的通行本，不是逐句抄录。",
+        "pieces": {
+            item["id"]: {
+                **{k: item[k] for k in ("collection", "edition", "url", "note")},
+                "translation": translation_ref(item["collection"]),
+            }
+            for item in pieces
+        },
     }
 
     def bundle(rows: list[dict]) -> dict:
@@ -784,6 +944,8 @@ def main() -> int:
         "lessonFlags": sum(1 for item in flags if item["where"] != "字书默认音"),
         "missingChars": coverage["missingChars"],
         "missingHits": coverage["missingHits"],
+        "simp": simp_rows,
+        "simpProblems": simp_problems,
     }
     report = render_report(summary, resolved, flags)
     payload = {"summary": summary, "resolved": resolved, "flags": flags}
