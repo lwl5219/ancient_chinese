@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -15,6 +15,37 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Pages is published from the master branch itself. Stamp that branch so
+  # github.io serves the hashed names. The follow-up commit is marked so it
+  # does not stamp again.
+  commit:
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip stamp]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stamp public files on master
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/site-stamp
+          mkdir -p /tmp/site-stamp
+          cp index.html favicon.svg .nojekyll /tmp/site-stamp/
+          cp -a css js data /tmp/site-stamp/
+          python3 scripts/stamp_assets.py /tmp/site-stamp
+          rm -rf css js data
+          cp -a /tmp/site-stamp/css /tmp/site-stamp/js /tmp/site-stamp/data .
+          cp /tmp/site-stamp/index.html /tmp/site-stamp/version.json .
+          cp /tmp/site-stamp/favicon.*.svg .
+          git add -A index.html version.json favicon.svg favicon.*.svg css js data
+          if git diff --cached --quiet; then
+            echo "Public files already match the content hashes."
+            exit 0
+          fi
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git commit -m "Stamp content hashes for GitHub Pages [skip stamp]"
+          git push
+
   deploy:
     environment:
       name: github-pages
