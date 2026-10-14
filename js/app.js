@@ -15,6 +15,8 @@
     collections: {},
     piece: null,
     kind: "",
+    notes: null,
+    verseTab: "",
   };
   let loadToken = 0;
 
@@ -453,7 +455,7 @@
     h1.textContent = font === "t" ? data.title.t : data.title.s;
     const lead = document.createElement("p");
     lead.className = "lead";
-    lead.textContent = data.pieces.length + " 首。点开一首，字上是今读。";
+    lead.textContent = data.pieces.length + " 首。点开一首，字上是今读，底下有译文和赏析。";
     wrap.appendChild(h1);
     wrap.appendChild(lead);
     const lastId = state.progress.collections && state.progress.collections[kind];
@@ -513,6 +515,8 @@
     state.article = null;
     state.piece = null;
     if (!(await ensureCollection(kind, token))) return;
+    if (!(await ensureNotes(token))) return;
+    state.verseTab = "";
     const piece = state.collections[kind].pieces.find(function (item) { return item.id === id; });
     if (!piece) {
       state.view = "collection";
@@ -543,6 +547,157 @@
     return state.progress.font === "t" ? item.title.t : item.title.s;
   }
 
+  const VERSE_TABS = [
+    ["vernacular", "译文"],
+    ["notes", "注释"],
+    ["analysis", "赏析"],
+    ["background", "背景"],
+    ["author", "作者"],
+  ];
+  const STANZA_LABELS = {
+    s: ["上阕", "下阕"],
+    t: ["上闋", "下闋"],
+  };
+
+  async function ensureNotes(token) {
+    if (state.notes) return true;
+    const res = await fetch("data/poetry-notes.json");
+    if (token !== loadToken) return false;
+    state.notes = res.ok ? await res.json() : { authors: {}, pieces: {}, credit: { s: "", t: "" } };
+    return token === loadToken;
+  }
+
+  function bi(node) {
+    if (!node) return "";
+    if (typeof node === "string") return node;
+    return state.progress.font === "t" ? (node.t || node.s || "") : (node.s || node.t || "");
+  }
+
+  function clauseRows(tokens) {
+    const rows = [];
+    let current = [];
+    tokens.forEach(function (tok) {
+      current.push(tok);
+      if (tok.punct && "，。！？；".indexOf(tok.t) >= 0) {
+        rows.push(current);
+        current = [];
+      }
+    });
+    if (current.length) rows.push(current);
+    return rows;
+  }
+
+  function addVerseLines(parent, tokens) {
+    clauseRows(tokens).forEach(function (row) {
+      const p = document.createElement("p");
+      p.className = "orig verse-line" + (state.progress.pinyin ? " with-py" : "");
+      appendTokens(p, row);
+      parent.appendChild(p);
+    });
+  }
+
+  function renderVerseBody(piece, kind, meta) {
+    const body = document.createElement("div");
+    body.className = "body verse " + (kind === "tang" ? "shi" : "ci");
+    const counts = kind === "ci" && meta && meta.stanzas && meta.stanzas.length > 1 ? meta.stanzas : null;
+    if (!counts) {
+      piece.lines.forEach(function (line) { addVerseLines(body, line.tokens); });
+      return body;
+    }
+    const labels = STANZA_LABELS[state.progress.font === "t" ? "t" : "s"];
+    let cursor = 0;
+    counts.forEach(function (count, index) {
+      const block = document.createElement("section");
+      block.className = "stanza";
+      const label = document.createElement("p");
+      label.className = "stanza-label";
+      label.textContent = labels[index] || "";
+      block.appendChild(label);
+      piece.lines.slice(cursor, cursor + count).forEach(function (line) {
+        addVerseLines(block, line.tokens);
+      });
+      cursor += count;
+      body.appendChild(block);
+    });
+    return body;
+  }
+
+  function fitVerse(body) {
+    if (!body) return;
+    const lines = body.querySelectorAll(".verse-line");
+    if (!lines.length) return;
+    body.style.fontSize = "";
+    const limit = body.clientWidth;
+    let widest = 0;
+    lines.forEach(function (line) {
+      widest = Math.max(widest, line.scrollWidth);
+    });
+    if (widest > limit + 1) {
+      const current = parseFloat(getComputedStyle(body).fontSize);
+      body.style.fontSize = Math.max(14, current * (limit - 1) / widest) + "px";
+    }
+  }
+
+  function pieceMeta() {
+    const notes = state.notes && state.notes.pieces;
+    return notes ? notes[state.piece.id] : null;
+  }
+
+  function fillVersePanel(panel, tab) {
+    panel.replaceChildren();
+    const meta = pieceMeta();
+    const author = meta && state.notes.authors[meta.author];
+    if (!meta) {
+      panel.textContent = "这一首的注释还没有写好。";
+      return;
+    }
+    if (tab === "vernacular") {
+      meta.vernacular.forEach(function (line) {
+        const p = document.createElement("p");
+        p.className = "sheet-line";
+        p.textContent = bi(line);
+        panel.appendChild(p);
+      });
+      return;
+    }
+    if (tab === "notes") {
+      const list = document.createElement("ul");
+      list.className = "sheet-notes";
+      meta.notes.forEach(function (item) {
+        const li = document.createElement("li");
+        const term = document.createElement("b");
+        term.textContent = bi(item.term);
+        li.appendChild(term);
+        li.appendChild(document.createTextNode(bi(item.gloss)));
+        list.appendChild(li);
+      });
+      panel.appendChild(list);
+      return;
+    }
+    if (tab === "author" && author) {
+      const h = document.createElement("h2");
+      h.textContent = state.progress.font === "t" ? state.piece.author.t : state.piece.author.s;
+      const sub = document.createElement("p");
+      sub.className = "sheet-sub";
+      sub.textContent = [bi(author.era), author.years, bi(author.card)].filter(Boolean).join(" · ");
+      const bio = document.createElement("p");
+      bio.textContent = bi(author.bio);
+      panel.appendChild(h);
+      panel.appendChild(sub);
+      panel.appendChild(bio);
+      return;
+    }
+    const p = document.createElement("p");
+    p.textContent = bi(tab === "analysis" ? meta.analysis : meta.background);
+    panel.appendChild(p);
+    if (tab === "background") {
+      const credit = document.createElement("p");
+      credit.className = "sheet-credit";
+      credit.textContent = bi(state.notes.credit);
+      panel.appendChild(credit);
+    }
+  }
+
   function renderPiece(keepScroll) {
     const y = keepScroll ? window.scrollY : 0;
     const piece = state.piece;
@@ -551,27 +706,37 @@
     const font = state.progress.font;
     const nav = pieceNeighbors(kind, piece.id);
     const title = pieceTitle(piece);
+    const meta = pieceMeta();
     const wrap = document.createElement("article");
-    wrap.className = "reader";
+    wrap.className = "reader " + (kind === "tang" ? "shi-reader" : "ci-reader");
     const kicker = document.createElement("p");
     kicker.className = "kicker";
     kicker.textContent = (font === "t" ? data.title.t : data.title.s) + " · " + (nav.index + 1) + " / " + nav.total;
     const h1 = document.createElement("h1");
     h1.textContent = title;
-    const meta = document.createElement("p");
-    meta.className = "meta";
-    meta.textContent = font === "t" ? piece.author.t : piece.author.s;
     wrap.appendChild(kicker);
     wrap.appendChild(h1);
-    wrap.appendChild(meta);
-    const body = document.createElement("div");
-    body.className = "body verse";
-    piece.lines.forEach(function (line) {
-      const p = document.createElement("p");
-      p.className = "orig para" + (state.progress.pinyin ? " with-py" : "");
-      appendTokens(p, line.tokens);
-      body.appendChild(p);
-    });
+    if (meta && state.notes.authors[meta.author]) {
+      const author = state.notes.authors[meta.author];
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "author-card";
+      const name = document.createElement("strong");
+      name.textContent = font === "t" ? piece.author.t : piece.author.s;
+      const sub = document.createElement("span");
+      sub.textContent = [bi(author.era), author.years, bi(meta.form)].filter(Boolean).join(" · ");
+      const blurb = document.createElement("em");
+      blurb.textContent = bi(author.card);
+      card.appendChild(name);
+      card.appendChild(sub);
+      card.appendChild(blurb);
+      card.addEventListener("click", function () {
+        state.verseTab = state.verseTab === "author" ? "" : "author";
+        renderPiece(true);
+      });
+      wrap.appendChild(card);
+    }
+    const body = renderVerseBody(piece, kind, meta);
     wrap.appendChild(body);
     const foot = document.createElement("div");
     foot.className = "reader-foot";
@@ -589,22 +754,58 @@
       renderPiece(true);
     }));
     foot.appendChild(prefs);
-    if (state.progress.pinyin) {
-      const note = document.createElement("p");
-      note.className = "py-hint";
-      note.textContent = "字上是今读。点开字可以核对《说文》。";
-      foot.appendChild(note);
-    }
+    const turn = document.createElement("p");
+    turn.className = "verse-turn";
+    turn.appendChild(pieceTurn(kind, nav.prev, "上一首"));
+    turn.appendChild(pieceTurn(kind, nav.next, "下一首"));
+    foot.appendChild(turn);
+    const hint = document.createElement("p");
+    hint.className = "py-hint";
+    hint.textContent = "点一个字，看《说文》。左右滑动可以换一首。";
+    foot.appendChild(hint);
     wrap.appendChild(foot);
+    const bar = document.createElement("nav");
+    bar.className = "verse-bar";
+    bar.setAttribute("aria-label", "译文和赏析");
+    VERSE_TABS.forEach(function (item) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = item[1];
+      btn.classList.toggle("on", state.verseTab === item[0]);
+      btn.addEventListener("click", function () {
+        state.verseTab = state.verseTab === item[0] ? "" : item[0];
+        renderPiece(true);
+      });
+      bar.appendChild(btn);
+    });
+    wrap.appendChild(bar);
+    const panel = document.createElement("section");
+    panel.className = "verse-panel";
+    panel.hidden = !state.verseTab;
+    if (state.verseTab) fillVersePanel(panel, state.verseTab);
+    wrap.appendChild(panel);
     const pager = document.createElement("nav");
     pager.className = "pager";
     pager.appendChild(piecePager(kind, nav.prev, "上一首"));
     pager.appendChild(piecePager(kind, nav.next, "下一首"));
     wrap.appendChild(pager);
     main.replaceChildren(wrap);
+    fitVerse(body);
     document.title = title + " · 典籍";
     syncChrome();
     window.scrollTo(0, y);
+  }
+
+  function pieceTurn(kind, item, label) {
+    const a = document.createElement("a");
+    a.textContent = item ? label : "";
+    if (!item) {
+      a.className = "off";
+      a.textContent = label;
+      return a;
+    }
+    a.href = "#/" + kind + "/" + item.id;
+    return a;
   }
 
   function piecePager(kind, item, label) {
@@ -836,6 +1037,7 @@
         }
         btn.appendChild(document.createTextNode(glyph));
         btn.addEventListener("click", function () {
+          if (Date.now() - lastSwipeAt < 450) return;
           openPopup(tok, aligned ? index : Math.min(index, chars.length - 1), btn);
         });
         word.appendChild(btn);
@@ -1195,8 +1397,9 @@
     const tabbar = document.getElementById("tabbar");
     const dock = document.getElementById("dock");
     tabbar.hidden = reading;
-    dock.hidden = !reading;
+    dock.hidden = !reading || onPiece;
     document.body.classList.toggle("is-reading", reading);
+    document.body.classList.toggle("is-piece", onPiece);
     tabbar.querySelectorAll("a").forEach(function (a) {
       a.classList.toggle("on", a.dataset.tab === tab);
     });
@@ -1287,7 +1490,29 @@
   window.addEventListener("hashchange", route);
   window.addEventListener("resize", function () {
     if (!popup.hidden && state.popupTok) placePopup(state.popupTok.anchor);
+    fitVerse(document.querySelector(".body.verse"));
   });
+
+  let swipeX = 0;
+  let swipeY = 0;
+  let lastSwipeAt = 0;
+  main.addEventListener("touchstart", function (event) {
+    if (event.touches.length !== 1) return;
+    swipeX = event.touches[0].clientX;
+    swipeY = event.touches[0].clientY;
+  }, { passive: true });
+  main.addEventListener("touchend", function (event) {
+    if (state.view !== "piece" || !state.piece) return;
+    if (event.target.closest && event.target.closest(".verse-panel, .verse-bar, .author-card, .verse-turn, .foot-links")) return;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - swipeX;
+    const dy = touch.clientY - swipeY;
+    if (Math.abs(dx) < 72 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    lastSwipeAt = Date.now();
+    const nav = pieceNeighbors(state.kind, state.piece.id);
+    if (dx < 0 && nav.next) location.hash = "#/" + state.kind + "/" + nav.next.id;
+    if (dx > 0 && nav.prev) location.hash = "#/" + state.kind + "/" + nav.prev.id;
+  }, { passive: true });
 
   boot().catch(function (err) {
     main.innerHTML = "<p class='empty'>页面数据没有载入。请用本地服务器打开本站，不要直接双击文件。</p>";
