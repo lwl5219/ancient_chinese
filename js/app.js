@@ -12,7 +12,9 @@
     popupTok: null,
     view: "hub",
     books: null,
-    szj: null,
+    collections: {},
+    piece: null,
+    kind: "",
   };
   let loadToken = 0;
 
@@ -33,9 +35,10 @@
       raw.pinyinSet = !!raw.pinyinSet;
       if (!raw.pinyinSet) raw.pinyin = true;
       else raw.pinyin = !!raw.pinyin;
+      raw.collections = raw.collections && typeof raw.collections === "object" ? raw.collections : {};
       return raw;
     } catch (err) {
-      return { learned: {}, font: "s", mode: "parallel", last: "", pinyin: true, pinyinSet: false };
+      return { learned: {}, font: "s", mode: "parallel", last: "", pinyin: true, pinyinSet: false, collections: {} };
     }
   }
 
@@ -97,7 +100,7 @@
         state.dict = data.chars || {};
         const open = state.popupTok;
         if (state.view === "article" && state.article && state.progress.pinyin) renderArticle(true);
-        if (state.view === "szj" && state.szj && state.progress.pinyin) renderSzj(true);
+        if (state.view === "piece" && state.piece && state.progress.pinyin) renderPiece(true);
         if (open) {
           const anchor = open.anchor && open.anchor.isConnected ? open.anchor : null;
           openPopup(open.tok, open.index, anchor);
@@ -147,14 +150,21 @@
     catalogEl.replaceChildren(root);
   }
 
+  const POETRY = {
+    tang: { file: "data/tang.json", label: "唐诗" },
+    ci: { file: "data/songci.json", label: "宋词" },
+  };
+
   function route() {
     const hash = location.hash || "#/";
     const read = hash.match(/^#\/read\/(v\d{2}-\d{2})$/);
     const vol = hash.match(/^#\/gwgz\/(\d{1,2})$/);
+    const piece = hash.match(/^#\/(tang|ci)\/([a-z0-9-]+)$/);
     if (read) showArticle(read[1]);
     else if (vol) showVolume(Number(vol[1]));
     else if (hash === "#/gwgz") showBook();
-    else if (hash === "#/szj") showSanzijing();
+    else if (piece) showPiece(piece[1], piece[2]);
+    else if (hash === "#/tang" || hash === "#/ci") showCollection(hash.slice(2));
     else showHub();
   }
 
@@ -162,7 +172,8 @@
     if (state.books && state.books.books) return state.books.books;
     return [
       { id: "gwgz", title: "古文观止", href: "#/gwgz", meta: "十二卷 · 二百二十二篇", detail: "先读这一本。" },
-      { id: "szj", title: "三字经", href: "#/szj", meta: "传统蒙书 · 下一本", detail: "开篇已可阅读。" },
+      { id: "tang", title: "唐诗", href: "#/tang", meta: "精选名篇", detail: "从《静夜思》读起。" },
+      { id: "ci", title: "宋词", href: "#/ci", meta: "精选名篇", detail: "从《水调歌头》读起。" },
     ];
   }
 
@@ -406,89 +417,209 @@
     syncChrome();
   }
 
-  async function showSanzijing() {
-    const token = ++loadToken;
-    closePopup();
-    state.view = "szj";
-    state.article = null;
-    if (!state.szj) {
-      skeleton("正在打开三字经");
-      syncChrome();
-      const res = await fetch("data/sanzijing.json");
-      if (token !== loadToken) return;
-      if (!res.ok) {
-        main.innerHTML = "<p class='empty'>三字经还没有生成。在仓库根目录运行 python3 scripts/build_sanzijing.py。</p>";
-        return;
-      }
-      state.szj = await res.json();
+  async function ensureCollection(kind, token) {
+    if (state.collections[kind]) return true;
+    const meta = POETRY[kind];
+    skeleton("正在打开" + meta.label);
+    syncChrome();
+    const res = await fetch(meta.file);
+    if (token !== loadToken) return false;
+    if (!res.ok) {
+      main.innerHTML = "<p class='empty'>" + meta.label + "还没有生成。在仓库根目录运行 python3 scripts/build_poetry.py。</p>";
+      return false;
     }
-    if (token !== loadToken) return;
-    renderSzj(false);
+    state.collections[kind] = await res.json();
+    return token === loadToken;
   }
 
-  function renderSzj(keepScroll) {
-    const y = keepScroll ? window.scrollY : 0;
-    const data = state.szj;
+  async function showCollection(kind) {
+    const token = ++loadToken;
+    closePopup();
+    state.view = "collection";
+    state.kind = kind;
+    state.article = null;
+    state.piece = null;
+    if (!(await ensureCollection(kind, token))) return;
+    renderCollection(kind);
+  }
+
+  function renderCollection(kind) {
+    const data = state.collections[kind];
     const font = state.progress.font;
+    const meta = POETRY[kind];
     const wrap = document.createElement("article");
-    wrap.className = "reader";
+    wrap.className = "home";
     const h1 = document.createElement("h1");
     h1.textContent = font === "t" ? data.title.t : data.title.s;
     const lead = document.createElement("p");
     lead.className = "lead";
-    lead.textContent = "开篇二十二句。点开字，看今读和《说文》。";
+    lead.textContent = data.pieces.length + " 首。点开一首，字上是今读。";
     wrap.appendChild(h1);
     wrap.appendChild(lead);
-    data.sections.forEach(function (sec) {
-      const box = document.createElement("section");
-      if (!sec.ready) {
-        box.className = "soon";
-        const h2 = document.createElement("h2");
-        h2.textContent = sec.title;
-        const p = document.createElement("p");
-        p.textContent = sec.note || "这一部分还在整理。";
-        box.appendChild(h2);
-        box.appendChild(p);
-        wrap.appendChild(box);
-        return;
-      }
-      const h2 = document.createElement("h2");
-      h2.className = "section-label";
-      h2.textContent = sec.title;
-      wrap.appendChild(h2);
-      sec.lines.forEach(function (line) {
-        const pair = document.createElement("div");
-        pair.className = "pair";
-        const orig = document.createElement("p");
-        orig.className = "orig" + (state.progress.pinyin ? " with-py" : "");
-        appendTokens(orig, line.tokens);
-        pair.appendChild(orig);
-        if (line.tr) {
-          const vern = document.createElement("p");
-          vern.className = "vern";
-          vern.textContent = line.tr;
-          pair.appendChild(vern);
-        }
-        wrap.appendChild(pair);
-      });
-    });
-    if (!state.progress.pinyin) {
-      const back = document.createElement("button");
-      back.type = "button";
-      back.className = "text-link";
-      back.textContent = "显示拼音";
-      back.addEventListener("click", function () {
-        state.progress.pinyin = true;
-        state.progress.pinyinSet = true;
-        saveProgress();
-        renderSzj(true);
-      });
-      wrap.appendChild(back);
+    const lastId = state.progress.collections && state.progress.collections[kind];
+    const last = lastId ? data.pieces.find(function (item) { return item.id === lastId; }) : null;
+    if (last) {
+      const resume = document.createElement("a");
+      resume.className = "resume";
+      resume.href = "#/" + kind + "/" + last.id;
+      const copy = document.createElement("div");
+      const rk = document.createElement("p");
+      rk.className = "kicker";
+      rk.textContent = "继续读";
+      const rh = document.createElement("h2");
+      rh.textContent = font === "t" ? last.title.t : last.title.s;
+      const rs = document.createElement("p");
+      rs.textContent = meta.label + " · " + (font === "t" ? last.author.t : last.author.s);
+      const go = document.createElement("span");
+      go.className = "go";
+      go.textContent = "继续";
+      copy.appendChild(rk);
+      copy.appendChild(rh);
+      copy.appendChild(rs);
+      resume.appendChild(copy);
+      resume.appendChild(go);
+      wrap.appendChild(resume);
     }
+    const list = document.createElement("div");
+    list.className = "piece-list";
+    data.pieces.forEach(function (item, index) {
+      const link = document.createElement("a");
+      link.className = "piece";
+      link.href = "#/" + kind + "/" + item.id;
+      const idx = document.createElement("span");
+      idx.className = "idx";
+      idx.textContent = String(index + 1);
+      const title = document.createElement("span");
+      title.className = "title";
+      title.textContent = font === "t" ? item.title.t : item.title.s;
+      const sub = document.createElement("small");
+      sub.textContent = font === "t" ? item.author.t : item.author.s;
+      link.appendChild(idx);
+      link.appendChild(title);
+      link.appendChild(sub);
+      list.appendChild(link);
+    });
+    wrap.appendChild(list);
     main.replaceChildren(wrap);
-    document.title = "三字经 · 典籍";
+    document.title = meta.label + " · 典籍";
+    syncChrome();
+  }
+
+  async function showPiece(kind, id) {
+    const token = ++loadToken;
+    closePopup();
+    state.view = "piece";
+    state.kind = kind;
+    state.article = null;
+    state.piece = null;
+    if (!(await ensureCollection(kind, token))) return;
+    const piece = state.collections[kind].pieces.find(function (item) { return item.id === id; });
+    if (!piece) {
+      state.view = "collection";
+      main.innerHTML = "<p class='empty'>没有这一首。</p>";
+      syncChrome();
+      return;
+    }
+    state.piece = piece;
+    state.progress.collections = state.progress.collections || {};
+    state.progress.collections[kind] = id;
+    saveProgress();
+    renderPiece(false);
+  }
+
+  function pieceNeighbors(kind, id) {
+    const list = (state.collections[kind] && state.collections[kind].pieces) || [];
+    const i = list.findIndex(function (item) { return item.id === id; });
+    return {
+      prev: i > 0 ? list[i - 1] : null,
+      next: i >= 0 && i < list.length - 1 ? list[i + 1] : null,
+      index: i,
+      total: list.length,
+    };
+  }
+
+  function pieceTitle(item) {
+    if (!item) return "";
+    return state.progress.font === "t" ? item.title.t : item.title.s;
+  }
+
+  function renderPiece(keepScroll) {
+    const y = keepScroll ? window.scrollY : 0;
+    const piece = state.piece;
+    const kind = state.kind;
+    const data = state.collections[kind];
+    const font = state.progress.font;
+    const nav = pieceNeighbors(kind, piece.id);
+    const title = pieceTitle(piece);
+    const wrap = document.createElement("article");
+    wrap.className = "reader";
+    const kicker = document.createElement("p");
+    kicker.className = "kicker";
+    kicker.textContent = (font === "t" ? data.title.t : data.title.s) + " · " + (nav.index + 1) + " / " + nav.total;
+    const h1 = document.createElement("h1");
+    h1.textContent = title;
+    const meta = document.createElement("p");
+    meta.className = "meta";
+    meta.textContent = font === "t" ? piece.author.t : piece.author.s;
+    wrap.appendChild(kicker);
+    wrap.appendChild(h1);
+    wrap.appendChild(meta);
+    const body = document.createElement("div");
+    body.className = "body verse";
+    piece.lines.forEach(function (line) {
+      const p = document.createElement("p");
+      p.className = "orig para" + (state.progress.pinyin ? " with-py" : "");
+      appendTokens(p, line.tokens);
+      body.appendChild(p);
+    });
+    wrap.appendChild(body);
+    const foot = document.createElement("div");
+    foot.className = "reader-foot";
+    const prefs = document.createElement("div");
+    prefs.className = "foot-links";
+    prefs.appendChild(textLink(font === "t" ? "看简体" : "看繁体", function () {
+      state.progress.font = font === "t" ? "s" : "t";
+      saveProgress();
+      renderPiece(true);
+    }));
+    prefs.appendChild(textLink(state.progress.pinyin ? "隐藏拼音" : "显示拼音", function () {
+      state.progress.pinyin = !state.progress.pinyin;
+      state.progress.pinyinSet = true;
+      saveProgress();
+      renderPiece(true);
+    }));
+    foot.appendChild(prefs);
+    if (state.progress.pinyin) {
+      const note = document.createElement("p");
+      note.className = "py-hint";
+      note.textContent = "字上是今读。点开字可以核对《说文》。";
+      foot.appendChild(note);
+    }
+    wrap.appendChild(foot);
+    const pager = document.createElement("nav");
+    pager.className = "pager";
+    pager.appendChild(piecePager(kind, nav.prev, "上一首"));
+    pager.appendChild(piecePager(kind, nav.next, "下一首"));
+    wrap.appendChild(pager);
+    main.replaceChildren(wrap);
+    document.title = title + " · 典籍";
     syncChrome();
     window.scrollTo(0, y);
+  }
+
+  function piecePager(kind, item, label) {
+    const a = document.createElement("a");
+    const small = document.createElement("small");
+    small.textContent = label;
+    a.appendChild(small);
+    if (!item) {
+      a.href = "#/" + kind;
+      a.appendChild(document.createTextNode("返回目录"));
+      return a;
+    }
+    a.href = "#/" + kind + "/" + item.id;
+    a.appendChild(document.createTextNode(pieceTitle(item)));
+    return a;
   }
 
 
@@ -1036,13 +1167,16 @@
   function syncChrome() {
     const hash = location.hash || "#/";
     const onArticle = state.view === "article" && /^#\/read\//.test(hash);
-    const reading = onArticle && !!state.article;
+    const onPiece = state.view === "piece" && !!state.piece;
+    const reading = (onArticle && !!state.article) || onPiece;
     const crumbs = [];
     let rail = 0;
     let tab = "home";
-    if (state.view === "szj" || hash === "#/szj") {
-      tab = "szj";
+    const poetry = POETRY[state.kind];
+    if ((state.view === "collection" || onPiece) && poetry) {
+      tab = state.kind;
       crumbs.push({ href: "#/", label: "典籍" });
+      if (onPiece) crumbs.push({ href: "#/" + state.kind, label: poetry.label });
     } else if (state.view === "book" || hash === "#/gwgz") {
       tab = "gwgz";
       crumbs.push({ href: "#/", label: "典籍" });
@@ -1071,9 +1205,9 @@
     document.querySelector(".top").classList.toggle("has-back", crumbs.length > 0);
     const tabbar = document.getElementById("tabbar");
     const dock = document.getElementById("dock");
-    tabbar.hidden = onArticle;
+    tabbar.hidden = reading;
     dock.hidden = !reading;
-    document.body.classList.toggle("is-reading", onArticle);
+    document.body.classList.toggle("is-reading", reading);
     tabbar.querySelectorAll("a").forEach(function (a) {
       a.classList.toggle("on", a.dataset.tab === tab);
     });
@@ -1086,7 +1220,21 @@
       shell.classList.remove("has-rail");
       catalogEl.replaceChildren();
     }
-    if (reading) {
+    if (onPiece) {
+      const nav = pieceNeighbors(state.kind, state.piece.id);
+      const prev = document.getElementById("dock-prev");
+      const next = document.getElementById("dock-next");
+      prev.disabled = !nav.prev;
+      next.disabled = !nav.next;
+      fillDock(prev, "上一首", nav.prev ? pieceTitle(nav.prev) : "");
+      fillDock(next, "下一首", nav.next ? pieceTitle(nav.next) : "已是末首");
+      prev.onclick = function () {
+        if (nav.prev) location.hash = "#/" + state.kind + "/" + nav.prev.id;
+      };
+      next.onclick = function () {
+        if (nav.next) location.hash = "#/" + state.kind + "/" + nav.next.id;
+      };
+    } else if (reading) {
       const nav = neighbors(state.article.id);
       const prev = document.getElementById("dock-prev");
       const next = document.getElementById("dock-next");
