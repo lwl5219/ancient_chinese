@@ -9,13 +9,17 @@
     progress: loadProgress(),
     query: "",
     openVol: 1,
+    popupTok: null,
   };
+  let loadToken = 0;
 
   const main = document.getElementById("main");
   const catalogEl = document.getElementById("catalog");
   const popup = document.getElementById("popup");
+  const scrim = document.getElementById("scrim");
   const shell = document.querySelector(".shell");
   const topProgress = document.getElementById("top-progress");
+  const meter = document.getElementById("top-meter-fill");
 
   function loadProgress() {
     try {
@@ -57,7 +61,16 @@
     return { prev: i > 0 ? list[i - 1] : null, next: i >= 0 && i < list.length - 1 ? list[i + 1] : null };
   }
 
+  function skeleton(label) {
+    main.innerHTML =
+      "<div class='loading' aria-busy='true' aria-live='polite'>" +
+      "<div class='sk sk-kicker'></div><div class='sk sk-title'></div>" +
+      "<div class='sk sk-line'></div><div class='sk sk-line'></div><div class='sk sk-line short'></div>" +
+      "<p>" + label + "</p></div>";
+  }
+
   async function boot() {
+    skeleton("正在载入目录");
     const res = await fetch("data/catalog.json");
     if (!res.ok) {
       main.innerHTML = "<p class='empty'>没有读到目录。请在仓库根目录运行本地服务器后再打开本页。</p>";
@@ -73,7 +86,12 @@
     route();
     fetch("data/dict.json")
       .then(function (r) { return r.json(); })
-      .then(function (data) { state.dict = data.chars || {}; })
+      .then(function (data) {
+        state.dict = data.chars || {};
+        if (!popup.hidden && state.popupTok) {
+          openPopup(state.popupTok.tok, state.popupTok.index, state.popupTok.anchor);
+        }
+      })
       .catch(function () { state.dict = {}; });
   }
 
@@ -81,7 +99,9 @@
     if (!state.catalog) return;
     const n = learnedCount();
     const total = state.catalog.articleCount;
+    const pct = total ? Math.round((n / total) * 100) : 0;
     topProgress.textContent = "已读 " + n + " / " + total;
+    meter.style.width = pct + "%";
     const btn = document.getElementById("continue-btn");
     btn.textContent = state.progress.last ? "继续阅读" : "从首篇读起";
   }
@@ -92,7 +112,7 @@
     const root = document.createElement("div");
     const input = document.createElement("input");
     input.className = "catalog-search";
-    input.placeholder = "搜索篇名";
+    input.placeholder = "搜索篇名、作者";
     input.value = state.query;
     input.setAttribute("aria-label", "搜索篇名");
     input.addEventListener("input", function () {
@@ -118,10 +138,18 @@
       const head = document.createElement("button");
       head.type = "button";
       const done = vol.articles.filter(function (art) { return state.progress.learned[art.id]; }).length;
-      head.innerHTML = "<strong>" + vol.title + " · " + vol.subtitle + "</strong><span>" + done + "/" + vol.articles.length + "</span>";
+      const opened = q || state.openVol === vol.volume;
+      head.setAttribute("aria-expanded", opened ? "true" : "false");
+      if (opened) head.classList.add("open");
+      const strong = document.createElement("strong");
+      strong.textContent = vol.title + " · " + vol.subtitle;
+      const count = document.createElement("span");
+      count.className = "count";
+      count.textContent = done + "/" + vol.articles.length;
+      head.appendChild(strong);
+      head.appendChild(count);
       const list = document.createElement("ol");
       list.className = "vol-list";
-      const opened = q || state.openVol === vol.volume;
       list.hidden = !opened;
       head.addEventListener("click", function () {
         state.openVol = state.openVol === vol.volume && !q ? 0 : vol.volume;
@@ -132,7 +160,14 @@
         const a = document.createElement("a");
         a.href = "#/read/" + art.id;
         if (state.article && state.article.id === art.id) a.className = "active";
-        a.innerHTML = "<span class='idx'>" + art.index + "</span><span>" + art.title + "</span>";
+        const idx = document.createElement("span");
+        idx.className = "idx";
+        idx.textContent = String(art.index);
+        const title = document.createElement("span");
+        title.className = "title";
+        title.textContent = art.title;
+        a.appendChild(idx);
+        a.appendChild(title);
         if (state.progress.learned[art.id]) {
           const mark = document.createElement("span");
           mark.className = "done";
@@ -158,6 +193,8 @@
   }
 
   function showHome() {
+    loadToken += 1;
+    closePopup();
     state.article = null;
     const total = state.catalog.articleCount;
     const n = learnedCount();
@@ -167,31 +204,83 @@
     main.innerHTML = "";
     const wrap = document.createElement("article");
     wrap.className = "home";
-    wrap.innerHTML =
-      "<p class='kicker'>吴楚材 · 吴调侯 选编</p>" +
-      "<h1>古文观止</h1>" +
-      "<p class='lead'>按原书十二卷、二百二十二篇的次序来读。从卷一第一篇《郑伯克段于鄢》开始，点开原文里的字，查看读音、《说文》本义和本句意思。卷一十八篇配有系统讲解；其余篇目已导入原文，可先通读、点字，讲解随后补。</p>" +
-      "<div class='stats'>" +
-      "<div class='stat'><b>" + total + "</b><span>全编篇目</span></div>" +
-      "<div class='stat'><b>" + state.catalog.annotatedCount + "</b><span>已配系统讲解</span></div>" +
-      "<div class='stat'><b>" + n + "</b><span>你已读完</span></div>" +
-      "</div>" +
-      "<div class='bar' aria-hidden='true'><i style='width:" + pct + "%'></i></div>";
+    const kicker = document.createElement("p");
+    kicker.className = "kicker";
+    kicker.textContent = "吴楚材、吴调侯选编 · 十二卷";
+    const h1 = document.createElement("h1");
+    h1.textContent = "古文观止";
+    const lead = document.createElement("p");
+    lead.className = "lead";
+    lead.textContent = "按原书次序读。点开原文里的字，查看本句意思和《说文》本义。卷一十八篇有系统讲解，其余篇目可以先通读原文。";
+    wrap.appendChild(kicker);
+    wrap.appendChild(h1);
+    wrap.appendChild(lead);
+
+    const stats = document.createElement("div");
+    stats.className = "stats";
+    [["全编篇目", total], ["已配讲解", state.catalog.annotatedCount], ["你已读完", n]].forEach(function (pair) {
+      const card = document.createElement("div");
+      card.className = "stat";
+      const b = document.createElement("b");
+      b.textContent = String(pair[1]);
+      const span = document.createElement("span");
+      span.textContent = pair[0];
+      card.appendChild(b);
+      card.appendChild(span);
+      stats.appendChild(card);
+    });
+    wrap.appendChild(stats);
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    bar.setAttribute("aria-hidden", "true");
+    const fill = document.createElement("i");
+    fill.style.width = pct + "%";
+    bar.appendChild(fill);
+    wrap.appendChild(bar);
+
     const actions = document.createElement("p");
+    actions.className = "home-actions";
     const start = document.createElement("a");
     start.className = "text-btn primary";
     start.href = "#/read/" + (last ? last.id : first.id);
     start.textContent = last ? "继续《" + last.title + "》" : "从《" + first.title + "》读起";
-    start.style.display = "inline-block";
     actions.appendChild(start);
     wrap.appendChild(actions);
+
+    const label = document.createElement("p");
+    label.className = "section-label";
+    label.textContent = "按卷进入";
+    wrap.appendChild(label);
+    const grid = document.createElement("div");
+    grid.className = "vol-grid";
+    state.catalog.volumes.forEach(function (vol) {
+      const done = vol.articles.filter(function (art) { return state.progress.learned[art.id]; }).length;
+      const next = vol.articles.find(function (art) { return !state.progress.learned[art.id]; }) || vol.articles[0];
+      const card = document.createElement("a");
+      card.className = "vol-card";
+      card.href = "#/read/" + next.id;
+      const strong = document.createElement("strong");
+      strong.textContent = vol.title + " · " + vol.subtitle;
+      const span = document.createElement("span");
+      span.textContent = done + " / " + vol.articles.length + " 已读";
+      const em = document.createElement("em");
+      em.textContent = done === vol.articles.length ? "再读一遍" : "从《" + next.title + "》";
+      card.appendChild(strong);
+      card.appendChild(span);
+      card.appendChild(em);
+      grid.appendChild(card);
+    });
+    wrap.appendChild(grid);
     main.appendChild(wrap);
     renderCatalog();
   }
 
   async function showArticle(id) {
-    main.innerHTML = "<p class='empty'>正在打开篇目…</p>";
+    const token = ++loadToken;
+    closePopup();
+    skeleton("正在打开篇目");
     const res = await fetch("data/articles/" + id + ".json");
+    if (token !== loadToken) return;
     if (!res.ok) {
       main.innerHTML = "<p class='empty'>没有这一篇。</p>";
       return;
@@ -232,21 +321,19 @@
     if (!art.annotated) {
       const banner = document.createElement("p");
       banner.className = "banner";
-      banner.textContent = "这一篇已收入原文。点字可看《说文》本义和今读参考。逐句语境义和系统讲解目前做到卷一；其余各卷用同一套数据结构，可继续导入。";
+      banner.textContent = "这一篇已收入原文。点字可看《说文》本义。逐句语境义和系统讲解目前做到卷一。";
       wrap.appendChild(banner);
     }
 
     const tool = document.createElement("div");
     tool.className = "tool";
-    tool.appendChild(segment("原文", "read", mode));
-    tool.appendChild(segment("文白对照", "parallel", mode));
-    tool.appendChild(segment("系统讲解", "lesson", mode));
-    tool.appendChild(segment(font === "t" ? "繁体" : "简体", "font", font));
+    tool.appendChild(modeSeg(mode));
+    tool.appendChild(fontSeg(font));
     const learn = document.createElement("button");
     learn.type = "button";
     const learned = !!state.progress.learned[art.id];
     learn.textContent = learned ? "已读完" : "标为已读";
-    learn.className = learned ? "primary" : "";
+    if (learned) learn.className = "primary";
     learn.addEventListener("click", function () {
       if (state.progress.learned[art.id]) delete state.progress.learned[art.id];
       else state.progress.learned[art.id] = Date.now();
@@ -257,7 +344,7 @@
     wrap.appendChild(tool);
 
     if (mode === "lesson") {
-      wrap.appendChild(renderLesson(art, font));
+      wrap.appendChild(renderLesson(art));
       if (!art.lesson) wrap.appendChild(renderBody(art, "read"));
     } else {
       wrap.appendChild(renderBody(art, mode));
@@ -287,34 +374,43 @@
     window.scrollTo(0, 0);
   }
 
-  function segment(label, kind, current) {
+  function modeSeg(mode) {
     const box = document.createElement("div");
     box.className = "seg";
-    if (kind === "font") {
-      ["s", "t"].forEach(function (value) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.textContent = value === "s" ? "简体" : "繁体";
-        if (current === value) btn.className = "on";
-        btn.addEventListener("click", function () {
-          state.progress.font = value;
-          saveProgress();
-          renderArticle();
-        });
-        box.appendChild(btn);
+    box.setAttribute("role", "group");
+    box.setAttribute("aria-label", "阅读视图");
+    [["read", "原文"], ["parallel", "文白对照"], ["lesson", "系统讲解"]].forEach(function (pair) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = pair[1];
+      if (mode === pair[0]) btn.className = "on";
+      btn.addEventListener("click", function () {
+        state.progress.mode = pair[0];
+        saveProgress();
+        renderArticle();
       });
-      return box;
-    }
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = label;
-    if (current === kind) btn.className = "on";
-    btn.addEventListener("click", function () {
-      state.progress.mode = kind;
-      saveProgress();
-      renderArticle();
+      box.appendChild(btn);
     });
-    box.appendChild(btn);
+    return box;
+  }
+
+  function fontSeg(font) {
+    const box = document.createElement("div");
+    box.className = "seg";
+    box.setAttribute("role", "group");
+    box.setAttribute("aria-label", "简繁");
+    [["s", "简体"], ["t", "繁体"]].forEach(function (pair) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = pair[1];
+      if (font === pair[0]) btn.className = "on";
+      btn.addEventListener("click", function () {
+        state.progress.font = pair[0];
+        saveProgress();
+        renderArticle();
+      });
+      box.appendChild(btn);
+    });
     return box;
   }
 
@@ -383,49 +479,52 @@
     });
   }
 
-  function renderLesson(art, font) {
+  function renderLesson(art) {
     const box = document.createElement("div");
     box.className = "lesson";
     if (!art.lesson) {
       const p = document.createElement("p");
-      p.textContent = "本篇的系统讲解还没有写入。你可以先读原文，点开每个字看《说文》本义。";
+      p.className = "banner";
+      p.textContent = "本篇的系统讲解还没有写入。下面是原文，点开每个字可看《说文》本义。";
       box.appendChild(p);
       return box;
     }
     const lesson = art.lesson;
-    addSection(box, "作者与背景", lesson.background);
-    addList(box, "重点实词", lesson.keyContentWords, function (item) {
-      return item.word + "（" + item.reading + "）：" + item.note;
+    addProse(box, "作者与背景", lesson.background);
+    addGloss(box, "重点实词", lesson.keyContentWords, function (item) {
+      return { term: item.word, reading: item.reading, note: item.note };
     });
-    addList(box, "重点虚词", lesson.keyFunctionWords, function (item) {
-      return item.word + "（" + item.reading + "）：" + item.note;
+    addGloss(box, "重点虚词", lesson.keyFunctionWords, function (item) {
+      return { term: item.word, reading: item.reading, note: item.note };
     });
-    addList(box, "古今异义", lesson.ancientModern, function (item) {
-      return item.word + "：" + item.note;
+    addGloss(box, "古今异义", lesson.ancientModern, function (item) {
+      return { term: item.word, note: item.note };
     });
-    addList(box, "通假字", lesson.phoneticLoans, function (item) {
-      return item.word + "通「" + item.loan + "」。" + item.note;
+    addGloss(box, "通假字", lesson.phoneticLoans, function (item) {
+      return { term: item.word + " / " + item.loan, note: item.note };
     });
-    addList(box, "词类活用", lesson.flexibleUsage, function (item) {
-      return item.word + "：" + item.note;
+    addGloss(box, "词类活用", lesson.flexibleUsage, function (item) {
+      return { term: item.word, note: item.note };
     });
-    addList(box, "特殊句式", lesson.specialSyntax, function (item) {
-      return item.name + "：" + item.note;
+    addGloss(box, "特殊句式", lesson.specialSyntax, function (item) {
+      return { term: item.name, note: item.note };
     });
-    addSection(box, "文章主旨", lesson.theme);
-    addSection(box, "写作手法", lesson.technique);
+    addProse(box, "文章主旨", lesson.theme);
+    addProse(box, "写作手法", lesson.technique);
 
+    const card = document.createElement("section");
+    card.className = "note-card";
     const h2 = document.createElement("h2");
     h2.textContent = "逐句白话";
-    box.appendChild(h2);
+    card.appendChild(h2);
     const ol = document.createElement("ol");
+    ol.className = "sentence-list";
     art.paragraphs.forEach(function (para) {
       para.sentences.forEach(function (sent) {
         if (!sent.tr) return;
         const li = document.createElement("li");
         const orig = document.createElement("div");
-        orig.className = "orig";
-        orig.style.fontSize = "1.05rem";
+        orig.className = "orig compact";
         appendTokens(orig, sent.tokens);
         const vern = document.createElement("div");
         vern.className = "vern";
@@ -435,30 +534,51 @@
         ol.appendChild(li);
       });
     });
-    box.appendChild(ol);
+    card.appendChild(ol);
+    box.appendChild(card);
     return box;
   }
 
-  function addSection(box, title, text) {
+  function addProse(box, title, text) {
+    const sec = document.createElement("section");
+    sec.className = "note-card";
     const h2 = document.createElement("h2");
     h2.textContent = title;
     const p = document.createElement("p");
     p.textContent = text;
-    box.appendChild(h2);
-    box.appendChild(p);
+    sec.appendChild(h2);
+    sec.appendChild(p);
+    box.appendChild(sec);
   }
 
-  function addList(box, title, items, format) {
+  function addGloss(box, title, items, map) {
+    const sec = document.createElement("section");
+    sec.className = "note-card";
     const h2 = document.createElement("h2");
     h2.textContent = title;
     const ul = document.createElement("ul");
+    ul.className = "gloss-list";
     (items || []).forEach(function (item) {
+      const row = map(item);
       const li = document.createElement("li");
-      li.textContent = format(item);
+      const term = document.createElement("span");
+      term.className = "term";
+      term.textContent = row.term;
+      li.appendChild(term);
+      if (row.reading) {
+        const reading = document.createElement("span");
+        reading.className = "reading";
+        reading.textContent = row.reading;
+        li.appendChild(reading);
+      }
+      const note = document.createElement("p");
+      note.textContent = row.note;
+      li.appendChild(note);
       ul.appendChild(li);
     });
-    box.appendChild(h2);
-    box.appendChild(ul);
+    sec.appendChild(h2);
+    sec.appendChild(ul);
+    box.appendChild(sec);
   }
 
   function pagerLink(meta, label) {
@@ -474,79 +594,94 @@
   }
 
   function lookup(ch) {
-    if (!state.dict) return null;
+    if (!state.dict) return { pending: true };
     return state.dict[ch] || null;
   }
 
   function openPopup(tok, index, anchor) {
+    state.popupTok = { tok: tok, index: index, anchor: anchor };
+    document.querySelectorAll(".zi.on").forEach(function (el) { el.classList.remove("on"); });
+    if (anchor) anchor.classList.add("on");
     const chars = Array.from(tok.t);
     const focus = chars[index] || chars[0];
     const entry = lookup(focus);
     const title = state.progress.font === "t" ? tok.t : (tok.s || tok.t);
     const py = tok.py || (entry && entry.py) || "";
     popup.hidden = false;
+    scrim.hidden = false;
     popup.innerHTML = "";
     const head = document.createElement("header");
+    const titles = document.createElement("div");
     const h3 = document.createElement("h3");
     h3.id = "popup-title";
     h3.textContent = title;
+    const pyEl = document.createElement("p");
+    pyEl.className = "py";
+    pyEl.textContent = py || (entry && entry.pending ? "读音载入中" : "读音未收");
+    titles.appendChild(h3);
+    titles.appendChild(pyEl);
     const close = document.createElement("button");
     close.type = "button";
     close.className = "close-x";
     close.textContent = "×";
     close.setAttribute("aria-label", "关闭");
     close.addEventListener("click", closePopup);
-    head.appendChild(h3);
+    head.appendChild(titles);
     head.appendChild(close);
     popup.appendChild(head);
 
-    const pyEl = document.createElement("p");
-    pyEl.className = "py";
-    pyEl.textContent = py || "（读音未收）";
-    popup.appendChild(pyEl);
-
     const tags = document.createElement("div");
     tags.className = "tags";
-    if (tok.level === "sentence") tags.appendChild(tag("本句读音", "seal"));
+    if (tok.level === "sentence") tags.appendChild(tag("本句读音", "accent"));
     else tags.appendChild(tag("今读参考", ""));
     if (tok.pos) tags.appendChild(tag(tok.pos, ""));
-    if (tok.extra) tags.appendChild(tag(tok.extra, "seal"));
+    if (tok.extra) tags.appendChild(tag(tok.extra, "accent"));
     popup.appendChild(tags);
 
+    const sense = document.createElement("section");
+    sense.className = "pop-sec";
+    const senseLabel = document.createElement("p");
+    senseLabel.className = "pop-label";
+    senseLabel.textContent = "本句";
     const ctx = document.createElement("p");
     ctx.className = "ctx";
-    if (tok.level === "sentence" && tok.ctx) {
-      ctx.textContent = "本句义：" + tok.ctx;
-    } else {
-      ctx.textContent = "本句义：这一篇还没有逐句审定的义项。下面是《说文》本义，用来帮助判断，不等于已经核定的句中义。";
-    }
-    popup.appendChild(ctx);
+    if (tok.level === "sentence" && tok.ctx) ctx.textContent = tok.ctx;
+    else ctx.textContent = "这一篇还没有逐句审定的义项。下面的《说文》本义用来帮助判断，不等于已经核定的句中义。";
+    sense.appendChild(senseLabel);
+    sense.appendChild(ctx);
+    popup.appendChild(sense);
 
+    const dictSec = document.createElement("section");
+    dictSec.className = "pop-sec";
+    const dictLabel = document.createElement("p");
+    dictLabel.className = "pop-label";
+    dictLabel.textContent = "说文";
+    dictSec.appendChild(dictLabel);
     chars.forEach(function (ch, i) {
       const info = lookup(ch) || {};
-      const block = document.createElement("section");
-      block.className = "char-block";
-      if (ch === focus) block.style.background = "#fff6ee";
+      const block = document.createElement("div");
+      block.className = "char-block" + (ch === focus ? " focus" : "");
       const h4 = document.createElement("h4");
-      const simp = state.progress.font === "t" ? ch : (info && state.dict ? ch : ch);
-      h4.textContent = (state.progress.font === "s" ? Array.from(tok.s || tok.t)[i] || ch : ch) + (ch !== (Array.from(tok.s || "")[i] || ch) ? "（" + ch + "）" : "");
+      const shown = state.progress.font === "s" ? (Array.from(tok.s || tok.t)[i] || ch) : ch;
+      const trad = Array.from(tok.t)[i] || ch;
+      h4.textContent = shown + (shown !== trad ? "（" + trad + "）" : "");
       const sub = document.createElement("p");
       sub.className = "sub";
       const bits = [];
       if (info.py) bits.push(info.py);
-      if (info.fanqie) bits.push("反切：" + info.fanqie);
+      if (info.fanqie) bits.push("反切 " + info.fanqie);
       sub.textContent = bits.join(" · ");
       const ben = document.createElement("p");
       const benText = state.progress.font === "t" ? (info.ben || "") : (info.benS || info.ben || "");
-      ben.textContent = info.inShuowen === false || !benText
-        ? "《说文解字》未收此字。"
-        : "本义：《说文》" + benText;
+      if (info.pending) ben.textContent = "字典正在载入。";
+      else if (!benText) ben.textContent = "《说文解字》未收此字。";
+      else ben.textContent = benText;
       block.appendChild(h4);
       if (bits.length) block.appendChild(sub);
       block.appendChild(ben);
-      popup.appendChild(block);
+      dictSec.appendChild(block);
     });
-
+    popup.appendChild(dictSec);
     placePopup(anchor);
   }
 
@@ -558,7 +693,7 @@
   }
 
   function placePopup(anchor) {
-    if (window.matchMedia("(max-width: 860px)").matches) {
+    if (!anchor || window.matchMedia("(max-width: 860px)").matches) {
       popup.style.left = "0";
       popup.style.top = "auto";
       return;
@@ -568,16 +703,19 @@
     const height = popup.offsetHeight;
     let left = rect.left;
     let top = rect.bottom + 8;
-    if (left + width > window.innerWidth - 12) left = window.innerWidth - width - 12;
-    if (left < 12) left = 12;
-    if (top + height > window.innerHeight - 12) top = Math.max(12, rect.top - height - 8);
+    if (left + width > window.innerWidth - 16) left = window.innerWidth - width - 16;
+    if (left < 16) left = 16;
+    if (top + height > window.innerHeight - 16) top = Math.max(16, rect.top - height - 8);
     popup.style.left = left + "px";
     popup.style.top = top + "px";
   }
 
   function closePopup() {
     popup.hidden = true;
+    scrim.hidden = true;
     popup.innerHTML = "";
+    state.popupTok = null;
+    document.querySelectorAll(".zi.on").forEach(function (el) { el.classList.remove("on"); });
   }
 
   function closeNav() {
@@ -592,6 +730,7 @@
     document.getElementById("backdrop").hidden = !open;
   });
   document.getElementById("backdrop").addEventListener("click", closeNav);
+  scrim.addEventListener("click", closePopup);
   document.getElementById("continue-btn").addEventListener("click", function () {
     const id = state.progress.last || (state.catalog && state.catalog.volumes[0].articles[0].id);
     if (id) location.hash = "#/read/" + id;
@@ -605,12 +744,13 @@
   document.addEventListener("click", function (event) {
     if (popup.hidden) return;
     if (popup.contains(event.target)) return;
+    if (scrim.contains(event.target)) return;
     if (event.target.closest && event.target.closest(".zi, .word button")) return;
     closePopup();
   });
   window.addEventListener("hashchange", route);
   window.addEventListener("resize", function () {
-    if (!popup.hidden) closePopup();
+    if (!popup.hidden && state.popupTok) placePopup(state.popupTok.anchor);
   });
 
   boot().catch(function (err) {
