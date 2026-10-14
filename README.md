@@ -1,8 +1,8 @@
-# 古文观止 · 系统学习
+# 典籍
 
-按《古文观止》原书十二卷、二百二十二篇的次序阅读古文。从卷一第一篇《郑伯克段于鄢》开始：点开原文里的字，看读音、《说文解字》本义和本句意思；卷一十八篇另有系统讲解。学习进度记在浏览器本地。
+按原书次序读经典。现在先读《古文观止》：十二卷、二百二十二篇，从卷一《郑伯克段于鄢》开始。点开字，看带声调的拼音、《说文解字》本义和本句意思；卷一十八篇另有系统讲解。下一本是《三字经》，开篇二十二句已经可以读。学习进度记在浏览器本地。
 
-这是一个纯静态网站，不需要构建工具就能打开。
+这是一个纯静态网站，不需要构建工具就能打开。手机上从底部切换典籍、观止和三字经；读文章时，底部是上一篇和下一篇。
 
 ## 本地运行
 
@@ -16,11 +16,12 @@ python3 -m http.server 8765
 
 ## 怎么读
 
-- 首页可以按卷展开篇目，也可以搜索篇名。
-- 阅读页有三种视图：**原文**、**文白对照**、**系统讲解**。文白对照和系统讲解目前只在卷一完整提供。
+- 首页是典籍。进入《古文观止》后按卷选择，再点开篇目。
+- 拼音默认显示在字的上方。文白对照是卷一的默认读法；系统讲解在篇末的「看系统讲解」。简繁、隐藏拼音和「这篇读完了」也放在篇末，不挡正文。
 - 点原文中的字：弹出该字在本句中的读音和义项；下面附《说文》字头的今读参考、反切和本义。未做逐句审定的篇目，弹出的是《说文》本义，并标明还不是核定过的句中义。
-- 「标为已读」和上次读到的篇目存在 `localStorage`（键名 `gwgz-progress-v1`），只留在这台浏览器里。
-- 可在简体、繁体之间切换显示。底本是繁体，简体由 OpenCC 转换。
+- 「这篇读完了」和上次读到的篇目存在 `localStorage`（键名 `gwgz-progress-v1`），只留在这台浏览器里。
+- 底本是繁体，简体由 OpenCC 转换。
+- 《三字经》开篇在 `#/szj`。字上是现代汉语今读。
 
 ## 部署到 GitHub Pages
 
@@ -49,6 +50,7 @@ python3 -m http.server 8765
 python3 scripts/fetch_wikisource.py
 git clone --depth 1 https://github.com/shuowenjiezi/shuowen.git /tmp/shuowen
 python3 scripts/build_site.py
+python3 scripts/build_sanzijing.py
 ```
 
 依赖：Python 3，以及 `opencc`、`pypinyin`。
@@ -62,12 +64,15 @@ pip install opencc-python-reimplemented pypinyin
 ## 目录
 
 - `index.html`、`css/app.css`、`js/app.js`：阅读界面。
-- `data/catalog.json`：十二卷目录。
+- `data/books.json`：站点上的书。
+- `data/catalog.json`：古文观止十二卷目录。
+- `data/sanzijing.json`：三字经开篇，由 `sources/sanzijing/text.txt` 生成。
 - `data/articles/`：每篇一篇 JSON。
 - `data/dict.json`：正文用字的《说文》索引。
 - `annotations/`：卷一讲解。
 - `scripts/`：抓取、解析和构建。
 - `sources/wikisource/`：维基文库原始维基文本。
+- `sources/sanzijing/text.txt`：三字经开篇和后续章节的底稿。
 - `legacy/`：本仓库原先的词典爬虫。新站点不使用它。
 
 ## 关于旧代码
