@@ -4,13 +4,13 @@
       {
         "collection": "古文观止",
         "pieces": 222,
-        "chars": 106857,
+        "chars": 106867,
         "unexpected": "0"
       },
       {
         "collection": "资治通鉴",
         "pieces": 182,
-        "chars": 59682,
+        "chars": 59683,
         "unexpected": "0"
       },
       {
@@ -21,14 +21,14 @@
       },
       {
         "collection": "唐诗",
-        "pieces": 36,
-        "chars": 1188,
+        "pieces": 330,
+        "chars": 19752,
         "unexpected": "0"
       },
       {
         "collection": "宋词",
-        "pieces": 23,
-        "chars": 1558,
+        "pieces": 292,
+        "chars": 24774,
         "unexpected": "0"
       }
     ],

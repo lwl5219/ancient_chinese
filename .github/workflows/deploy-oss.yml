@@ -44,7 +44,7 @@ jobs:
           rm -rf site
           mkdir -p site
           cp index.html favicon.svg site/
-          cp -a css js data site/
+          cp -a css js data audio site/
           python3 scripts/stamp_assets.py site
           echo "Staged $(find site -type f | wc -l) files"
           test -f site/version.json
@@ -78,6 +78,7 @@ jobs:
               *.woff2) echo "font/woff2" ;;
               *.txt) echo "text/plain; charset=utf-8" ;;
               *.xml) echo "application/xml; charset=utf-8" ;;
+              *.ogg) echo "audio/ogg" ;;
               *) echo "application/octet-stream" ;;
             esac
           }
@@ -99,7 +100,7 @@ jobs:
           }
 
           sync_ext html "${html_cache}"
-          for ext in css js mjs json svg png jpg jpeg webp gif ico woff woff2 txt xml map; do
+          for ext in css js mjs json svg png jpg jpeg webp gif ico woff woff2 txt xml map ogg; do
             sync_ext "${ext}" "${static_cache}"
           done
 
@@ -108,15 +109,15 @@ jobs:
             ! -name '*.html' ! -name '*.css' ! -name '*.js' ! -name '*.mjs' \
             ! -name '*.json' ! -name '*.svg' ! -name '*.png' ! -name '*.jpg' \
             ! -name '*.jpeg' ! -name '*.webp' ! -name '*.gif' ! -name '*.ico' \
-            ! -name '*.woff' ! -name '*.woff2' ! -name '*.txt' ! -name '*.xml' \
-            ! -name '*.map' -print -quit)"
+            ! -name '*.woff' ! -name '*.woff2'             ! -name '*.txt' ! -name '*.xml' \
+            ! -name '*.map' ! -name '*.ogg' -print -quit)"
           if [[ -n "${other}" ]]; then
             ossutil sync site "${dest}" \
               --exclude "*.html" --exclude "*.css" --exclude "*.js" --exclude "*.mjs" \
               --exclude "*.json" --exclude "*.svg" --exclude "*.png" --exclude "*.jpg" \
               --exclude "*.jpeg" --exclude "*.webp" --exclude "*.gif" --exclude "*.ico" \
-              --exclude "*.woff" --exclude "*.woff2" --exclude "*.txt" --exclude "*.xml" \
-              --exclude "*.map" \
+              --exclude "*.woff" --exclude "*.woff2"               --exclude "*.txt" --exclude "*.xml" \
+              --exclude "*.map" --exclude "*.ogg" \
               --content-type "application/octet-stream" \
               --cache-control "${static_cache}" \
               --force \

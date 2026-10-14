@@ -77,7 +77,7 @@ MANUAL = {
 
 # 短语覆盖单字。按汉字长度从长到短套用，已改过的位置不再改。
 PHRASES = [
-    ("遙看", "yáo kān"),
+    ("遙看", "yáo kàn"),
     ("不勝簪", "bù shēng zān"),
     ("石徑斜", "shí jìng xiá"),
     ("夕陽斜", "xī yáng xiá"),
@@ -132,7 +132,7 @@ PHRASES = [
 CHECKS = [
     ("jingyesi", "看月光", "kàn yuè guāng"),
     ("jingyesi", "思故鄉", "sī gù xiāng"),
-    ("lushan", "遙看", "yáo kān"),
+    ("lushan", "遙看", "yáo kàn"),
     ("baidi", "朝辭", "zhāo cí"),
     ("baidi", "一日還", "yī rì huán"),
     ("baidi", "萬重山", "wàn chóng shān"),
