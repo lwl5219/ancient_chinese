@@ -55,7 +55,8 @@ jobs:
           set -euo pipefail
           test -f www/index.html
           grep -q 'hm.js?b5b9eb7e229dc60c4ebcd43c57100446' www/index.html
-          grep -q '网站统计' www/index.html
+          grep -q 'busuanzi.pure.mini.js' www/index.html
+          grep -q '详细统计' www/index.html
           ossutil cp www/index.html oss://lucca-www/index.html \
             --content-type "text/html; charset=utf-8" \
             --cache-control "no-cache, must-revalidate" \

@@ -49,7 +49,10 @@ a.card:active{transform:scale(.98)}
 .off{opacity:.55;cursor:default}
 footer{margin-top:56px;color:var(--sub);font-size:12px;letter-spacing:.1em;text-align:center}
 footer .copy{margin-bottom:10px}
-footer .stat{color:inherit;text-decoration:none;font-family:system-ui,sans-serif;font-size:11px;letter-spacing:.08em;opacity:.75}
+footer .meta{font-family:system-ui,sans-serif;font-size:11px;letter-spacing:.06em;line-height:1.6}
+footer .counts{display:none}
+footer .counts[style*="inline"]{margin-right:.75em}
+footer .stat{color:inherit;text-decoration:none;opacity:.75}
 footer .stat:hover{color:var(--accent);opacity:1}
 </style>
 </head>
@@ -71,7 +74,10 @@ const MODULES = [
   <main class="grid" id="grid"></main>
   <footer>
     <div class="copy">© <span id="y"></span> lucca.top</div>
-    <a class="stat" href="https://tongji.baidu.com/web5/welcome/login">网站统计</a>
+    <p class="meta">
+      <span id="busuanzi_container_site_pv" class="counts">总访问量 <span id="busuanzi_value_site_pv"></span> · 访客数 <span id="busuanzi_value_site_uv"></span></span>
+      <a class="stat" href="https://tongji.baidu.com/web5/welcome/login">详细统计</a>
+    </p>
   </footer>
 </div>
 <script>
@@ -87,5 +93,6 @@ MODULES.forEach(m=>{
 });
 document.getElementById('y').textContent=new Date().getFullYear();
 </script>
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 </body>
 </html>
