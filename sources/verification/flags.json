@@ -14,6 +14,18 @@
         "unexpected": "0"
       },
       {
+        "collection": "道德经",
+        "pieces": 81,
+        "chars": 5297,
+        "unexpected": "0"
+      },
+      {
+        "collection": "论语",
+        "pieces": 20,
+        "chars": 15929,
+        "unexpected": "0"
+      },
+      {
         "collection": "人间词话",
         "pieces": 64,
         "chars": 4139,
@@ -43,31 +55,31 @@
       {
         "trad": "於",
         "simp": "于",
-        "count": 2031,
+        "count": 2254,
         "note": "介词作于"
       },
       {
         "trad": "後",
         "simp": "后",
-        "count": 399,
+        "count": 449,
         "note": "归并"
       },
       {
         "trad": "餘",
         "simp": "余",
-        "count": 232,
+        "count": 246,
         "note": "总表正条作余。附注说可能混淆时可用馀。没有中华书局该书，不改成馀"
       },
       {
         "trad": "雲",
         "simp": "云",
-        "count": 79,
+        "count": 80,
         "note": "归并"
       },
       {
         "trad": "徵",
         "simp": "征",
-        "count": 13,
+        "count": 16,
         "note": "征召、征兆、征逐。不是乐律"
       },
       {
@@ -95,6 +107,12 @@
         "note": "干燥作干"
       },
       {
+        "trad": "祇",
+        "simp": "只",
+        "count": 3,
+        "note": "只辱。神祇不在此列"
+      },
+      {
         "trad": "禕",
         "simp": "祎",
         "count": 3,
@@ -113,22 +131,16 @@
         "note": "归并"
       },
       {
+        "trad": "祇",
+        "simp": "祇",
+        "count": 2,
+        "note": "神祇保留祇"
+      },
+      {
         "trad": "徵",
         "simp": "徵",
         "count": 1,
         "note": "流徵保留徵"
-      },
-      {
-        "trad": "祇",
-        "simp": "只",
-        "count": 1,
-        "note": "只辱。神祇不在此列"
-      },
-      {
-        "trad": "祇",
-        "simp": "祇",
-        "count": 1,
-        "note": "神祇保留祇"
       }
     ],
     "simpProblems": []

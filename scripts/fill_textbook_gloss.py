@@ -11,8 +11,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def load_senses() -> dict[str, str]:
     senses = {}
-    for name in ("gloss_a.txt", "gloss_b.txt"):
-        for line in (ROOT / "scripts" / name).read_text(encoding="utf-8").splitlines():
+    for name in ("gloss_a.txt", "gloss_b.txt", "gloss_c.txt"):
+        path = ROOT / "scripts" / name
+        if not path.is_file():
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
             ch, gloss = line.split("\t", 1)

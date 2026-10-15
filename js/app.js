@@ -26,6 +26,10 @@
     glossSources: null,
     grades: null,
     gradeFilter: "",
+    famousOnly: false,
+    famous: null,
+    daode: null,
+    lunyu: null,
     listMode: "work",
   };
   let loadToken = 0;
@@ -100,15 +104,36 @@
     return /^z\d{2}-\d{2}$/.test(id || "");
   }
 
+  function isDaodeId(id) {
+    return /^d\d{2}-\d{2}$/.test(id || "");
+  }
+
+  function isLunyuId(id) {
+    return /^l\d{2}-\d{2}$/.test(id || "");
+  }
+
+  function classicArticles(which) {
+    const data = which === "daode" ? state.daode : state.lunyu;
+    const list = [];
+    ((data && data.volumes) || []).forEach(function (vol) {
+      vol.articles.forEach(function (art) { list.push(art); });
+    });
+    return list;
+  }
+
   function articleList(id) {
     if (isZztjId(id)) return zztjArticles();
     if (isRenjianId(id)) return renjianArticles();
+    if (isDaodeId(id)) return classicArticles("daode");
+    if (isLunyuId(id)) return classicArticles("lunyu");
     return flatArticles();
   }
 
   function bookNameFor(id) {
     if (isZztjId(id)) return "资治通鉴";
     if (isRenjianId(id)) return "人间词话";
+    if (isDaodeId(id)) return "道德经";
+    if (isLunyuId(id)) return "论语";
     return "古文观止";
   }
 
@@ -141,7 +166,7 @@
 
   async function boot() {
     skeleton("正在载入");
-    const [catRes, booksRes, authorsRes, renjianRes, zztjRes, provRes, readRes, glossRes, gradeRes] = await Promise.all([
+    const [catRes, booksRes, authorsRes, renjianRes, zztjRes, provRes, readRes, glossRes, gradeRes, daodeRes, lunyuRes, famousRes] = await Promise.all([
       fetch(assetUrl("data/catalog.json")),
       fetch(assetUrl("data/books.json")),
       fetch(assetUrl("data/prose-authors.json")),
@@ -151,6 +176,9 @@
       fetch(assetUrl("data/reading-policy.json")),
       fetch(assetUrl("data/gloss-sources.json")),
       fetch(assetUrl("data/grades.json")),
+      fetch(assetUrl("data/daode.json")),
+      fetch(assetUrl("data/lunyu.json")),
+      fetch(assetUrl("data/famous.json")),
     ]);
     if (!catRes.ok) {
       main.innerHTML = "<p class='empty'>没有读到目录。请在仓库根目录运行本地服务器后再打开本页。</p>";
@@ -165,6 +193,9 @@
     if (readRes.ok) state.readingPolicy = await readRes.json();
     if (glossRes.ok) state.glossSources = await glossRes.json();
     if (gradeRes.ok) state.grades = await gradeRes.json();
+    if (daodeRes.ok) state.daode = await daodeRes.json();
+    if (lunyuRes.ok) state.lunyu = await lunyuRes.json();
+    if (famousRes.ok) state.famous = await famousRes.json();
     if (state.progress.last) {
       const meta = findArticleMeta(state.progress.last);
       if (meta) state.openVol = Number(meta.id.slice(1, 3));
@@ -275,7 +306,7 @@
 
   function route() {
     const hash = location.hash || "#/";
-    const read = hash.match(/^#\/read\/((?:v|h|z)\d{2}-\d{2})$/);
+    const read = hash.match(/^#\/read\/((?:v|h|z|d|l)\d{2}-\d{2})$/);
     const vol = hash.match(/^#\/gwgz\/(\d{1,2})$/);
     const zjuan = hash.match(/^#\/zztj\/(\d{1,2})$/);
     const authorPage = hash.match(/^#\/(tang|ci|ke)\/author\/(.+)$/);
@@ -286,6 +317,8 @@
     else if (hash === "#/gwgz") showBook();
     else if (hash === "#/zztj") showZztj();
     else if (hash === "#/rjch") showRenjian();
+    else if (hash === "#/daode") showClassic("daode");
+    else if (hash === "#/lunyu") showClassic("lunyu");
     else if (authorPage) showAuthor(authorPage[1], decodeURIComponent(authorPage[2]));
     else if (piece) showPiece(piece[1], piece[2]);
     else if (hash === "#/tang" || hash === "#/ci" || hash === "#/ke") showCollection(hash.slice(2));
@@ -297,9 +330,12 @@
     return [
       { id: "gwgz", title: "古文观止", href: "#/gwgz", meta: "十二卷 · 二百二十二篇", detail: "先读这一本。" },
       { id: "zztj", title: "资治通鉴", href: "#/zztj", meta: "司马光 · 周纪秦纪已收", detail: "汉纪以后待添加。" },
-      { id: "rjch", title: "人间词话", href: "#/rjch", meta: "王国维 · 六十四则", detail: "一九〇八年至一九〇九年《国粹学报》本。" },
+      { id: "daode", title: "道德经", href: "#/daode", meta: "王弼本 · 八十一章", detail: "道经、德经。" },
+      { id: "lunyu", title: "论语", href: "#/lunyu", meta: "二十篇", detail: "从《学而》读起。" },
       { id: "tang", title: "唐诗", href: "#/tang", meta: "精选名篇", detail: "从《静夜思》读起。" },
       { id: "ci", title: "宋词", href: "#/ci", meta: "精选名篇", detail: "从《水调歌头》读起。" },
+      { id: "rjch", title: "人间词话", href: "#/rjch", meta: "王国维 · 六十四则", detail: "一九〇八年至一九〇九年《国粹学报》本。" },
+      { id: "ke", title: "课文", href: "#/ke", meta: "统编教材", detail: "三百首和古文观止未收的课文。" },
     ];
   }
 
@@ -371,6 +407,59 @@
     syncChrome();
   }
 
+  function showClassic(which) {
+    loadToken += 1;
+    closePopup();
+    state.view = which;
+    state.article = null;
+    const data = which === "daode" ? state.daode : state.lunyu;
+    const title = which === "daode" ? "道德经" : "论语";
+    const wrap = document.createElement("article");
+    wrap.className = "home";
+    const h1 = document.createElement("h1");
+    h1.textContent = title;
+    const lead = document.createElement("p");
+    lead.className = "lead";
+    const articles = classicArticles(which);
+    lead.textContent = data
+      ? (data.lead || "") + " 已读 " + learnedIn(articles) + " / " + articles.length + "。"
+      : "目录还没有载入。";
+    wrap.appendChild(h1);
+    wrap.appendChild(lead);
+    appendCatalogTools(wrap, which);
+    if (!data) {
+      main.replaceChildren(wrap);
+      document.title = title + " · 典籍";
+      syncChrome();
+      return;
+    }
+    data.volumes.forEach(function (vol) {
+      const block = document.createElement("section");
+      block.className = "era-block";
+      const h2 = document.createElement("h2");
+      h2.textContent = vol.title;
+      block.appendChild(h2);
+      const list = document.createElement("div");
+      list.className = "piece-list";
+      vol.articles.filter(function (art) {
+        return gradeMatches(art.id) && famousMatches(art.id);
+      }).forEach(function (art) {
+        list.appendChild(pieceLink(art, false));
+      });
+      if (!list.childElementCount) {
+        const empty = document.createElement("p");
+        empty.className = "catalog-empty";
+        empty.textContent = "这一卷没有符合筛选的篇目。";
+        block.appendChild(empty);
+      }
+      block.appendChild(list);
+      wrap.appendChild(block);
+    });
+    main.replaceChildren(wrap);
+    document.title = title + " · 典籍";
+    syncChrome();
+  }
+
   function zztjPiece(art) {
     const a = document.createElement("a");
     a.className = "piece";
@@ -414,7 +503,7 @@
     wrap.appendChild(h1);
     wrap.appendChild(lead);
     appendCatalogTools(wrap, "zztj");
-    if (state.gradeFilter) {
+    if (state.gradeFilter || state.famousOnly) {
       appendGradeHits(wrap, articles, function (art) { return pieceLink(art, false); });
       main.replaceChildren(wrap);
       document.title = "资治通鉴 · 典籍";
@@ -612,7 +701,7 @@
     });
     wrap.appendChild(input);
     appendCatalogTools(wrap, "gwgz");
-    if (state.gradeFilter && !state.query.trim()) {
+    if ((state.gradeFilter || state.famousOnly) && !state.query.trim()) {
       appendGradeHits(wrap, flatArticles(), function (art) {
         return pieceLink(art, true);
       });
@@ -635,7 +724,7 @@
         empty.textContent = "没有匹配的篇目。";
         box.appendChild(empty);
       }
-      hits.filter(function (art) { return gradeMatches(art.id); }).slice(0, 40).forEach(function (art) {
+      hits.filter(function (art) { return gradeMatches(art.id) && famousMatches(art.id); }).slice(0, 40).forEach(function (art) {
         box.appendChild(pieceLink(art, true));
       });
       wrap.appendChild(box);
@@ -761,7 +850,7 @@
     wrap.appendChild(h1);
     wrap.appendChild(lead);
     appendCatalogTools(wrap, "rjch");
-    if (state.gradeFilter) {
+    if (state.gradeFilter || state.famousOnly) {
       appendGradeHits(wrap, articles, function (art) { return pieceLink(art, false); });
       main.replaceChildren(wrap);
       document.title = "人间词话 · 典籍";
@@ -859,7 +948,14 @@
   function gradeMatches(id) {
     if (!state.gradeFilter) return true;
     const entry = gradeOf(id);
-    return !!(entry && entry.stage === state.gradeFilter);
+    if (!entry) return false;
+    if (entry.stage === state.gradeFilter) return true;
+    return (entry.also || []).some(function (item) { return item.stage === state.gradeFilter; });
+  }
+
+  function famousMatches(id) {
+    if (!state.famousOnly) return true;
+    return !!(state.famous && state.famous.pieces && state.famous.pieces[id]);
   }
 
   function appendGradeTag(parent, id) {
@@ -872,13 +968,15 @@
   }
 
   function appendGradeHits(wrap, articles, linkFor) {
-    const hits = articles.filter(function (art) { return gradeMatches(art.id); });
+    const hits = articles.filter(function (art) { return gradeMatches(art.id) && famousMatches(art.id); });
     const box = document.createElement("div");
     box.className = "piece-list";
     if (!hits.length) {
       const empty = document.createElement("p");
       empty.className = "catalog-empty";
-      empty.textContent = "没有标上「" + state.gradeFilter + "」的篇目。";
+      empty.textContent = state.famousOnly && !state.gradeFilter
+        ? "没有标成名篇的篇目。"
+        : "没有标上「" + (state.gradeFilter || "名篇") + "」的篇目。";
       box.appendChild(empty);
     }
     hits.forEach(function (art) { box.appendChild(linkFor(art)); });
@@ -917,10 +1015,25 @@
         else if (kind === "gwgz") showBook();
         else if (kind === "zztj") showZztj();
         else if (kind === "rjch") showRenjian();
+        else if (kind === "daode" || kind === "lunyu") showClassic(kind);
       });
       grades.appendChild(btn);
     });
     bar.appendChild(grades);
+    const famousBtn = document.createElement("button");
+    famousBtn.type = "button";
+    famousBtn.className = "famous-toggle";
+    famousBtn.textContent = "名篇";
+    famousBtn.classList.toggle("on", !!state.famousOnly);
+    famousBtn.addEventListener("click", function () {
+      state.famousOnly = !state.famousOnly;
+      if (kind === "tang" || kind === "ci" || kind === "ke") renderCollection(kind);
+      else if (kind === "gwgz") showBook();
+      else if (kind === "zztj") showZztj();
+      else if (kind === "rjch") showRenjian();
+      else if (kind === "daode" || kind === "lunyu") showClassic(kind);
+    });
+    bar.appendChild(famousBtn);
     wrap.appendChild(bar);
   }
 
@@ -1002,11 +1115,13 @@
     appendCatalogTools(wrap, kind);
     const list = document.createElement("div");
     list.className = "piece-list";
-    const visible = data.pieces.filter(function (item) { return gradeMatches(item.id); });
+    const visible = data.pieces.filter(function (item) { return gradeMatches(item.id) && famousMatches(item.id); });
     if (!visible.length) {
       const empty = document.createElement("p");
       empty.className = "catalog-empty";
-      empty.textContent = "没有标上「" + state.gradeFilter + "」的篇目。";
+      empty.textContent = state.famousOnly && !state.gradeFilter
+        ? "没有标成名篇的篇目。"
+        : "没有标上「" + (state.gradeFilter || "名篇") + "」的篇目。";
       wrap.appendChild(empty);
       main.replaceChildren(wrap);
       document.title = meta.label + " · 典籍";
@@ -1055,7 +1170,7 @@
     const data = state.collections[kind];
     const pieces = data.pieces.filter(function (item) {
       return item.author.s === name || item.author.t === name;
-    }).filter(function (item) { return gradeMatches(item.id); });
+    }).filter(function (item) { return gradeMatches(item.id) && famousMatches(item.id); });
     const wrap = document.createElement("article");
     wrap.className = "home";
     const font = state.progress.font;
@@ -1199,6 +1314,7 @@
       const p = document.createElement("p");
       p.className = "orig verse-line" + (state.progress.pinyin ? " with-py" : "");
       appendTokens(p, row);
+      if (state.piece) markFamous(p, row, state.piece.id);
       parent.appendChild(p);
     });
   }
@@ -1402,6 +1518,25 @@
     return p;
   }
 
+  function appendSourceLine(parent, id) {
+    const src = state.provenance && state.provenance.pieces && state.provenance.pieces[id];
+    if (!src || !src.edition) return;
+    const p = document.createElement("p");
+    p.className = "source-line";
+    p.appendChild(document.createTextNode("出处 "));
+    if (src.url) {
+      const a = document.createElement("a");
+      a.href = src.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = src.edition;
+      p.appendChild(a);
+    } else {
+      p.appendChild(document.createTextNode(src.edition));
+    }
+    parent.appendChild(p);
+  }
+
   function appendProvenance(panel, id) {
     const src = state.provenance && state.provenance.pieces && state.provenance.pieces[id];
     if (!src) return;
@@ -1576,6 +1711,10 @@
       credit.textContent = "白话、注释和赏析是本书编写的。正文用司马光《资治通鉴》周纪、秦纪（卷一至卷八）。标明增补或移入的段落没有收。";
     } else if (isRenjianId(art.id)) {
       credit.textContent = "白话、注释和赏析是本书编写的。正文用王国维《人间词话》一九〇八年至一九〇九年《国粹学报》已刊六十四则。";
+    } else if (isDaodeId(art.id)) {
+      credit.textContent = "白话和逐字注是本书编写的。正文用王弼注所依的华亭张氏本，简体按通行归并。校释参考中华书局楼宇烈《老子道德经注校释》和陈鼓应《老子注译及评介》，没有逐句抄录。";
+    } else if (isLunyuId(art.id)) {
+      credit.textContent = "白话和逐字注是本书编写的。正文用维基文库《论语》主文。译注参考中华书局杨伯峻《论语译注》，没有逐句抄录。";
     } else {
       credit.textContent = lesson
         ? "主旨、手法和白话是本书编写的。选本评点是《古文观止》所附的旧评，不是现代赏析网站的原文。"
@@ -1759,6 +1898,7 @@
       refreshReading();
     });
     wrap.appendChild(card);
+    appendSourceLine(wrap, art.id);
     wrap.appendChild(renderProseBody(art));
     wrap.appendChild(readerFoot(art, font, nav));
     appendReadingBar(wrap);
@@ -1858,6 +1998,13 @@
         const orig = document.createElement("p");
         orig.className = "orig" + (state.progress.pinyin ? " with-py" : "");
         appendTokens(orig, sent.tokens);
+        markFamous(orig, sent.tokens, art.id);
+        if (sent.grade) {
+          const tag = document.createElement("span");
+          tag.className = "sent-grade";
+          tag.textContent = sent.grade;
+          orig.appendChild(tag);
+        }
         pair.appendChild(orig);
         if (hasTr) appendSentenceGloss(pair, (sent.tr || "").trim());
         body.appendChild(pair);
@@ -2103,7 +2250,9 @@
     if (!art.lesson) {
       const p = document.createElement("p");
       p.className = "banner";
-      p.textContent = "本篇的系统讲解还没有写入。下面是原文，点开每个字可看《说文》本义。";
+      p.textContent = art.annotated
+        ? "译文在每一句下面。点开字，看它在这一句里的意思。"
+        : "本篇的系统讲解还没有写入。下面是原文，点开每个字可看《说文》本义。";
       box.appendChild(p);
       return box;
     }
@@ -2307,7 +2456,100 @@
     return simp;
   }
 
+  function simplifiedHan(tokens) {
+    return (tokens || []).map(function (tok) {
+      if (tok.punct) return "";
+      return tok.s || tok.t || "";
+    }).join("");
+  }
+
+  function matchFamous(pieceId, tokens) {
+    const lines = (state.famous && state.famous.lines) || [];
+    const han = simplifiedHan(tokens);
+    if (!han || han.length < 2) return null;
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      if (line.pieces && line.pieces.indexOf(pieceId) < 0) continue;
+      const quote = String(line.quote || "").replace(/[^\u4e00-\u9fff]/g, "");
+      if (quote.length < 4) continue;
+      if (han.indexOf(quote) >= 0) return line;
+      if (han.length >= 6 && quote.indexOf(han) >= 0) return line;
+    }
+    return null;
+  }
+
+  function markFamous(node, tokens, pieceId) {
+    const hit = matchFamous(pieceId, tokens);
+    if (!hit || !(hit.comments || []).length) return;
+    node.classList.add("famous-line");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "famous-mark";
+    btn.setAttribute("aria-label", "打开名句评点");
+    btn.textContent = "评";
+    btn.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      openFamous(hit);
+    });
+    node.appendChild(btn);
+  }
+
+  function closeFamous() {
+    const sheet = document.getElementById("famous-sheet");
+    if (!sheet || sheet.hidden) return;
+    sheet.hidden = true;
+    sheet.innerHTML = "";
+  }
+
+  function openFamous(entry) {
+    closePopup();
+    const sheet = document.getElementById("famous-sheet");
+    sheet.innerHTML = "";
+    const head = document.createElement("header");
+    const h2 = document.createElement("h2");
+    h2.id = "famous-title";
+    h2.textContent = "名句";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "text-link";
+    close.textContent = "关闭";
+    close.addEventListener("click", function () {
+      closeFamous();
+      if (popup.hidden) scrim.hidden = true;
+    });
+    head.appendChild(h2);
+    head.appendChild(close);
+    sheet.appendChild(head);
+    const quote = document.createElement("p");
+    quote.className = "quote";
+    quote.textContent = entry.quote || "";
+    sheet.appendChild(quote);
+    (entry.comments || []).forEach(function (item) {
+      const block = document.createElement("div");
+      block.className = "comment";
+      const b = document.createElement("b");
+      b.textContent = [item.author, item.source].filter(Boolean).join(" · ");
+      block.appendChild(b);
+      const p = document.createElement("p");
+      p.textContent = item.text || "";
+      block.appendChild(p);
+      if (item.url) {
+        const a = document.createElement("a");
+        a.href = item.url;
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = "出处";
+        block.appendChild(a);
+      }
+      sheet.appendChild(block);
+    });
+    sheet.hidden = false;
+    scrim.hidden = false;
+  }
+
   function openPopup(tok, index, anchor) {
+    closeFamous();
     state.popupTok = { tok: tok, index: index, anchor: anchor };
     document.querySelectorAll(".zi.on").forEach(function (el) { el.classList.remove("on"); });
     if (anchor) anchor.classList.add("on");
@@ -2483,6 +2725,12 @@
     } else if (state.view === "zztj" || hash === "#/zztj") {
       tab = "zztj";
       crumbs.push({ href: "#/", label: "典籍" });
+    } else if (state.view === "daode" || hash === "#/daode") {
+      tab = "daode";
+      crumbs.push({ href: "#/", label: "典籍" });
+    } else if (state.view === "lunyu" || hash === "#/lunyu") {
+      tab = "lunyu";
+      crumbs.push({ href: "#/", label: "典籍" });
     } else if (state.view === "zjuan") {
       tab = "zztj";
       crumbs.push({ href: "#/", label: "典籍" });
@@ -2499,9 +2747,15 @@
     } else if (onArticle && state.article) {
       const renjian = isRenjianId(state.article.id);
       const tongjian = isZztjId(state.article.id);
-      tab = tongjian ? "zztj" : renjian ? "rjch" : "gwgz";
+      const daode = isDaodeId(state.article.id);
+      const lunyu = isLunyuId(state.article.id);
+      tab = tongjian ? "zztj" : renjian ? "rjch" : daode ? "daode" : lunyu ? "lunyu" : "gwgz";
       crumbs.push({ href: "#/", label: "典籍" });
-      if (tongjian) {
+      if (daode) {
+        crumbs.push({ href: "#/daode", label: "道德经" });
+      } else if (lunyu) {
+        crumbs.push({ href: "#/lunyu", label: "论语" });
+      } else if (tongjian) {
         const vol = state.openVol || 1;
         const volMeta = state.zztj && state.zztj.volumes.find(function (item) { return item.volume === vol; });
         crumbs.push({ href: "#/zztj", label: "资治通鉴" });
@@ -2540,9 +2794,11 @@
     });
     const onRenjian = tab === "rjch";
     const onZztj = tab === "zztj";
-    const total = onZztj ? zztjArticles().length : onRenjian ? renjianArticles().length : (state.catalog ? state.catalog.articleCount : 0);
-    const n = onZztj ? learnedIn(zztjArticles()) : onRenjian ? learnedIn(renjianArticles()) : learnedIn(flatArticles());
-    const showMeter = (tab === "gwgz" || tab === "rjch" || tab === "zztj") && total;
+    const onDaode = tab === "daode";
+    const onLunyu = tab === "lunyu";
+    const total = onZztj ? zztjArticles().length : onRenjian ? renjianArticles().length : onDaode ? classicArticles("daode").length : onLunyu ? classicArticles("lunyu").length : (state.catalog ? state.catalog.articleCount : 0);
+    const n = onZztj ? learnedIn(zztjArticles()) : onRenjian ? learnedIn(renjianArticles()) : onDaode ? learnedIn(classicArticles("daode")) : onLunyu ? learnedIn(classicArticles("lunyu")) : learnedIn(flatArticles());
+    const showMeter = (tab === "gwgz" || tab === "rjch" || tab === "zztj" || tab === "daode" || tab === "lunyu") && total;
     topProgress.textContent = showMeter ? "已读 " + n + " / " + total : "";
     meter.style.width = showMeter ? Math.round((n / total) * 100) + "%" : "0%";
     if (rail === "rj") renderRenjianRail();
@@ -2613,6 +2869,7 @@
     scrim.hidden = true;
     popup.innerHTML = "";
     state.popupTok = null;
+    closeFamous();
     document.querySelectorAll(".zi.on").forEach(function (el) { el.classList.remove("on"); });
   }
 

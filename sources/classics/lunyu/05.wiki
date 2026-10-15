@@ -1,0 +1,102 @@
+{{header2
+| previous = [[../里仁第四|里仁第四]]
+| next     = [[../雍也第六|雍也第六]]
+}}
+*[[論語註疏/卷05|註疏]]
+<onlyinclude>
+<div id="五之一" style="background: #d9e3f1">'''五之一'''</div>
+子謂公冶長，「可妻也；雖在縲{{另|絏|紲}}之中，非其罪也。」以其子妻之。
+
+<div id="五之二" style="background: #d9e3f1">'''五之二'''</div>
+子謂南容，「邦有道，不廢；邦無道，免於刑戮。」以其兄之子妻之。
+
+<div id="五之三" style="background: #d9e3f1">'''五之三'''</div>
+子謂子賤：「君子哉若人！魯無君子者，斯焉取斯？」
+
+<div id="五之四" style="background: #d9e3f1">'''五之四'''</div>
+子貢問曰：「賜也何如？」子曰：「女器也」。曰：「何器也？」曰：「瑚璉也。」
+
+<div id="五之五" style="background: #d9e3f1">'''五之五'''</div>
+或曰：「雍也，仁而不佞。」子曰：「焉用佞？禦人以口給，屢憎於人。不知其仁；焉用佞？」
+
+<div id="五之六" style="background: #d9e3f1">'''五之六'''</div>
+子使漆雕開仕。對曰：「吾斯之未能信。」子說。
+
+<div id="五之七" style="background: #d9e3f1">'''五之七'''</div>
+子曰：「道不行，乘桴浮於海，從我者，其由與？」子路聞之喜。子曰：「由也，好勇過我，無所取材。」
+
+<div id="五之八" style="background: #d9e3f1">'''五之八'''</div>
+孟武伯問：「子路仁乎？」子曰：「不知也。」又問，子曰：「由也，千乘之國，可使治其賦也；不知其仁也。」「求也何如？」子曰：「求也，千室之邑，百乘之家，可使爲之宰也；不知其仁也。」「赤也何如？」子曰：「赤也，束帶立於朝，可使與賓客言也；不知其仁也。」
+
+<div id="五之九" style="background: #d9e3f1">'''五之九'''</div>
+子謂子貢曰：「女與回也孰愈？」對曰：「賜也何敢望回！回也聞一以知十，賜也聞一以知二。」子曰：「弗如也。吾與女，弗如也。」
+
+<div id="五之十" style="background: #d9e3f1">'''五之十'''</div>
+宰予晝寢。子曰：「朽木不可雕也，糞土之牆，不可杇也；於予與何誅！」子曰：「始吾於人也，聽其言而信其行；今吾於人也，聽其言而觀其行；於予與改是。」
+
+<div id="五之十一" style="background: #d9e3f1">'''五之十一'''</div>
+子曰：「吾未見剛者。」或對曰：「申棖。」子曰：「棖也慾！焉得剛？」
+
+<div id="五之十二" style="background: #d9e3f1">'''五之十二'''</div>
+子貢曰：「我不欲人之加諸我也，吾亦欲無加諸人。」子曰：「賜也，非爾所及也！」
+
+<div id="五之十三" style="background: #d9e3f1">'''五之十三'''</div>
+子貢曰：「夫子之文章，可得而聞也；夫子之言性與天道，不可得而聞也。」
+
+<div id="五之十四" style="background: #d9e3f1">'''五之十四'''</div>
+子路有聞，未之能行，唯恐有聞。
+
+<div id="五之十五" style="background: #d9e3f1">'''五之十五'''</div>
+子貢問曰：「孔文子，何以謂之文也？」子曰：「敏而好學，不恥下問，是以謂之文也。」
+
+<div id="五之十六" style="background: #d9e3f1">'''五之十六'''</div>
+子謂子產：「有君子之道四焉：其行己也恭，其事上也敬，其養民也惠，其使民也義。」
+
+<div id="五之十七" style="background: #d9e3f1">'''五之十七'''</div>
+子曰：「晏平仲善與人交，久而敬之。」
+
+<div id="五之十八" style="background: #d9e3f1">'''五之十八'''</div>
+子曰：「臧文仲居蔡，山節藻梲。何如其知也？」
+
+<div id="五之十九" style="background: #d9e3f1">'''五之十九'''</div>
+子張問曰：「令尹子文，三仕爲令尹，無喜色；三已之，無慍色。舊令尹之政，必以吿新令尹。何如？」子曰：「忠矣。」曰：「仁矣乎？」曰：「未知，焉得仁？」「崔子弒齊君，陳文子有馬十乘，棄而違之，至於他邦，則曰：『猶吾大夫崔子也！』違之，之一邦，則又曰：『猶吾大夫崔子也！』違之。何如？」子曰：「淸矣。」曰：「仁矣乎？」曰：「未知，焉得仁？」
+
+<div id="五之二十" style="background: #d9e3f1">'''五之二十'''</div>
+季文子三思而後行。子聞之曰：「再，斯可矣！」
+
+<div id="五之二一" style="background: #d9e3f1">'''五之二一'''</div>
+子曰：「甯武子，邦有道則知；邦無道則愚。其知可及也，其愚不可及也。」
+
+<div id="五之二二" style="background: #d9e3f1">'''五之二二'''</div>
+子在陳，曰：「歸與！歸與！吾黨之小子狂簡，斐然成章，不知所以裁之。」
+
+<div id="五之二三" style="background: #d9e3f1">'''五之二三'''</div>
+子曰：「伯夷、叔齊，不念舊惡，怨是用希。」
+
+<div id="五之二四" style="background: #d9e3f1">'''五之二四'''</div>
+子曰：「孰謂微生高直？或乞醯焉，乞諸其鄰而與之。」
+
+<div id="五之二五" style="background: #d9e3f1">'''五之二五'''</div>
+子曰：「巧言、令色、足恭，左丘明恥之，丘亦恥之。匿怨而友其人，左丘明恥之，丘亦恥之。」
+
+<div id="五之二六" style="background: #d9e3f1">'''五之二六'''</div>
+顏淵、季路侍。子曰：「盍各言爾志？」子路曰：「願{{另2|車馬衣裘|一作「車馬衣輕裘」。「輕」字係後人所加。}}，與朋友共，敝之而無憾。」顏淵曰：「願無伐善，無施勞。」子路曰：「願聞子之志。」子曰：「老者安之，朋友信之，少者懷之。」
+
+<div id="五之二七" style="background: #d9e3f1">'''五之二七'''</div>
+子曰：「已矣乎！吾未見能見其過，而內自訟者也。」
+
+<div id="五之二八" style="background: #d9e3f1">'''五之二八'''</div>
+子曰：「十室之邑，必有忠信如丘者焉，不如丘之好學也。」
+</onlyinclude>
+
+<div id="section_SpokenWikisource_ext" class="noprint toccolours" style="clear: right; margin: 0 0 1em 1em; font-size: 90%; width: 300px; text-align: left; float: right;">
+-{zh-hant;zh-hans|
+<div style="text-align: center">[http://www.ximalaya.com/swf/sound/red.swf?id=12522939 漢語普通話朗讀]</div>
+<div style="text-align: center; font-size: xx-small;">（[http://www.ximalaya.com/4228109/sound/12522939 完整的外部鏈接]）</div>
+<div style="float: left; margin-left: 5px;">[[Image:Sound-icon.png|41px|]]</div>
+<div style="margin-left: 50px; margin-top: 2px; font-size: xx-small;">此錄音来自外部鏈接、內容同2016年7月23日的版本、由<u>白雲出岫</u>使用漢語普通話錄製，不會隨條目修訂而自動改變。</div>
+<div style="text-align: center; clear: both">'''[[:Category:有聲文獻|更多有聲文獻]]'''</div>
+}-<includeonly>[[Category:有聲文獻]]</includeonly>
+</div>
+
+{{先秦作品}}

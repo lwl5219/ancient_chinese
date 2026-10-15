@@ -1,0 +1,142 @@
+{{header2
+| previous =[[../憲問第十四|憲問第十四]]
+| next =[[../季氏第十六|季氏第十六]]
+}}
+*[[論語註疏/卷15|註疏]]
+<onlyinclude>
+<div id="十五之一" style="background: #d9e3f1">'''十五之一'''</div>
+衞靈公問陳於孔子。孔子對曰：「俎豆之事，則嘗聞之矣；軍旅之事，未之學也。」明日遂行。在陳絕糧。從者病，莫能興。子路慍見曰：「君子亦有窮乎？」子曰：「君子固窮，小人窮斯濫矣。」
+
+<div id="十五之二" style="background: #d9e3f1">'''十五之二'''</div>
+子曰：「賜也，女以予爲多學而識之者與？」對曰：「然，非與？」曰：「非也，予一以貫之。」
+
+<div id="十五之三" style="background: #d9e3f1">'''十五之三'''</div>
+子曰：「由，知德者鮮矣！」
+
+<div id="十五之四" style="background: #d9e3f1">'''十五之四'''</div>
+子曰：「無爲而治者，其舜也與！夫何爲哉？恭己正南面而已矣。」
+
+<div id="十五之五" style="background: #d9e3f1">'''十五之五'''</div>
+子張問行。子曰：「言忠信，行篤敬，雖蠻貊之邦行矣。言不忠信，行不篤敬，雖州里行乎哉？立，則見其參於前也；在輿，則見其倚於衡也。夫然後行。」子張書諸紳。
+
+<div id="十五之六" style="background: #d9e3f1">'''十五之六'''</div>
+子曰：「直哉史魚！邦有道，如矢；邦無道，如矢。君子哉蘧伯玉！邦有道，則仕；邦無道，則可卷而懷之。」
+
+<div id="十五之七" style="background: #d9e3f1">'''十五之七'''</div>
+子曰：「可與言，而不與之言，失人；不可與言，而與之言，失言。知者不失人，亦不失言。」
+
+<div id="十五之八" style="background: #d9e3f1">'''十五之八'''</div>
+子曰：「志士仁人，無求生以害仁，有殺身以成仁。」
+
+<div id="十五之九" style="background: #d9e3f1">'''十五之九'''</div>
+子貢問爲仁。子曰：「工欲善其事，必先利其器。居是邦也，事其大夫之賢者，友其士之仁者。」
+
+<div id="十五之十" style="background: #d9e3f1">'''十五之十'''</div>
+顏淵問爲邦。子曰：「行夏之時，乘殷之輅，服周之冕，樂則韶舞。放鄭聲，遠佞人。鄭聲淫，佞人殆。」
+
+<div id="十五之十一" style="background: #d9e3f1">'''十五之十一'''</div>
+子曰：「人無遠慮，必有近憂。」
+
+<div id="十五之十二" style="background: #d9e3f1">'''十五之十二'''</div>
+子曰：「已矣乎！吾未見好德如好色者也！」
+
+<div id="十五之十三" style="background: #d9e3f1">'''十五之十三'''</div>
+子曰：「臧文仲，其竊位者與！知柳下惠之賢，而不與立也。」
+
+<div id="十五之十四" style="background: #d9e3f1">'''十五之十四'''</div>
+子曰：「躬自厚，而薄責於人，則遠怨矣！」
+
+<div id="十五之十五" style="background: #d9e3f1">'''十五之十五'''</div>
+子曰：「不曰『如之何，如之何』者，吾末如之何也已矣！」
+
+<div id="十五之十六" style="background: #d9e3f1">'''十五之十六'''</div>
+子曰：「群居終日，言不及義，好行小慧，難矣哉！」
+
+<div id="十五之十七" style="background: #d9e3f1">'''十五之十七'''</div>
+子曰：「君子義以爲質，禮以行之，孫以出之，信以成之。君子哉！」
+
+<div id="十五之十八" style="background: #d9e3f1">'''十五之十八'''</div>
+子曰：「君子病無能焉，不病人之不己知也。」
+
+<div id="十五之十九" style="background: #d9e3f1">'''十五之十九'''</div>
+子曰：「君子疾沒世而名不稱焉。」
+
+<div id="十五之二十" style="background: #d9e3f1">'''十五之二十'''</div>
+子曰：「君子求諸己，小人求諸人。」
+
+<div id="十五之二一" style="background: #d9e3f1">'''十五之二一'''</div>
+子曰：「君子矜而不爭，群而不黨。」
+
+<div id="十五之二二" style="background: #d9e3f1">'''十五之二二'''</div>
+子曰：「君子不以言擧人，不以人廢言。」
+
+<div id="十五之二三" style="background: #d9e3f1">'''十五之二三'''</div>
+子貢問曰：「有一言而可以終身行之者乎？」子曰：「其恕乎！己所不欲，勿施於人。」
+
+<div id="十五之二四" style="background: #d9e3f1">'''十五之二四'''</div>
+子曰：「吾之於人也，誰毀誰譽？如有所譽者，其有所試矣。斯民也，三代之所以直道而行也。」
+
+<div id="十五之二五" style="background: #d9e3f1">'''十五之二五'''</div>
+子曰：「吾猶及史之闕文也，有馬者，借人乘之。今亡矣夫！」
+
+<div id="十五之二六" style="background: #d9e3f1">'''十五之二六'''</div>
+子曰：「巧言亂德，小不忍，則亂大謀。」
+
+<div id="十五之二七" style="background: #d9e3f1">'''十五之二七'''</div>
+子曰：「眾惡之，必察焉；眾好之，必察焉。」
+
+<div id="十五之二八" style="background: #d9e3f1">'''十五之二八'''</div>
+子曰：「人能弘道，非道弘人。」
+
+<div id="十五之二九" style="background: #d9e3f1">'''十五之二九'''</div>
+子曰：「過而不改，是謂過矣。」
+
+<div id="十五之三十" style="background: #d9e3f1">'''十五之三十'''</div>
+子曰：「吾嘗終日不食，終夜不寑，以思；無益，不如學也。」
+
+<div id="十五之三一" style="background: #d9e3f1">'''十五之三一'''</div>
+子曰：「君子謀道不謀食。耕也，餒在其中矣；學也，祿在其中矣。君子憂道不憂貧。」
+
+<div id="十五之三二" style="background: #d9e3f1">'''十五之三二'''</div>
+子曰：「知及之，仁不能守之，雖得之，必失之。知及之，仁能守之。不莊以蒞之，則民不敬。知及之，仁能守之，莊以蒞之。動之不以禮，未善也。」
+
+<div id="十五之三三" style="background: #d9e3f1">'''十五之三三'''</div>
+子曰：「君子不可小知，而可大受也。小人不可大受，而可小知也。」
+
+<div id="十五之三四" style="background: #d9e3f1">'''十五之三四'''</div>
+子曰：「民之於仁也，甚於水火。水火，吾見蹈而死者矣，未見蹈仁而死者也。」
+
+<div id="十五之三五" style="background: #d9e3f1">'''十五之三五'''</div>
+子曰：「當仁，不讓於師。」
+
+<div id="十五之三六" style="background: #d9e3f1">'''十五之三六'''</div>
+子曰：「君子貞而不諒。」
+
+<div id="十五之三七" style="background: #d9e3f1">'''十五之三七'''</div>
+子曰：「事君，敬其事而後其食。」
+
+<div id="十五之三八" style="background: #d9e3f1">'''十五之三八'''</div>
+子曰：「有教無類。」
+
+<div id="十五之三九" style="background: #d9e3f1">'''十五之三九'''</div>
+子曰：「道不同，不相爲謀。」
+
+<div id="十五之四十" style="background: #d9e3f1">'''十五之四十'''</div>
+子曰：「辭，達而已矣！」
+
+<div id="十五之四一" style="background: #d9e3f1">'''十五之四一'''</div>
+師冕見。及階，子曰：「階也。」及席，子曰：「席也。」皆坐，子吿之曰：「某在斯，某在斯。」師冕出，子張問曰：「與師言之道與？」子曰：「然，固相師之道也。」
+</onlyinclude>
+
+<div id="section_SpokenWikisource_ext" class="noprint toccolours" style="clear: right; margin: 0 0 1em 1em; font-size: 90%; width: 300px; text-align: left; float: right;">
+-{zh-hant;zh-hans|
+<div style="text-align: center">[http://www.ximalaya.com/swf/sound/red.swf?id=1411649 漢語普通話朗讀]</div>
+<div style="text-align: center; font-size: xx-small;">（[http://www.ximalaya.com/4228109/sound/1411649 完整的外部鏈接]）</div>
+<div style="float: left; margin-left: 5px;">[[Image:Sound-icon.png|41px|]]</div>
+<div style="margin-left: 50px; margin-top: 2px; font-size: xx-small;">此錄音来自外部鏈接、內容同2017年7月7日的版本、由<u>白雲出岫</u>使用漢語普通話錄製，不會隨條目修訂而自動改變。</div>
+<div style="text-align: center; clear: both">'''[[:Category:有聲文獻|更多有聲文獻]]'''</div>
+}-<includeonly>[[Category:有聲文獻]]</includeonly>
+</div>
+
+{{PD-old}}
+[[Category:香港中學文憑考試指定文言篇章]]

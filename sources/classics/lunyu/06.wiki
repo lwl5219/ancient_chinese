@@ -1,0 +1,103 @@
+{{header2
+| previous = [[../公冶長第五|公冶長第五]]
+| next     = [[../述而第七|述而第七]]
+}}
+*[[論語註疏/卷06|註疏]]
+<onlyinclude>
+<div id="六之一" style="background: #d9e3f1">'''六之一'''</div>
+子曰：「雍也，可使南面。」仲弓問子桑伯子。子曰：「可也，簡。」仲弓曰：「居敬而行簡，以臨其民，不亦可乎？居簡而行簡，無乃大簡乎？」子曰：「雍之言然。」
+
+<div id="六之二" style="background: #d9e3f1">'''六之二'''</div>
+哀公問：「弟子孰爲好學？」孔子對曰：「有顏回者，好學；不遷怒，不貳過，不幸短命死矣！今也則亡，未聞好學者也。」
+
+<div id="六之三" style="background: #d9e3f1">'''六之三'''</div>
+子華使於齊，冉子爲其母請粟。子曰：「與之釜。」請益，曰：「與之庾。」冉子與之粟五秉。子曰：「赤之適齊也，乘肥馬，衣輕裘；吾聞之也：君子周急不繼富。」原思爲之宰，與之粟九百，辭。子曰：「毋！以與爾鄰里鄉黨乎！」
+
+<div id="六之四" style="background: #d9e3f1">'''六之四'''</div>
+子謂仲弓曰：「犁牛之子，騂且角；雖欲勿用，山川其舍諸？」
+
+<div id="六之五" style="background: #d9e3f1">'''六之五'''</div>
+子曰：「回也，其心三月不違仁。其餘，則日月至焉而已矣。」
+
+<div id="六之六" style="background: #d9e3f1">'''六之六'''</div>
+季康子問：「仲由可使從政也與？」子曰：「由也果，於從政乎何有！」曰：「賜也可使從政也與？」曰：「賜也達，於從政乎何有！」曰：「求也可使從政也與？」曰：「求也藝，於從政乎何有！」
+
+<div id="六之七" style="background: #d9e3f1">'''六之七'''</div>
+季氏使閔子騫爲費宰。閔子騫曰：「善爲我辭焉。如有復我者，則吾必在汶上矣。」
+
+<div id="六之八" style="background: #d9e3f1">'''六之八'''</div>
+伯牛有疾，子問之，自牖執其手，曰：「亡之，命矣夫！斯人也，而有斯疾也！斯人也，而有斯疾也！」
+
+<div id="六之九" style="background: #d9e3f1">'''六之九'''</div>
+子曰：「賢哉回也！一簞食，一瓢飮，在陋巷，人不堪其憂，回也不改其樂。賢哉回也！」
+
+<div id="六之十" style="background: #d9e3f1">'''六之十'''</div>
+冉求曰：「非不說子之道，力不足也。」子曰：「力不足者，中道而廢；今女畫。」
+
+<div id="六之十一" style="background: #d9e3f1">'''六之十一'''</div>
+子謂子夏曰：「女爲君子儒，無爲小人儒。」
+
+<div id="六之十二" style="background: #d9e3f1">'''六之十二'''</div>
+子游爲武城宰。子曰：「女得人焉耳乎？」曰：「有澹臺滅明者，行不由徑；非公事，未嘗至於偃之室也。」
+
+<div id="六之十三" style="background: #d9e3f1">'''六之十三'''</div>
+子曰：「孟之反不伐，奔而殿，將入門，策其馬，曰：『非敢後也，馬不進也。』」
+
+<div id="六之十四" style="background: #d9e3f1">'''六之十四'''</div>
+子曰：「不有祝鮀之佞，而有宋朝之美，難乎免於今之世矣。」
+
+<div id="六之十五" style="background: #d9e3f1">'''六之十五'''</div>
+子曰：「誰能出不由戶？何莫由斯道也！」
+
+<div id="六之十六" style="background: #d9e3f1">'''六之十六'''</div>
+子曰：「質勝文則野，文勝質則史。文質彬彬，然後君子。」
+
+<div id="六之十七" style="background: #d9e3f1">'''六之十七'''</div>
+子曰：「人之生也直，罔之生也幸而免。」
+
+<div id="六之十八" style="background: #d9e3f1">'''六之十八'''</div>
+子曰：「知之者，不如好之者，好之者，不如樂之者。」
+
+<div id="六之十九" style="background: #d9e3f1">'''六之十九'''</div>
+子曰：「中人以上，可以語上也；中人以下，不可以語上也。」
+
+<div id="六之二十" style="background: #d9e3f1">'''六之二十'''</div>
+樊遲問知。子曰：「務民之義，敬鬼神而遠之，可謂知矣。」問仁。曰：「仁者先難而後獲，可謂仁矣。」
+
+<div id="六之二一" style="background: #d9e3f1">'''六之二一'''</div>
+子曰：「知者樂水，仁者樂山。知者動，仁者靜。知者樂，仁者壽。」
+
+<div id="六之二二" style="background: #d9e3f1">'''六之二二'''</div>
+子曰：「齊一變，至於魯；魯一變，至於道。」
+
+<div id="六之二三" style="background: #d9e3f1">'''六之二三'''</div>
+子曰：「觚不觚，觚哉！觚哉！」
+
+<div id="六之二四" style="background: #d9e3f1">'''六之二四'''</div>
+宰我問曰：「仁者雖吿之曰：『井有仁焉。』其從之也？」子曰：「何爲其然也？君子可{{另|逝|選}}<ref>袁金平、李麗珠根據出土文獻與之對應句作「君子可選」，認爲「選」優於今本「逝」。袁金平、李麗珠：《據古文字資料再論〈論語·雍也〉「君子可逝」句》，《語言科學》2019年第1期。 </ref>也，不可陷也。可欺也，不可罔也。」
+
+<div id="六之二五" style="background: #d9e3f1">'''六之二五'''</div>
+子曰：「君子博學於文，約之以禮，亦可以弗畔矣夫！」
+
+<div id="六之二六" style="background: #d9e3f1">'''六之二六'''</div>
+子見南子，子路不說。夫子矢之曰：「予所否者，天厭之！天厭之！」
+
+<div id="六之二七" style="background: #d9e3f1">'''六之二七'''</div>
+子曰：「中庸之爲德也，其至矣乎！民鮮久矣！」
+
+<div id="六之二八" style="background: #d9e3f1">'''六之二八'''</div>
+子貢曰：「如有博施於民，而能濟眾，何如？可謂仁乎？」子曰：「何事於仁，必也聖乎？堯舜其猶病諸！夫仁者，己欲立而立人，己欲達而達人。能近取譬，可謂仁之方也已。」
+</onlyinclude>
+
+<div id="section_SpokenWikisource_ext" class="noprint toccolours" style="clear: right; margin: 0 0 1em 1em; font-size: 90%; width: 300px; text-align: left; float: right;">
+-{zh-hant;zh-hans|
+<div style="text-align: center">[http://www.ximalaya.com/swf/sound/red.swf?id=1411640 漢語普通話朗讀]</div>
+<div style="text-align: center; font-size: xx-small;">（[http://www.ximalaya.com/4228109/sound/1411640 完整的外部鏈接]）</div>
+<div style="float: left; margin-left: 5px;">[[Image:Sound-icon.png|41px|]]</div>
+<div style="margin-left: 50px; margin-top: 2px; font-size: xx-small;">此錄音来自外部鏈接、內容同2017年7月7日的版本、由<u>白雲出岫</u>使用漢語普通話錄製，不會隨條目修訂而自動改變。</div>
+<div style="text-align: center; clear: both">'''[[:Category:有聲文獻|更多有聲文獻]]'''</div>
+}-<includeonly>[[Category:有聲文獻]]</includeonly>
+</div>
+===校勘記===
+{{reflist}}
+{{PD-old}}
