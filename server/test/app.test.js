@@ -60,19 +60,19 @@ test("health and CORS allow only the listed sites", async () => {
   const health = await call(w.app, { path: "/health", origin: "" });
   assert.equal(health.status, 200);
   assert.equal(health.body.ok, true);
-  assert.equal(health.headers["access-control-allow-origin"], undefined);
+  assert.equal(health.headers["Access-Control-Allow-Origin"], undefined);
 
   const ok = await call(w.app, { method: "OPTIONS", path: "/auth/verify" });
   assert.equal(ok.status, 204);
-  assert.equal(ok.headers["access-control-allow-origin"], ORIGIN);
-  assert.match(ok.headers["access-control-allow-headers"], /Authorization/);
+  assert.equal(ok.headers["Access-Control-Allow-Origin"], ORIGIN);
+  assert.match(ok.headers["Access-Control-Allow-Headers"], /Authorization/);
 
   const pages = await call(w.app, { path: "/health", origin: "https://maruiduan.github.io" });
-  assert.equal(pages.headers["access-control-allow-origin"], "https://maruiduan.github.io");
+  assert.equal(pages.headers["Access-Control-Allow-Origin"], "https://maruiduan.github.io");
 
   const denied = await call(w.app, { method: "POST", path: "/auth/request-code", origin: "https://evil.example", body: { email: "a@b.co" } });
   assert.equal(denied.status, 403);
-  assert.equal(denied.headers["access-control-allow-origin"], undefined);
+  assert.equal(denied.headers["Access-Control-Allow-Origin"], undefined);
   const preflight = await call(w.app, { method: "OPTIONS", path: "/sync", origin: "https://evil.example" });
   assert.equal(preflight.status, 403);
 });
@@ -332,4 +332,11 @@ test("the function entry parses an HTTP event and keeps the bearer body", async 
   assert.equal(sent[0].to, "a@example.com");
   const limit = await store.getLimit("ip:203.0.113.10");
   assert.equal(limit.hourCount, 1);
+});
+
+test("custom domain api.lucca.top leaves CORS to the FC gateway", async function () {
+  const app = createApp({ store: createMemoryStore(), mailer: async function () {}, authSecret: "x".repeat(32), origins: [ORIGIN] });
+  const res = await app({ method: "OPTIONS", path: "/auth/request-code", headers: { origin: ORIGIN }, domainName: "api.lucca.top" });
+  assert.equal(res.status, 204);
+  assert.equal(res.headers["Access-Control-Allow-Origin"], undefined);
 });

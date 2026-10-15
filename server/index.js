@@ -35,12 +35,14 @@ function parseEvent(event) {
   if (parsed.isBase64Encoded && typeof body === "string" && body) {
     body = Buffer.from(body, "base64").toString("utf8");
   }
+  const domainName = (parsed.requestContext && parsed.requestContext.domainName) || "";
   return {
     method: http.method || parsed.httpMethod || parsed.method || "GET",
     path: path,
     headers: parsed.headers || {},
     body: body,
     sourceIp: http.sourceIp || "",
+    domainName: domainName,
   };
 }
 
