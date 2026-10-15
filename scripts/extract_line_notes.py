@@ -99,6 +99,13 @@ def align_tail(line: str, poem: str):
 
 def shichun_notes(famous: dict, tang: dict) -> list[dict]:
     by_id = {piece["id"]: piece for piece in tang["pieces"]}
+    # 卷 47 是陆游诗。课文里的《示儿》不在唐诗集，标题又没单独做成锚点。
+    ke = load_json(ROOT / "data" / "ke.json")
+    ke_ids = set()
+    for piece in ke["pieces"]:
+        if piece["id"] not in by_id:
+            by_id[piece["id"]] = piece
+            ke_ids.add(piece["id"])
     quotes: dict[str, list[str]] = {}
     for line in famous["lines"]:
         pid = line["pieces"][0]
@@ -125,12 +132,19 @@ def shichun_notes(famous: dict, tang: dict) -> list[dict]:
         found = None
         for vol, blocks in volumes:
             for label, body in blocks:
-                if only_han(simp(label)) != title:
-                    continue
+                titled = only_han(simp(label)) == title
+                if not titled:
+                    if pid not in ke_ids or len(poem) < 16 or poem[:8] not in only_han(simp(body)):
+                        continue
                 lines = [simp(row) for row in body.splitlines()]
                 lines = [row for row in lines if row]
                 for index, row in enumerate(lines):
-                    if not any(quote in only_han(row) for quote in bundle if len(quote) >= 4):
+                    row_han = only_han(row)
+                    # 诗题粘在上一条批语末尾时，整首诗单独成行，后面才是批语。
+                    bare = len(poem) >= 16 and poem in row_han and len(row_han) <= len(poem) + 2
+                    if not titled and not bare:
+                        continue
+                    if not any(quote in row_han for quote in bundle if len(quote) >= 4):
                         continue
                     tail = align_tail(row, poem)
                     texts = []
