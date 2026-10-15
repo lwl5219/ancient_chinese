@@ -96,15 +96,10 @@
     window.API_BASE = "";
     (function () {
       if (!window.API_BASE) return;
-      var merge = document.createElement("script");
-      merge.src = "js/sync-merge.js";
-      merge.onload = function () {
-        var account = document.createElement("script");
-        account.src = "js/account.js";
-        document.body.appendChild(account);
-      };
-      merge.onerror = function () {};
-      document.body.appendChild(merge);
+      var account = document.createElement("script");
+      account.src = "js/account.js";
+      account.onerror = function () {};
+      document.body.appendChild(account);
     })();
   </script>
 </body>

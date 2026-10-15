@@ -1,6 +1,6 @@
 # 典籍账号接口
 
-可选登录。不登录时，阅读、书签和进度都只在浏览器本地，和现在一样。登录之后，才会把书签和阅读进度同步到阿里云。
+可选登录。不登录时，阅读和进度都只在浏览器本地，和现在一样。这一版的登录只保存邮箱和会话，并开始记录打开篇目、查字这两类行为。书签和跨设备进度以后可以加，不用改现有的用户表。
 
 这个目录不会由网站的 GitHub Actions 部署。静态站点照常发布；账号接口要等下面的资源都建好，再由你在本机执行 `s deploy`。
 
@@ -22,7 +22,7 @@ node --test server/test/*.test.js
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": ["ots:GetRow", "ots:PutRow", "ots:UpdateRow", "ots:DeleteRow"],
+      "Action": ["ots:GetRow", "ots:GetRange", "ots:PutRow", "ots:UpdateRow", "ots:DeleteRow"],
       "Resource": [
         "acs:ots:cn-hongkong:*:instance/gwgz",
         "acs:ots:cn-hongkong:*:instance/gwgz/table/*"
@@ -50,7 +50,7 @@ node --test server/test/*.test.js
 | 访问节点 | `https://gwgz.cn-hongkong.ots.aliyuncs.com` |
 | 网络 | 允许公网访问。函数不在 VPC 里，走公网即可 |
 
-五张表，主键都是字符串，属性列最大版本数 **1**，数据生命周期 **-1**（不过期），预留读写容量 **0 / 0**。可以在控制台逐张建，也可以在 `server/` 里装好依赖后执行 `node scripts/create-tables.js`（用下面的环境变量）。
+五张表。除 `events` 外主键是一列字符串。`events` 的主键是 `userId` + `ts` 两列，都是字符串，按用户分区、按时间排序。属性列最大版本数 **1**，数据生命周期 **-1**（不过期），预留读写容量 **0 / 0**。可以在控制台逐张建，也可以在 `server/` 里装好依赖后执行 `node scripts/create-tables.js`（用下面的环境变量）。
 
 | 表名 | 主键 | 属性列 |
 | --- | --- | --- |
@@ -58,9 +58,9 @@ node --test server/test/*.test.js
 | `codes` | `email` STRING | `codeHash` STRING，`expiresAt` INTEGER，`attempts` INTEGER，`sentAt` INTEGER |
 | `limits` | `id` STRING | `hourStart` INTEGER，`hourCount` INTEGER，`lastSent` INTEGER |
 | `sessions` | `tokenHash` STRING | `userId` STRING，`email` STRING，`expiresAt` INTEGER |
-| `sync` | `userId` STRING | `bookmarks` STRING，`state` STRING |
+| `events` | `userId` STRING，`ts` STRING | `type` STRING，`pieceId` STRING，`payload` STRING，`deviceHash` STRING，`clientTs` INTEGER |
 
-`id` 的内容是 `email:用户邮箱` 或 `ip:地址`。验证码和会话在表里只存哈希。
+`limits.id` 是 `email:`、`ip:`、`evuser:`、`evdev:` 或 `evip:` 加上对应的值。验证码、会话和设备标识在表里只存哈希。`users.userId` 由邮箱稳定算出。以后如果要加书签或阅读进度同步，另建一张以 `userId` 为主键的表即可，不用改现在这四张账号表。这一版不建那张表。
 
 ### 2. 邮件推送
 
@@ -191,11 +191,13 @@ curl -sS "https://api.lucca.top/health"
 | POST | `/auth/request-code` | `{email}`。6 位验证码，10 分钟有效 |
 | POST | `/auth/verify` | `{email,code}`，返回 `{token,email,userId}` |
 | POST | `/auth/logout` | 作废当前令牌 |
-| DELETE | `/account` | 删除用户、会话、验证码和同步数据 |
-| GET | `/me` | 邮箱、书签、进度 |
-| PUT | `/sync` | 合并后写回。客户端登录时和之后的变更都走这一条 |
+| DELETE | `/account` | 删除用户、会话、验证码和记在该账号下的行为 |
+| GET | `/me` | `{email,userId}` |
+| POST | `/events` | `{deviceId?, events:[{type, pieceId?, payload?, ts?}]}`，最多 20 条 |
 
 限流：同一邮箱 60 秒内最多 1 封，每小时最多 5 封；同一 IP 每小时最多 20 次发信。验证码最多错 5 次。会话大约 180 天。令牌是随机串，服务端只存哈希，浏览器放在 `localStorage` 的 `gwgz-session-v1`。
+
+行为记录：已登录用户每小时最多 120 条，未登录设备每小时最多 60 条，同一 IP 每小时最多 200 条。单条 `payload` 不超过约 800 字。`type` 是小写字母开头的短名字。主键里的 `ts` 用服务器收到的时间，避免客户端时钟把顺序打乱；客户端自己的时间放在 `clientTs`。
 
 允许的网页来源只有：
 
@@ -206,13 +208,10 @@ curl -sS "https://api.lucca.top/health"
 
 没有 `Origin` 的请求（例如 curl）可以访问，方便你检查 `/health`。
 
-## 同步规则
+## 行为记录
 
-登录成功后，浏览器把本地书签和进度 `PUT /sync`。服务端和已有数据合并，再把结果存回去，浏览器改用这份结果。之后本地有变化，等待约 1.5 秒再推一次。回到这个标签页时也会再合并一次。
+登录开关打开并且 `/health` 成功之后，阅读一篇会记 `page_view`，点开一个字会记 `char_lookup`。事件先留在页面内存里，凑满 8 条或等 4 秒再 `POST /events`。功能关闭时不生成设备标识，也不发送。
 
-- 书签按 id 取并集。同一条以较新的时间为准。取消书签会留下一条较新的删除标记，避免另一台设备又把它合并回来。
-- 进度里字体、拼音、逐句、上次阅读位置和诗集筛选，用较新的 `updatedAt`。
-- 已读篇目取并集，同一篇保留较晚的时间，避免一台设备把另一台的已读盖掉。
-- 进度时间只在登录功能已经连上接口之后才写入本机。功能关闭时不写。
+已登录时，`userId` 是账号 id。未登录时，`userId` 是 `anon:` 加上设备标识的哈希。设备标识是浏览器里随机生成的 `gwgz-device-v1`，请求里会带上，表里只存哈希。
 
-书签 id：篇目是 `piece:v01-01` 或 `piece:tang:t010`；逐句是 `sent:v01-01:0`（按阅读顺序从 0 计）。诗词行宽是按整行排的，句级书签只加在散文的逐句模式上。
+删除账号会按 `userId` 删掉记在该账号下的事件。未登录的设备记录不挂在账号上，删除账号不会带上它们。

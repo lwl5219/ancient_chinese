@@ -132,10 +132,12 @@
     state.progress = normalizeProgress(merged);
     progressBase = progressFields(state.progress);
     syncChrome();
-    const account = window.gwgzAccount;
-    if (account && typeof account.onProgress === "function") {
-      try { account.onProgress(state.progress); } catch (err) { console.error(err); }
-    }
+  }
+
+  function trackAccount(event) {
+    const api = window.gwgzAccount;
+    if (!api || typeof api.track !== "function") return;
+    try { api.track(event); } catch (err) { console.error(err); }
   }
 
   function syncStoredProgress(event) {
@@ -1972,9 +1974,7 @@
     document.title = title + " · 典籍";
     syncChrome();
     window.scrollTo(0, y);
-    if (window.gwgzAccount && typeof window.gwgzAccount.decorateReader === "function") {
-      try { window.gwgzAccount.decorateReader(); } catch (err) { console.error(err); }
-    }
+    if (!keepScroll) trackAccount({ type: "page_view", pieceId: kind + ":" + piece.id });
   }
 
   function pieceTurn(kind, item, label) {
@@ -2081,9 +2081,7 @@
     syncChrome();
     window.scrollTo(0, y);
     scheduleBalance();
-    if (window.gwgzAccount && typeof window.gwgzAccount.decorateReader === "function") {
-      try { window.gwgzAccount.decorateReader(); } catch (err) { console.error(err); }
-    }
+    if (!keepScroll) trackAccount({ type: "page_view", pieceId: art.id });
   }
 
   function textLink(label, fn) {
@@ -3068,6 +3066,8 @@
     head.appendChild(titles);
     head.appendChild(close);
     popup.appendChild(head);
+    const pieceId = state.article ? state.article.id : (state.piece && state.kind ? state.kind + ":" + state.piece.id : "");
+    if (focusShown || focus) trackAccount({ type: "char_lookup", pieceId: pieceId, payload: { ch: String(focusShown || focus).slice(0, 4) } });
 
     if (trad.length > 1) {
       const wordLine = document.createElement("p");
@@ -3386,7 +3386,7 @@
     const readingPiece = state.view === "piece" && !!state.piece;
     const readingArticle = state.view === "article" && !!state.article;
     if (!readingPiece && !readingArticle) return;
-    if (event.target.closest && event.target.closest(".verse-panel, .verse-bar, .author-card, .verse-turn, .foot-links, .mark, .read-tools, .bookmark-piece, .bookmark-sent")) return;
+    if (event.target.closest && event.target.closest(".verse-panel, .verse-bar, .author-card, .verse-turn, .foot-links, .mark, .read-tools")) return;
     const touch = event.changedTouches[0];
     const dx = touch.clientX - swipeX;
     const dy = touch.clientY - swipeY;
@@ -3436,39 +3436,8 @@
     syncChrome();
   }
 
-  function applyAccountProgress(next) {
-    const normalized = normalizeProgress(next);
-    const keep = {};
-    PROGRESS_FIELDS.forEach(function (key) { keep[key] = true; });
-    Object.keys(normalized.learned || {}).forEach(function (id) { keep["learned:" + id] = true; });
-    Object.keys(normalized.collections || {}).forEach(function (id) { keep["collections:" + id] = true; });
-    try {
-      localStorage.setItem(KEY, JSON.stringify(normalized));
-      const stale = [];
-      for (let i = 0; i < localStorage.length; i += 1) {
-        const key = localStorage.key(i);
-        if (!key || key.indexOf(PROGRESS_PREFIX) !== 0) continue;
-        if (!keep[key.slice(PROGRESS_PREFIX.length)]) stale.push(key);
-      }
-      stale.forEach(function (key) { localStorage.removeItem(key); });
-    } catch (_) { /* Reading still works if storage is blocked. */ }
-    state.progress = normalized;
-    progressBase = {};
-    saveProgress();
-  }
-
   window.gwgzAccountBridge = {
     preparePage: showAccountPage,
-    readProgress: function () { return JSON.parse(JSON.stringify(state.progress)); },
-    applyProgress: applyAccountProgress,
-    lookupTitle: function (id) {
-      const meta = findArticleMeta(id);
-      return meta && meta.title ? meta.title : id;
-    },
-    rerender: function () {
-      if (state.view === "article" && state.article) renderArticle(true);
-      else if (state.view === "piece" && state.piece) renderPiece(true);
-    },
   };
 
   function startBoot() {

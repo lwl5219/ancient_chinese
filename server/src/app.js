@@ -1,7 +1,6 @@
 "use strict";
 
 const crypto = require("node:crypto");
-const { mergeBookmarks, mergeState, cleanState } = require("./merge");
 
 const DEFAULT_ORIGINS = [
   "https://guwen.lucca.top",
@@ -17,6 +16,10 @@ const IP_HOUR = 20;
 const MAX_ATTEMPTS = 5;
 const HOUR = 60 * 60 * 1000;
 const MAX_SESSIONS = 8;
+const MAX_EVENTS = 20;
+const USER_EVENTS_HOUR = 120;
+const DEVICE_EVENTS_HOUR = 60;
+const IP_EVENTS_HOUR = 200;
 
 function sha256(text) {
   return crypto.createHash("sha256").update(text).digest("hex");
@@ -47,6 +50,33 @@ function defaultCode() {
 
 function defaultToken() {
   return crypto.randomBytes(32).toString("base64url");
+}
+
+function defaultEventNonce() {
+  return crypto.randomBytes(3).toString("hex");
+}
+
+function cleanEvent(raw, nowMs) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const type = typeof raw.type === "string" ? raw.type : "";
+  if (!/^[a-z][a-z0-9_]{0,31}$/.test(type)) return null;
+  let pieceId = "";
+  if (raw.pieceId != null && raw.pieceId !== "") {
+    if (typeof raw.pieceId !== "string" || !/^[A-Za-z0-9:_-]{1,80}$/.test(raw.pieceId)) return null;
+    pieceId = raw.pieceId;
+  }
+  let payload = {};
+  if (raw.payload != null) {
+    if (typeof raw.payload !== "object" || Array.isArray(raw.payload)) return null;
+    let json = "";
+    try { json = JSON.stringify(raw.payload); } catch (_) { return null; }
+    if (json.length > 800) return null;
+    payload = JSON.parse(json);
+  }
+  let clientTs = Number(raw.ts);
+  if (!Number.isFinite(clientTs)) clientTs = nowMs;
+  if (clientTs < nowMs - 24 * HOUR || clientTs > nowMs + 5 * 60 * 1000) clientTs = nowMs;
+  return { type: type, pieceId: pieceId, payload: payload, clientTs: clientTs };
 }
 
 function lowerHeaders(headers) {
@@ -89,6 +119,7 @@ function createApp(options) {
   const origins = (options.origins && options.origins.length ? options.origins : DEFAULT_ORIGINS).slice();
   const randomCode = options.randomCode || defaultCode;
   const randomToken = options.randomToken || defaultToken;
+  const randomEventNonce = options.randomEventNonce || defaultEventNonce;
   const allowed = new Set(origins);
 
   function cors(origin) {
@@ -260,33 +291,63 @@ function createApp(options) {
     await store.deleteSession(auth.tokenHash);
     await store.deleteUser(auth.user.email);
     await store.deleteCode(auth.user.email);
-    await store.deleteSync(auth.user.userId);
+    await store.deleteEventsForUser(auth.user.userId);
     await store.deleteLimit("email:" + auth.user.email);
+    await store.deleteLimit("evuser:" + auth.user.userId);
     return send(200, { ok: true }, req.origin);
   }
 
   async function me(req) {
     const auth = await userFromToken(req.headers);
     if (!auth) return send(401, { error: "请先登录" }, req.origin);
-    const saved = (await store.getSync(auth.user.userId)) || { bookmarks: [], state: {} };
-    return send(200, {
-      email: auth.user.email,
-      bookmarks: mergeBookmarks([], saved.bookmarks),
-      state: cleanState(saved.state),
-    }, req.origin);
+    return send(200, { email: auth.user.email, userId: auth.user.userId }, req.origin);
   }
 
-  async function sync(req, body) {
-    const auth = await userFromToken(req.headers);
-    if (!auth) return send(401, { error: "请先登录" }, req.origin);
-    if (body.__tooBig) return send(413, { error: "同步数据太大" }, req.origin);
-    const saved = (await store.getSync(auth.user.userId)) || { bookmarks: [], state: {} };
-    let incoming = cleanState(body.state);
-    if (incoming.updatedAt > now() + 60 * 1000) incoming = Object.assign({}, incoming, { updatedAt: now() });
-    const bookmarks = mergeBookmarks(body.bookmarks, saved.bookmarks);
-    const state = mergeState(incoming, saved.state);
-    await store.putSync(auth.user.userId, { bookmarks: bookmarks, state: state });
-    return send(200, { bookmarks: bookmarks, state: state }, req.origin);
+  async function postEvents(req, body) {
+    if (body.__tooBig) return send(413, { error: "事件太大" }, req.origin);
+    const token = bearer(req.headers);
+    const auth = token ? await userFromToken(req.headers) : null;
+    if (token && !auth) return send(401, { error: "请先登录" }, req.origin);
+    const deviceId = typeof body.deviceId === "string" ? body.deviceId.trim() : "";
+    const deviceOk = /^[A-Za-z0-9_-]{8,64}$/.test(deviceId);
+    if (!auth && !deviceOk) return send(400, { error: "需要登录或设备标识" }, req.origin);
+    if (deviceId && !deviceOk) return send(400, { error: "设备标识不正确" }, req.origin);
+    const list = Array.isArray(body.events) ? body.events : null;
+    if (!list || !list.length || list.length > MAX_EVENTS) return send(400, { error: "事件格式不正确" }, req.origin);
+    const nowMs = now();
+    const cleaned = [];
+    for (let i = 0; i < list.length; i += 1) {
+      const item = cleanEvent(list[i], nowMs);
+      if (!item) return send(400, { error: "事件格式不正确" }, req.origin);
+      cleaned.push(item);
+    }
+    const deviceHash = deviceOk ? sha256("device\n" + deviceId).slice(0, 32) : "";
+    const userId = auth ? auth.user.userId : "anon:" + deviceHash;
+    const actorKey = auth ? "evuser:" + userId : "evdev:" + deviceHash;
+    const actorCap = auth ? USER_EVENTS_HOUR : DEVICE_EVENTS_HOUR;
+    const ipLimit = await loadLimit("evip:" + req.ip, nowMs);
+    const actorLimit = await loadLimit(actorKey, nowMs);
+    if (ipLimit.hourCount + cleaned.length > IP_EVENTS_HOUR || actorLimit.hourCount + cleaned.length > actorCap) {
+      return send(429, { error: "记录太频繁，请稍后再试" }, req.origin);
+    }
+    const nonce = randomEventNonce();
+    const rows = cleaned.map(function (item, index) {
+      return {
+        userId: userId,
+        ts: String(nowMs).padStart(13, "0") + "-" + String(index).padStart(2, "0") + "-" + nonce,
+        type: item.type,
+        pieceId: item.pieceId,
+        payload: JSON.stringify(item.payload),
+        deviceHash: deviceHash,
+        clientTs: item.clientTs,
+      };
+    });
+    await store.putEvents(rows);
+    ipLimit.hourCount += cleaned.length;
+    actorLimit.hourCount += cleaned.length;
+    await store.putLimit("evip:" + req.ip, ipLimit);
+    await store.putLimit(actorKey, actorLimit);
+    return send(200, { ok: true, accepted: cleaned.length }, req.origin);
   }
 
   return async function handle(raw) {
@@ -321,7 +382,7 @@ function createApp(options) {
       if (method === "POST" && path === "/auth/logout") return await logout(Object.assign({ origin: origin }, req));
       if (method === "DELETE" && path === "/account") return await removeAccount(Object.assign({ origin: origin }, req));
       if (method === "GET" && path === "/me") return await me(Object.assign({ origin: origin }, req));
-      if (method === "PUT" && path === "/sync") return await sync(Object.assign({ origin: origin }, req), body);
+      if (method === "POST" && path === "/events") return await postEvents(Object.assign({ origin: origin }, req), body);
       return send(404, { error: "没有这个接口" }, origin);
     } catch (err) {
       console.error(err);

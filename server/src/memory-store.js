@@ -9,7 +9,7 @@ function createMemoryStore() {
   const codes = new Map();
   const limits = new Map();
   const sessions = new Map();
-  const sync = new Map();
+  const events = [];
   return {
     async getUser(email) { return clone(users.get(email) || null); },
     async putUser(user) { users.set(user.email, clone(user)); },
@@ -23,11 +23,14 @@ function createMemoryStore() {
     async getSession(tokenHash) { return clone(sessions.get(tokenHash) || null); },
     async putSession(tokenHash, row) { sessions.set(tokenHash, clone(row)); },
     async deleteSession(tokenHash) { sessions.delete(tokenHash); },
-    async getSync(userId) { return clone(sync.get(userId) || null); },
-    async putSync(userId, row) { sync.set(userId, clone(row)); },
-    async deleteSync(userId) { sync.delete(userId); },
+    async putEvents(rows) { rows.forEach(function (row) { events.push(clone(row)); }); },
+    async deleteEventsForUser(userId) {
+      for (let i = events.length - 1; i >= 0; i -= 1) {
+        if (events[i].userId === userId) events.splice(i, 1);
+      }
+    },
     dump() {
-      return { users: users, codes: codes, limits: limits, sessions: sessions, sync: sync };
+      return { users: users, codes: codes, limits: limits, sessions: sessions, events: events };
     },
   };
 }

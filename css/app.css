@@ -1497,32 +1497,6 @@ h1 {
   padding-left: 8px;
 }
 .top.has-tools .account-entry { display: none; }
-.bookmark-piece {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 0 12px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.82rem;
-  letter-spacing: 0.04em;
-  min-height: 32px;
-}
-.bookmark-piece.on { color: var(--accent); }
-.bookmark-sent {
-  display: inline-flex;
-  margin-left: 8px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.78rem;
-  line-height: 1;
-  vertical-align: text-top;
-  opacity: 0.55;
-}
-.bookmark-sent.on { color: var(--accent); opacity: 1; }
 .account-page .account-form,
 .account-page .account-list { max-width: 36rem; }
 .account-page h2 { font-size: 1.05rem; font-weight: 650; margin: 22px 0 8px; }

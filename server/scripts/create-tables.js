@@ -17,7 +17,7 @@ async function main() {
     const params = {
       tableMeta: {
         tableName: table.tableName,
-        primaryKey: [{ name: table.primaryKey, type: "STRING" }],
+        primaryKey: table.primaryKey,
       },
       reservedThroughput: { capacityUnit: { read: 0, write: 0 } },
       tableOptions: { timeToLive: -1, maxVersions: 1 },
@@ -28,7 +28,7 @@ async function main() {
         else resolve();
       });
     });
-    console.log("ready " + table.tableName + " pk " + table.primaryKey);
+    console.log("ready " + table.tableName + " pk " + table.primaryKey.map(function (col) { return col.name; }).join("+"));
   }
 }
 

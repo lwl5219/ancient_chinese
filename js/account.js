@@ -3,18 +3,15 @@
 
   var API = String(window.API_BASE || "").replace(/\/$/, "");
   var TOKEN_KEY = "gwgz-session-v1";
-  var BOOK_KEY = "gwgz-bookmarks-v1";
-  var UPDATED_KEY = "gwgz-state-updated-at";
+  var DEVICE_KEY = "gwgz-device-v1";
   var enabled = false;
-  var applying = false;
-  var pushTimer = 0;
-  var pushing = false;
-  var queued = false;
+  var queue = [];
+  var flushTimer = 0;
+  var flushing = false;
 
   window.gwgzAccount = {
     route: function () { return false; },
-    onProgress: function () {},
-    decorateReader: function () {},
+    track: function () {},
   };
   if (!API) return;
 
@@ -28,34 +25,19 @@
     try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
   }
 
-  function readUpdatedAt() {
+  function deviceId() {
     try {
-      var n = Number(localStorage.getItem(UPDATED_KEY) || 0);
-      return Number.isFinite(n) && n > 0 ? n : 0;
-    } catch (_) { return 0; }
-  }
-
-  function setUpdatedAt(n) {
-    try { localStorage.setItem(UPDATED_KEY, String(n || 0)); } catch (_) {}
-  }
-
-  function readBookmarks() {
-    try {
-      var raw = JSON.parse(localStorage.getItem(BOOK_KEY) || "[]");
-      return window.gwgzMerge ? window.gwgzMerge.mergeBookmarks(raw, []) : [];
-    } catch (_) { return []; }
-  }
-
-  function writeBookmarks(list) {
-    try { localStorage.setItem(BOOK_KEY, JSON.stringify(list || [])); } catch (_) {}
-  }
-
-  function visibleBookmarks() {
-    return readBookmarks().filter(function (item) { return !item.deleted; });
-  }
-
-  function hasBookmark(id) {
-    return visibleBookmarks().some(function (item) { return item.id === id; });
+      var current = localStorage.getItem(DEVICE_KEY) || "";
+      if (/^[A-Za-z0-9_-]{8,64}$/.test(current)) return current;
+      var bytes = new Uint8Array(12);
+      if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(bytes);
+      else for (var i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+      var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+      current = "";
+      for (var n = 0; n < bytes.length; n += 1) current += alphabet[bytes[n] % alphabet.length];
+      localStorage.setItem(DEVICE_KEY, current);
+      return current;
+    } catch (_) { return ""; }
   }
 
   function request(method, path, body) {
@@ -65,6 +47,7 @@
       method: method,
       headers: headers,
       body: body == null ? undefined : JSON.stringify(body),
+      keepalive: method === "POST" && path === "/events",
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
         if (res.status === 401) {
@@ -81,152 +64,29 @@
     });
   }
 
-  function localSnapshot() {
-    var api = bridge();
-    var progress = api && api.readProgress ? api.readProgress() : {};
-    progress.updatedAt = readUpdatedAt();
-    return { bookmarks: readBookmarks(), state: progress };
+  function flush() {
+    if (!enabled || flushing || !queue.length) return;
+    var batch = queue.splice(0, 20);
+    var id = deviceId();
+    if (!id && !token()) return;
+    flushing = true;
+    request("POST", "/events", { deviceId: id, events: batch }).catch(function () {}).then(function () {
+      flushing = false;
+      if (queue.length) flush();
+    });
   }
 
-  function applyMerged(data) {
-    applying = true;
-    try {
-      if (data && data.bookmarks) writeBookmarks(data.bookmarks);
-      if (data && data.state) {
-        setUpdatedAt(data.state.updatedAt || 0);
-        var api = bridge();
-        if (api && api.applyProgress) api.applyProgress(data.state);
-      }
-    } finally {
-      applying = false;
-    }
-    refreshEntry();
-    if ((location.hash || "") === "#/me") renderMe(true);
+  function track(event) {
+    if (!enabled || !event || !event.type) return;
+    var item = { type: event.type, ts: Date.now() };
+    if (event.pieceId) item.pieceId = String(event.pieceId).slice(0, 80);
+    if (event.payload && typeof event.payload === "object") item.payload = event.payload;
+    queue.push(item);
+    if (queue.length >= 8) flush();
     else {
-      var api = bridge();
-      if (api && api.rerender) api.rerender();
+      clearTimeout(flushTimer);
+      flushTimer = setTimeout(flush, 4000);
     }
-  }
-
-  function push() {
-    if (!enabled || !token()) return Promise.resolve();
-    if (pushing) {
-      queued = true;
-      return Promise.resolve();
-    }
-    pushing = true;
-    return request("PUT", "/sync", localSnapshot()).then(applyMerged).catch(function () {}).then(function () {
-      pushing = false;
-      if (queued) {
-        queued = false;
-        return push();
-      }
-    });
-  }
-
-  function schedulePush() {
-    if (!token()) return;
-    clearTimeout(pushTimer);
-    pushTimer = setTimeout(function () {
-      pushTimer = 0;
-      push();
-    }, 1500);
-  }
-
-  function onProgress() {
-    if (!enabled || applying) return;
-    setUpdatedAt(Date.now());
-    schedulePush();
-  }
-
-  function toggleBookmark(mark) {
-    var list = readBookmarks();
-    var index = -1;
-    list.forEach(function (item, i) { if (item.id === mark.id) index = i; });
-    if (index >= 0 && !list[index].deleted) {
-      list[index] = {
-        id: list[index].id, kind: list[index].kind, href: list[index].href,
-        title: list[index].title, quote: list[index].quote, at: Date.now(), deleted: true,
-      };
-    } else {
-      mark.at = Date.now();
-      mark.deleted = false;
-      if (index >= 0) list[index] = mark;
-      else list.push(mark);
-    }
-    writeBookmarks(window.gwgzMerge.mergeBookmarks(list, []));
-    schedulePush();
-  }
-
-  function pieceRef() {
-    var hash = location.hash || "";
-    var read = hash.match(/^#\/read\/((?:v|h|z|d|l)\d{2}-\d{2})$/);
-    if (read) return { id: "piece:" + read[1], href: "#/read/" + read[1] };
-    var poem = hash.match(/^#\/(tang|ci|ke)\/([a-z0-9-]+)$/);
-    if (poem) return { id: "piece:" + poem[1] + ":" + poem[2], href: "#/" + poem[1] + "/" + poem[2] };
-    return null;
-  }
-
-  function paintPiece(btn, ref) {
-    var on = hasBookmark(ref.id);
-    btn.classList.toggle("on", on);
-    btn.setAttribute("aria-pressed", on ? "true" : "false");
-    btn.textContent = on ? "已加书签" : "书签";
-  }
-
-  function paintSent(btn) {
-    var ref = pieceRef();
-    var on = !!(ref && hasBookmark("sent:" + ref.id.slice(6) + ":" + btn.dataset.index));
-    btn.classList.toggle("on", on);
-    btn.setAttribute("aria-pressed", on ? "true" : "false");
-    btn.setAttribute("aria-label", on ? "移去这句书签" : "给这句加书签");
-    btn.textContent = on ? "★" : "☆";
-  }
-
-  function decorateReader() {
-    if (!enabled) return;
-    var root = document.querySelector("#main article.reader");
-    if (!root || root.querySelector(".bookmark-piece")) return;
-    var h1 = root.querySelector("h1");
-    var ref = pieceRef();
-    if (!h1 || !ref) return;
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "bookmark-piece";
-    paintPiece(btn, ref);
-    btn.addEventListener("click", function (event) {
-      event.preventDefault();
-      event.stopPropagation();
-      toggleBookmark({ id: ref.id, kind: "piece", href: ref.href, title: h1.textContent || "这篇", at: Date.now() });
-      paintPiece(btn, ref);
-    });
-    h1.insertAdjacentElement("afterend", btn);
-    var n = 0;
-    root.querySelectorAll(".pair").forEach(function (pair) {
-      var index = n;
-      n += 1;
-      var orig = pair.querySelector(".orig");
-      var sent = document.createElement("button");
-      sent.type = "button";
-      sent.className = "bookmark-sent";
-      sent.dataset.index = String(index);
-      paintSent(sent);
-      sent.addEventListener("click", function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        var quote = orig ? String(orig.textContent || "").replace(/\s+/g, "").slice(0, 42) : "";
-        toggleBookmark({
-          id: "sent:" + ref.id.slice(6) + ":" + index,
-          kind: "sentence",
-          href: ref.href,
-          title: h1.textContent || "这一句",
-          quote: quote,
-          at: Date.now(),
-        });
-        paintSent(sent);
-      });
-      pair.appendChild(sent);
-    });
   }
 
   function refreshEntry() {
@@ -281,17 +141,13 @@
     parent.appendChild(p);
   }
 
-  function note(parent, text) {
-    parent.appendChild(el("p", "lead", text));
-  }
-
   function renderLogin() {
     if (token()) {
       location.hash = "#/me";
       return;
     }
     openPage("登录", function (wrap) {
-      note(wrap, "登录以后，书签和阅读进度可以在你自己的几台设备之间同步。不登录也可以照常阅读，记录仍只留在这台设备上。");
+      wrap.appendChild(el("p", "lead", "登录是可选的。现在只在这台设备上记住你的账号。不登录也可以照常阅读。"));
       var form = el("form", "account-form");
       form.addEventListener("submit", function (event) { event.preventDefault(); });
       var emailLabel = el("label", "", "邮箱");
@@ -300,7 +156,6 @@
       email.id = "account-email";
       email.type = "email";
       email.autocomplete = "email";
-      email.required = true;
       email.maxLength = 254;
       var codeLabel = el("label", "", "验证码");
       codeLabel.setAttribute("for", "account-code");
@@ -328,7 +183,6 @@
       form.appendChild(actions);
       wrap.appendChild(form);
       legalLinks(wrap);
-
       function formMessage(text, failed) {
         err.textContent = text || "";
         err.className = failed ? "account-error" : "meta";
@@ -351,9 +205,7 @@
         go.disabled = true;
         request("POST", "/auth/verify", { email: email.value, code: code.value }).then(function (data) {
           try { localStorage.setItem(TOKEN_KEY, data.token); } catch (_) {}
-          return request("PUT", "/sync", localSnapshot());
-        }).then(function (merged) {
-          applyMerged(merged);
+          refreshEntry();
           location.hash = "#/me";
         }).catch(function (error) {
           formMessage(error.message || "没有登录", true);
@@ -362,7 +214,7 @@
     });
   }
 
-  function renderMe(fromSync) {
+  function renderMe() {
     if (!token()) {
       location.hash = "#/login";
       return;
@@ -370,10 +222,6 @@
     openPage("我的", function (wrap) {
       var who = el("p", "meta", "正在读取账号");
       wrap.appendChild(who);
-      var books = el("div");
-      var recent = el("div");
-      wrap.appendChild(books);
-      wrap.appendChild(recent);
       var actions = el("div", "account-actions");
       var out = el("button", "text-btn", "退出登录");
       out.type = "button";
@@ -393,7 +241,7 @@
         });
       });
       del.addEventListener("click", function () {
-        if (!window.confirm("删除账号后，云端的邮箱、书签和阅读进度会清除，不能恢复。这台设备上的阅读记录还会留下。")) return;
+        if (!window.confirm("删除账号后，云端的邮箱、会话和行为记录会清除，不能恢复。")) return;
         request("DELETE", "/account").then(function () {
           clearToken();
           refreshEntry();
@@ -402,14 +250,8 @@
           err.textContent = error.message || "没有删除";
         });
       });
-      fillBookmarks(books, visibleBookmarks());
-      fillRecent(recent);
-      var pending = fromSync ? Promise.resolve(null) : push();
-      pending.then(function () { return request("GET", "/me"); }).then(function (data) {
-        if (!data) return;
+      request("GET", "/me").then(function (data) {
         who.textContent = data.email || "";
-        fillBookmarks(books, visibleBookmarks());
-        fillRecent(recent);
       }).catch(function (error) {
         if (!token()) {
           location.hash = "#/login";
@@ -417,61 +259,8 @@
         }
         who.textContent = "";
         err.textContent = error.message || "没有读到账号";
-        fillBookmarks(books, visibleBookmarks());
-        fillRecent(recent);
       });
     });
-  }
-
-  function fillBookmarks(parent, list) {
-    parent.replaceChildren();
-    parent.appendChild(el("h2", "", "书签"));
-    if (!list.length) {
-      parent.appendChild(el("p", "meta", "还没有书签。读一篇时，可以在题目下收藏。逐句阅读时，句末的星号可以收藏那一句。"));
-      return;
-    }
-    var ul = el("ul", "account-list");
-    list.forEach(function (item) {
-      var li = document.createElement("li");
-      var a = document.createElement("a");
-      a.href = item.href;
-      a.textContent = item.title;
-      if (item.kind === "sentence" && item.quote) {
-        var small = document.createElement("small");
-        small.textContent = item.quote;
-        a.appendChild(small);
-      }
-      li.appendChild(a);
-      ul.appendChild(li);
-    });
-    parent.appendChild(ul);
-  }
-
-  function fillRecent(parent) {
-    parent.replaceChildren();
-    parent.appendChild(el("h2", "", "最近阅读"));
-    var api = bridge();
-    var progress = api && api.readProgress ? api.readProgress() : { learned: {}, last: "" };
-    var rows = Object.keys(progress.learned || {}).map(function (id) {
-      return { id: id, at: progress.learned[id] };
-    }).sort(function (a, b) { return b.at - a.at; }).slice(0, 8);
-    if (progress.last && !rows.some(function (row) { return row.id === progress.last; })) {
-      rows.unshift({ id: progress.last, at: 0 });
-    }
-    if (!rows.length) {
-      parent.appendChild(el("p", "meta", "还没有读完的篇目。"));
-      return;
-    }
-    var ul = el("ul", "account-list");
-    rows.forEach(function (row) {
-      var li = document.createElement("li");
-      var a = document.createElement("a");
-      a.href = "#/read/" + row.id;
-      a.textContent = api && api.lookupTitle ? api.lookupTitle(row.id) : row.id;
-      li.appendChild(a);
-      ul.appendChild(li);
-    });
-    parent.appendChild(ul);
   }
 
   function paragraphs(wrap, lines) {
@@ -482,8 +271,8 @@
     openPage("用户协议", function (wrap) {
       paragraphs(wrap, [
         "典籍是一个个人读书网站。不登录可以阅读已经发布的篇目，阅读记录保存在你自己的浏览器里。",
-        "登录是可选的，只用来在你自己的设备之间同步书签和阅读进度。请使用你自己的邮箱。验证码只用于登录，不要转给别人。",
-        "书签和进度由你自己产生。可以随时在「我的」里退出，或删除账号。删除后，云端保存的邮箱、会话、书签和进度会清除。",
+        "登录是可选的。请使用你自己的邮箱。验证码只用于登录，不要转给别人。",
+        "可以随时在「我的」里退出，或删除账号。删除后，云端保存的邮箱、会话和行为记录会清除。",
         "网站按现状提供，不保证不中断。继续使用登录功能，即表示你同意本页和隐私政策。",
       ]);
     });
@@ -493,12 +282,12 @@
     openPage("隐私政策", function (wrap) {
       paragraphs(wrap, [
         "不登录时，阅读进度、字体、拼音和逐句开关只存在这台设备的本地存储里，不会上传。",
-        "登录后，服务器保存：邮箱、登录会话、书签（某一篇或某一句），以及阅读进度（上次读到的篇目、已读篇目、字体、拼音和逐句开关）。",
+        "登录后，服务器保存邮箱和登录会话。会话是一串保存在本机本地存储里的令牌，不放进 Cookie。请不要在公共设备上保持登录。",
         "验证码通过阿里云邮件推送发到你的邮箱。验证码是 6 位数字，10 分钟后失效。服务器只保存验证码的哈希，不保存明文。",
-        "账号数据存放在阿里云香港的函数计算和表格存储。邮件从邮件推送发出，发信域名是 mail.lucca.top。",
-        "会话是一串保存在本机本地存储里的令牌，不放进 Cookie。请不要在公共设备上保持登录。",
+        "登录功能打开以后，阅读一篇或点开一个字时，浏览器会记下两类行为：打开了哪一篇（page_view），以及查了哪个字（char_lookup）。这些记录先暂存在页面里，再成批发给服务器。已登录时记在你的账号下；未登录时记在这台浏览器随机生成的设备标识下，不包含姓名。",
+        "账号和行为数据存放在阿里云香港的函数计算和表格存储。邮件从邮件推送发出，发信域名是 mail.lucca.top。",
         "这些资料不出售，也不用来发广告。网站另有百度统计和不蒜子的访问计数，与账号无关。",
-        "在「我的」里删除账号后，云端的用户、会话、验证码和同步数据会删除。浏览器里的本地记录需要你自己清除。",
+        "在「我的」里删除账号后，云端的用户、会话、验证码和记在该账号下的行为记录会删除。未登录时产生的设备记录，以及浏览器里的本地阅读进度，需要你自己清除。",
       ]);
     });
   }
@@ -512,25 +301,34 @@
     return false;
   }
 
+  function pieceFromHash() {
+    var hash = location.hash || "";
+    var read = hash.match(/^#\/read\/((?:v|h|z|d|l)\d{2}-\d{2})$/);
+    if (read) return read[1];
+    var poem = hash.match(/^#\/(tang|ci|ke)\/([a-z0-9-]+)$/);
+    if (poem) return poem[1] + ":" + poem[2];
+    return "";
+  }
+
   function enable() {
-    if (enabled || !window.gwgzMerge) return;
+    if (enabled) return;
     enabled = true;
+    deviceId();
     window.gwgzAccount.route = route;
-    window.gwgzAccount.onProgress = onProgress;
-    window.gwgzAccount.decorateReader = decorateReader;
+    window.gwgzAccount.track = track;
     mountEntry();
     if (/^#\/(login|me|terms|privacy)$/.test(location.hash || "")) {
       try { window.dispatchEvent(new HashChangeEvent("hashchange")); } catch (_) { route(location.hash); }
-    } else {
-      decorateReader();
+    } else if (document.querySelector("#main article.reader")) {
+      var id = pieceFromHash();
+      if (id) track({ type: "page_view", pieceId: id });
     }
-    if (token()) push();
   }
 
   document.addEventListener("visibilitychange", function () {
-    if (!enabled || document.visibilityState !== "visible" || !token() || pushTimer) return;
-    push();
+    if (document.visibilityState === "hidden") flush();
   });
+  window.addEventListener("pagehide", flush);
   window.addEventListener("hashchange", refreshEntry);
 
   fetch(API + "/health", { method: "GET", cache: "no-store" }).then(function (res) {
