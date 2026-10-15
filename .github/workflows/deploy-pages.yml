@@ -20,6 +20,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           artifact-ids: ${{ inputs.artifact-id }}
@@ -30,3 +31,5 @@ jobs:
           path: site
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify public Pages bytes against the audited artifact
+        run: python3 scripts/verify_live.py site https://maruiduan.github.io/ancient_chinese/

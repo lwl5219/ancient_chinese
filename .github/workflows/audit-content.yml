@@ -26,6 +26,8 @@ jobs:
       artifact-id: ${{ steps.site.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -60,6 +62,23 @@ jobs:
           path: site/
           include-hidden-files: true
           if-no-files-found: error
+          retention-days: 90
+
+      - name: Export and verify complete repair patches
+        run: |
+          mkdir -p "$RUNNER_TEMP/repair-patches"
+          for base in b789040e52e9d81a1c0cd7647e5eedb239942c07 657ea00ba76d5da3b581bc40f4cc3ffec45566ba; do
+            patch="$RUNNER_TEMP/repair-patches/fixes-from-$base.patch"
+            git diff --binary "$base" HEAD > "$patch"
+            GIT_INDEX_FILE="$RUNNER_TEMP/patch-check.index" git read-tree "$base"
+            GIT_INDEX_FILE="$RUNNER_TEMP/patch-check.index" git apply --cached --check "$patch"
+          done
+          cd "$RUNNER_TEMP/repair-patches"
+          sha256sum *.patch | tee SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repair-patches-${{ github.sha }}
+          path: ${{ runner.temp }}/repair-patches/
           retention-days: 90
 
   pages:

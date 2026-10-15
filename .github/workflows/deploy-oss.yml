@@ -43,3 +43,5 @@ jobs:
           test -n "$OSS_ACCESS_KEY_ID"
           test -n "$OSS_ACCESS_KEY_SECRET"
           python3 scripts/deploy_oss.py site oss://guwen-lucca
+      - name: Verify public OSS bytes against the audited artifact
+        run: python3 scripts/verify_live.py site https://guwen-lucca.oss-cn-hongkong.aliyuncs.com/
