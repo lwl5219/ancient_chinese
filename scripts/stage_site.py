@@ -84,8 +84,10 @@ def stage(output: Path, previous_site: Path | None = None) -> None:
     with tempfile.TemporaryDirectory(prefix=".site-stage-", dir=output.parent) as temp:
         site = Path(temp) / "site"
         site.mkdir()
-        for name in ("index.html", "favicon.svg", ".nojekyll"):
-            shutil.copy2(ROOT / name, site / name)
+        for name in ("index.html", "favicon.svg", ".nojekyll", "stats.html"):
+            source = ROOT / name
+            if source.is_file():
+                shutil.copy2(source, site / name)
         for name in ("css", "js", "data", "audio"):
             shutil.copytree(ROOT / name, site / name)
         if stamp_assets.main([str(site)]) != 0:

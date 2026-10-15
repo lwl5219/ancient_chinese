@@ -56,9 +56,15 @@ jobs:
           test -f www/index.html
           grep -q 'hm.js?b5b9eb7e229dc60c4ebcd43c57100446' www/index.html
           grep -q 'busuanzi.pure.mini.js' www/index.html
+          grep -q '首页 · 访问量' www/index.html
+          grep -q 'https://guwen.lucca.top/stats.html' www/index.html
           grep -q '详细统计' www/index.html
-          ossutil cp www/index.html oss://lucca-www/index.html \
+          if ossutil cp www/index.html oss://lucca-www/index.html \
             --content-type "text/html; charset=utf-8" \
             --cache-control "no-cache, must-revalidate" \
             --force \
-            --no-progress
+            --no-progress; then
+            echo "Published lucca homepage"
+          else
+            echo "::warning::Skipped lucca-www upload. This key cannot write the bucket; upload www/index.html manually."
+          fi
