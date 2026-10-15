@@ -59,7 +59,7 @@ node --test server/test/*.test.js
 | `limits` | `id` STRING | `hourStart` INTEGER，`hourCount` INTEGER，`lastSent` INTEGER |
 | `sessions` | `tokenHash` STRING | `userId` STRING，`email` STRING，`expiresAt` INTEGER |
 | `events` | `userId` STRING，`ts` STRING | `type` STRING，`pieceId` STRING，`payload` STRING，`deviceHash` STRING，`clientTs` INTEGER |
-| `state` | `userId` STRING | `recent` STRING，`read` STRING |
+| `state` | `userId` STRING | `recent` STRING，`read` STRING。控制台建表只填主键；这两列是写入时带上的属性，不用事先声明 |
 
 `limits.id` 是 `email:`、`ip:`、`evuser:`、`evip:`、`stuser:` 或 `stip:` 加上对应的值。验证码和会话在表里只存哈希。`users.userId` 由邮箱稳定算出。`state.recent` 和 `state.read` 是 JSON 字符串：最近阅读最多 24 条，已读最多 400 条，只收古文观止（`v##-##`）、唐诗（`tang:`）和宋词（`ci:`）。未登录的访问不写入 `events`，也不读 `state`。
 
