@@ -10,7 +10,7 @@ const root = path.join(__dirname, "..");
 
 function bootSource() {
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-  const marker = 'window.API_BASE = "";';
+  const marker = "window.API_BASE =";
   const start = html.indexOf(marker);
   assert.notEqual(start, -1);
   const from = html.indexOf("(function () {", start);
@@ -63,9 +63,9 @@ function runBoot(options) {
   return { created: created, fetches: fetches, header: header, location: location, window: window };
 }
 
-test("login stays off unless API_BASE is set", () => {
+test("the page points at the API and still lazy-loads account code", () => {
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-  assert.match(html, /window\.API_BASE\s*=\s*""/);
+  assert.match(html, /window\.API_BASE\s*=\s*"https:\/\/api\.lucca\.top"/);
   assert.match(html, /if\s*\(\s*!API\s*\)\s*return/);
   assert.equal(html.split("js/account.js").length, 2);
   assert.doesNotMatch(html, /<script src="js\/account(?:\.[0-9a-f]{12})?\.js"><\/script>/);
@@ -181,4 +181,58 @@ test("account code sends events only after login", async () => {
   assert.equal(calls[0].url, "https://api.example/events");
   assert.equal(calls[0].body.includes("deviceId"), false);
   assert.equal(calls[0].body.includes("page_view"), true);
+});
+
+test("event piece ids stay inside the server charset", async () => {
+  const calls = [];
+  const window = { addEventListener() {}, API_BASE: "https://api.example" };
+  const context = vm.createContext({
+    window: window,
+    document: {
+      addEventListener() {},
+      querySelector() { return null; },
+      getElementById() { return null; },
+      createElement() { return { style: {}, addEventListener() {}, appendChild() {} }; },
+    },
+    localStorage: {
+      getItem() { return "session-token-value"; },
+      setItem() {},
+      removeItem() {},
+    },
+    location: { hash: "#/" },
+    fetch(url, options) {
+      calls.push({ url: url, body: options && options.body });
+      return Promise.resolve({ ok: true, status: 200, json() { return Promise.resolve({ ok: true }); } });
+    },
+    console: { error() {}, log() {} },
+    setTimeout: setTimeout,
+    clearTimeout: clearTimeout,
+    Math: Math,
+  });
+  vm.runInContext(fs.readFileSync(path.join(root, "js/account.js"), "utf8"), context, { filename: "js/account.js" });
+  const samples = ["v01-01", "tang:t010", "古文/郑伯克段于鄢", "ke/静夜思", "a/b", "郑"];
+  samples.forEach(function (pieceId) {
+    window.gwgzAccount.track({ type: "page_view", pieceId: pieceId });
+    window.gwgzAccount.track({ type: "char_lookup", pieceId: pieceId, payload: { ch: "床" } });
+  });
+  await new Promise(function (resolve) { setTimeout(resolve, 0); });
+  assert.equal(calls.length, 2);
+  const sent = JSON.parse(calls[0].body).events.concat(JSON.parse(calls[1].body).events);
+  const seen = {};
+  sent.forEach(function (event) {
+    assert.match(event.pieceId, /^[A-Za-z0-9:_-]{1,80}$/);
+    assert.equal(event.payload == null || event.payload.ch === "床", true);
+    if (!seen[event.type]) seen[event.type] = {};
+    seen[event.type][event.pieceId] = (seen[event.type][event.pieceId] || 0) + 1;
+  });
+  assert.equal(sent.filter(function (event) { return event.pieceId === "v01-01"; }).length, 2);
+  assert.equal(sent.filter(function (event) { return event.pieceId === "tang:t010"; }).length, 2);
+  const odd = sent.filter(function (event) { return event.pieceId.indexOf("id-") === 0; });
+  assert.equal(odd.length, 8);
+  const distinct = {};
+  odd.forEach(function (event) { distinct[event.pieceId] = true; });
+  assert.equal(Object.keys(distinct).length, 4);
+  Object.keys(distinct).forEach(function (id) {
+    assert.equal(odd.filter(function (event) { return event.pieceId === id; }).length, 2);
+  });
 });
