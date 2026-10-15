@@ -382,6 +382,7 @@ def add_comments(lines: list[dict]) -> None:
             "url": "https://zh.wikisource.org/wiki/古文觀止/卷%d" % volume,
         })
     attach_saved_notes(lines)
+    attach_cards(lines)
 
 
 def attach_saved_notes(lines: list[dict]) -> None:
@@ -407,6 +408,51 @@ def attach_saved_notes(lines: list[dict]) -> None:
             if only_han(line.get("quote") or "") != want:
                 continue
             attach_comment(line, comment)
+
+
+def attach_cards(lines: list[dict]) -> None:
+    """把本站白话、赏析按篇和引文挂回名句。引文对不上就停下，避免下次重建丢掉。"""
+    path = ROOT / "sources" / "commentary" / "line_cards.json"
+    if not path.is_file():
+        raise SystemExit("缺少 sources/commentary/line_cards.json")
+    cards = load_json(path)
+    by_quote: dict[tuple[str, str], dict] = {}
+    by_text: list[dict] = []
+    for card in cards:
+        pid = card.get("piece") or ""
+        quote = only_han(card.get("quote") or "")
+        needle = only_han(card.get("text") or "")
+        if not pid or not quote:
+            continue
+        if needle:
+            by_text.append(card)
+        else:
+            by_quote[(pid, quote)] = card
+    missing = []
+    for line in lines:
+        pid = line["pieces"][0]
+        quote = only_han(line.get("quote") or "")
+        text = only_han(line.get("text") or "")
+        card = None
+        best_len = -1
+        for item in by_text:
+            if item.get("piece") != pid or only_han(item.get("quote") or "") != quote:
+                continue
+            needle = only_han(item.get("text") or "")
+            if needle and needle in text and len(needle) > best_len:
+                card = item
+                best_len = len(needle)
+        if card is None:
+            card = by_quote.get((pid, quote))
+        vernacular = ((card or {}).get("vernacular") or "").strip()
+        appreciate = ((card or {}).get("appreciate") or "").strip()
+        if not vernacular or not appreciate:
+            missing.append("%s %s" % (pid, line.get("quote")))
+            continue
+        line["vernacular"] = vernacular
+        line["appreciate"] = appreciate
+    if missing:
+        raise SystemExit("名句卡片缺 %d 条：%s" % (len(missing), " | ".join(missing[:16])))
 
 
 def gloss_piece(pid: str) -> list[str]:

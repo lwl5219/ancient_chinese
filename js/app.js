@@ -1331,8 +1331,8 @@
       const text = document.createElement("span");
       text.className = "verse-text";
       appendTokens(text, row);
-      if (state.piece) markFamous(text, row, state.piece.id);
       p.appendChild(text);
+      if (state.piece) markFamous(text, row, state.piece.id);
       parent.appendChild(p);
     });
   }
@@ -1345,11 +1345,8 @@
         const p = document.createElement("p");
         p.className = "orig para" + (state.progress.pinyin ? " with-py" : "");
         sentenceRows(line.tokens).forEach(function (row) {
-          const span = document.createElement("span");
-          span.className = "orig-sent";
-          appendTokens(span, row);
-          if (state.piece) markFamous(span, row, state.piece.id);
-          p.appendChild(span);
+          if (state.piece) appendMarked(p, row, state.piece.id, "");
+          else appendTokens(p, row);
         });
         body.appendChild(p);
       });
@@ -1379,21 +1376,42 @@
     return body;
   }
 
+  function placeFamousMarks(body) {
+    if (!body) return;
+    body.querySelectorAll(".verse-line").forEach(function (line) {
+      const text = line.querySelector(".verse-text");
+      const mark = line.querySelector(".famous-mark");
+      if (!text || !mark) return;
+      const lineBox = line.getBoundingClientRect();
+      const textBox = text.getBoundingClientRect();
+      if (!textBox.width || !lineBox.width) return;
+      let left = textBox.right - lineBox.left + 2;
+      const maxLeft = Math.max(0, line.clientWidth - 44);
+      if (left > maxLeft) left = maxLeft;
+      const top = textBox.top - lineBox.top + (textBox.height - 44) / 2;
+      mark.style.left = left + "px";
+      mark.style.top = top + "px";
+    });
+  }
+
   function fitVerse(body) {
     if (!body) return;
     const lines = body.querySelectorAll(".verse-line");
     if (!lines.length) return;
     body.style.fontSize = "";
     const limit = body.clientWidth;
+    const side = body.querySelector(".famous-mark") ? 48 : 0;
     let widest = 0;
     lines.forEach(function (line) {
       const text = line.querySelector(".verse-text") || line;
       widest = Math.max(widest, text.scrollWidth);
     });
-    if (widest > limit + 1) {
+    const room = Math.max(1, limit - side * 2);
+    if (widest > room + 1) {
       const current = parseFloat(getComputedStyle(body).fontSize);
-      body.style.fontSize = Math.max(14, current * (limit - 1) / widest) + "px";
+      body.style.fontSize = Math.max(14, current * room / widest) + "px";
     }
+    placeFamousMarks(body);
   }
 
   function sentenceMode() {
@@ -1824,6 +1842,11 @@
     wrap.appendChild(pager);
     main.replaceChildren(wrap);
     fitVerse(body);
+    if (document.fonts && document.fonts.status !== "loaded") {
+      document.fonts.ready.then(function () {
+        if (body.isConnected) fitVerse(body);
+      });
+    }
     document.title = title + " · 典籍";
     syncChrome();
     window.scrollTo(0, y);
@@ -2005,11 +2028,7 @@
         const p = document.createElement("p");
         p.className = "orig para" + (state.progress.pinyin ? " with-py" : "");
         para.sentences.forEach(function (sent) {
-          const span = document.createElement("span");
-          span.className = "orig-sent";
-          appendTokens(span, sent.tokens);
-          markFamous(span, sent.tokens, art.id, (sent.tr || "").trim());
-          p.appendChild(span);
+          appendMarked(p, sent.tokens, art.id, (sent.tr || "").trim());
         });
         body.appendChild(p);
       });
@@ -2028,11 +2047,7 @@
         pair.className = "pair" + (index === para.sentences.length - 1 ? " para-end" : "");
         const orig = document.createElement("p");
         orig.className = "orig" + (state.progress.pinyin ? " with-py" : "");
-        const span = document.createElement("span");
-        span.className = "orig-sent";
-        appendTokens(span, sent.tokens);
-        markFamous(span, sent.tokens, art.id, (sent.tr || "").trim());
-        orig.appendChild(span);
+        appendMarked(orig, sent.tokens, art.id, (sent.tr || "").trim());
         if (sent.grade) {
           const tag = document.createElement("span");
           tag.className = "sent-grade";
@@ -2511,7 +2526,11 @@
       const inside = han.indexOf(quote) >= 0;
       const covers = han.length >= 4 && quote.indexOf(han) >= 0;
       if (!inside && !covers) continue;
-      const score = ((line.comments || []).length ? 1000 : 0) + quote.length;
+      const textHan = String(line.text || "").replace(/[^\u4e00-\u9fff]/g, "");
+      let score = quote.length;
+      if ((line.comments || []).length) score += 40;
+      if (textHan && han.indexOf(textHan) >= 0) score += 4000 + textHan.length;
+      else if (textHan && textHan.indexOf(han) >= 0) score += 2000 + han.length;
       if (score > bestScore) {
         best = line;
         bestScore = score;
@@ -2520,23 +2539,42 @@
     return best;
   }
 
+  function appendMarked(parent, tokens, pieceId, translation) {
+    const rows = clauseRows(tokens);
+    const hits = rows.map(function (row) { return matchFamous(pieceId, row); });
+    if (!hits.some(Boolean)) {
+      const span = document.createElement("span");
+      span.className = "orig-sent";
+      appendTokens(span, tokens);
+      parent.appendChild(span);
+      markFamous(span, tokens, pieceId, translation);
+      return;
+    }
+    rows.forEach(function (row, index) {
+      const span = document.createElement("span");
+      span.className = "orig-sent";
+      appendTokens(span, row);
+      parent.appendChild(span);
+      if (hits[index]) markFamous(span, row, pieceId, translation);
+    });
+  }
+
   function markFamous(node, tokens, pieceId, translation) {
     const hit = matchFamous(pieceId, tokens);
     if (!hit) return;
     node.classList.add("famous-line");
-    const comments = hit.comments || [];
-    if (!comments.length) return;
+    node._famous = { hit: hit, translation: translation || "" };
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "famous-mark";
-    btn.textContent = "评";
-    btn.setAttribute("aria-label", "打开名句评点");
+    btn.setAttribute("aria-label", "打开名句赏析");
     btn.addEventListener("click", function (event) {
       event.preventDefault();
       event.stopPropagation();
-      openFamous(hit, translation || "");
+      openLineCard(hit, translation || "");
     });
-    node.appendChild(btn);
+    if (node.parentNode) node.after(btn);
+    else node.appendChild(btn);
   }
 
   function closeFamous() {
@@ -2546,7 +2584,27 @@
     sheet.innerHTML = "";
   }
 
-  function openFamous(entry, translation) {
+  function lineSection(label, text, badge) {
+    const sec = document.createElement("section");
+    sec.className = "line-sec";
+    const lab = document.createElement("p");
+    lab.className = "pop-label";
+    lab.appendChild(document.createTextNode(label));
+    if (badge) {
+      const tag = document.createElement("span");
+      tag.className = "site-note";
+      tag.textContent = badge;
+      lab.appendChild(tag);
+    }
+    const p = document.createElement("p");
+    p.className = label === "原句" ? "orig-line" : "line-body";
+    p.textContent = text;
+    sec.appendChild(lab);
+    sec.appendChild(p);
+    return sec;
+  }
+
+  function openLineCard(entry, translation) {
     closePopup();
     const sheet = document.getElementById("famous-sheet");
     sheet.innerHTML = "";
@@ -2565,41 +2623,40 @@
     head.appendChild(h2);
     head.appendChild(close);
     sheet.appendChild(head);
-    const quote = document.createElement("p");
-    quote.className = "quote";
-    quote.textContent = entry.text || entry.quote || "";
-    sheet.appendChild(quote);
-    if (entry.fame) {
-      const fame = document.createElement("p");
-      fame.className = "sheet-credit";
-      fame.textContent = "收录 " + entry.fame;
-      sheet.appendChild(fame);
+    sheet.appendChild(lineSection("原句", entry.text || entry.quote || ""));
+    const vernacular = (entry.vernacular || translation || "").trim();
+    if (vernacular) sheet.appendChild(lineSection("白话", vernacular));
+    const appreciate = (entry.appreciate || "").trim();
+    if (appreciate) sheet.appendChild(lineSection("赏析", appreciate, "本站赏析"));
+    const comments = entry.comments || [];
+    if (comments.length) {
+      const sec = document.createElement("section");
+      sec.className = "line-sec";
+      const lab = document.createElement("p");
+      lab.className = "pop-label";
+      lab.textContent = "名家点评";
+      sec.appendChild(lab);
+      comments.forEach(function (item) {
+        const block = document.createElement("div");
+        block.className = "comment";
+        const b = document.createElement("b");
+        b.textContent = [item.author, item.source].filter(Boolean).join(" · ");
+        block.appendChild(b);
+        const p = document.createElement("p");
+        p.textContent = item.text || "";
+        block.appendChild(p);
+        if (item.url) {
+          const a = document.createElement("a");
+          a.href = item.url;
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.textContent = "出处";
+          block.appendChild(a);
+        }
+        sec.appendChild(block);
+      });
+      sheet.appendChild(sec);
     }
-    if ((translation || "").trim()) {
-      const tr = document.createElement("p");
-      tr.className = "quote";
-      tr.textContent = translation.trim();
-      sheet.appendChild(tr);
-    }
-    (entry.comments || []).forEach(function (item) {
-      const block = document.createElement("div");
-      block.className = "comment";
-      const b = document.createElement("b");
-      b.textContent = [item.author, item.source].filter(Boolean).join(" · ");
-      block.appendChild(b);
-      const p = document.createElement("p");
-      p.textContent = item.text || "";
-      block.appendChild(p);
-      if (item.url) {
-        const a = document.createElement("a");
-        a.href = item.url;
-        a.target = "_blank";
-        a.rel = "noopener";
-        a.textContent = "出处";
-        block.appendChild(a);
-      }
-      sheet.appendChild(block);
-    });
     sheet.hidden = false;
     scrim.hidden = false;
   }
@@ -2747,6 +2804,20 @@
     }
     dictSec.appendChild(block);
     popup.appendChild(dictSec);
+    const famousNode = anchor && anchor.closest(".famous-line");
+    const famous = famousNode && famousNode._famous;
+    if (famous && famous.hit) {
+      const jump = document.createElement("button");
+      jump.type = "button";
+      jump.className = "famous-jump";
+      jump.textContent = "名句 · 赏析 ›";
+      jump.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        openLineCard(famous.hit, famous.translation || "");
+      });
+      popup.insertBefore(jump, popup.firstChild);
+    }
     placePopup(anchor);
   }
 

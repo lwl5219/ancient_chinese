@@ -8,6 +8,7 @@
   --line: #e4ddd2;
   --accent: #8d3f34;
   --accent-soft: #f3e6e2;
+  --famous: #8d3f34;
   --py: #8a7968;
   --ok: #3c684c;
   --ok-soft: #e6f0e9;
@@ -349,38 +350,82 @@ h1 {
 .orig-sent { display: inline; }
 .verse-text { position: relative; }
 .famous-line {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  border-radius: 2px;
+  background: none;
   text-decoration-line: underline;
+  text-decoration-style: dashed;
   text-decoration-thickness: 1px;
-  text-underline-offset: 0.2em;
-  text-decoration-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  text-underline-offset: 0.26em;
+  text-decoration-color: var(--famous);
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
 .famous-mark {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.15em;
-  height: 1.15em;
-  margin: 0 0 0 0.2em;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  width: 18px;
+  height: 18px;
+  margin: 0 0 0 0.12em;
+  padding: 0;
+  border: 0;
   border-radius: 999px;
   background: transparent;
-  color: color-mix(in srgb, var(--accent) 75%, var(--muted));
-  font-size: 0.62rem;
+  color: var(--famous);
+  vertical-align: 0.12em;
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+}
+.famous-mark::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+.famous-mark::after {
+  content: "评";
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid color-mix(in srgb, var(--famous) 55%, var(--line));
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 11px;
   font-weight: 500;
   line-height: 1;
-  vertical-align: 0.35em;
-  opacity: 0.85;
 }
-.verse-line .famous-mark {
+.body.verse .verse-line { position: relative; }
+.body.verse .famous-mark {
   position: absolute;
-  left: calc(100% + 0.28em);
-  top: 0.42em;
+  width: 44px;
+  height: 44px;
   margin: 0;
-  vertical-align: baseline;
+  vertical-align: unset;
+}
+.body.verse .famous-mark::before { content: none; }
+.famous-jump {
+  display: flex;
+  align-items: center;
+  width: calc(100% + 36px);
+  min-height: 48px;
+  margin: -16px -18px 14px;
+  padding: 0 18px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  color: var(--accent);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-align: left;
 }
 .famous-sheet {
   position: fixed;
@@ -388,7 +433,7 @@ h1 {
   left: 0;
   right: 0;
   bottom: 0;
-  max-height: min(52vh, 460px);
+  max-height: min(78vh, 640px);
   overflow: auto;
   background: var(--surface);
   border-top: 1px solid var(--line);
@@ -398,9 +443,28 @@ h1 {
 }
 .famous-sheet header { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 .famous-sheet h2 { font-family: var(--serif); font-size: 1.05rem; margin: 0; }
-.famous-sheet .quote { margin: 8px 0 12px; color: var(--ink-soft); }
-.famous-sheet .comment { margin: 0 0 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.famous-sheet .line-sec { margin: 0 0 14px; }
+.famous-sheet .line-sec .pop-label { display: flex; align-items: center; gap: 8px; }
+.famous-sheet .orig-line {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.12rem;
+  line-height: 1.65;
+  color: var(--ink);
+}
+.famous-sheet .line-body { margin: 0; line-height: 1.7; color: var(--ink-soft); }
+.famous-sheet .site-note {
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+.famous-sheet .comment { margin: 0 0 12px; }
 .famous-sheet .comment b { display: block; font-size: 0.82rem; color: var(--muted); font-weight: 650; margin-bottom: 4px; }
+.famous-sheet .comment p { margin: 0 0 4px; line-height: 1.65; }
 .famous-sheet .comment a { color: var(--accent); }
 .famous-toggle {
   border: 1px solid var(--line);
@@ -744,7 +808,6 @@ h1 {
 .body.verse .verse-line { white-space: nowrap; margin: 0; }
 .body.verse.shi .verse-line { margin: 0.2em 0; }
 .body.verse .py-ruby { font-size: 0.34em; letter-spacing: 0.05em; }
-.body.verse .verse-line.with-py .famous-mark { top: 1.15em; }
 .body.verse.ci .stanza { margin: 0 0 1.2em; }
 .body.verse.ci .stanza:last-child { margin-bottom: 0; }
 .body.verse.ci .stanza-label {
@@ -1241,6 +1304,7 @@ h1 {
     --line: #3c352e;
     --accent: #e4a598;
     --accent-soft: #3d2d29;
+    --famous: #f6c9bf;
     --py: #b7a694;
     --ok: #9dccb0;
     --ok-soft: #243028;
