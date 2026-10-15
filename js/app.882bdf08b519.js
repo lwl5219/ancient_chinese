@@ -1427,15 +1427,22 @@
     return !!state.progress.sentence;
   }
 
-  function syncReadTools(show) {
+  function syncReadTools(mode) {
     const bar = document.getElementById("read-tools");
     if (!bar) return;
+    const show = mode === "article" || mode === "piece";
     bar.hidden = !show;
-    document.querySelector(".top").classList.toggle("has-tools", !!show);
+    bar.classList.toggle("for-article", mode === "article");
+    bar.classList.toggle("for-piece", mode === "piece");
+    document.querySelector(".top").classList.toggle("has-tools", show);
     if (!show) return;
     const py = document.getElementById("tool-py");
     py.classList.toggle("on", !!state.progress.pinyin);
     py.setAttribute("aria-pressed", state.progress.pinyin ? "true" : "false");
+    const fontBtn = document.getElementById("tool-font");
+    const trad = state.progress.font === "t";
+    fontBtn.classList.toggle("on", trad);
+    fontBtn.setAttribute("aria-pressed", trad ? "true" : "false");
     bar.querySelectorAll(".tool-seg button").forEach(function (btn) {
       const on = (btn.dataset.mode === "sentence") === sentenceMode();
       btn.classList.toggle("on", on);
@@ -1818,20 +1825,6 @@
     wrap.appendChild(body);
     const foot = document.createElement("div");
     foot.className = "reader-foot";
-    const prefs = document.createElement("div");
-    prefs.className = "foot-links";
-    prefs.appendChild(textLink(font === "t" ? "看简体" : "看繁体", function () {
-      state.progress.font = font === "t" ? "s" : "t";
-      saveProgress();
-      renderPiece(true);
-    }));
-    prefs.appendChild(textLink(state.progress.pinyin ? "隐藏拼音" : "显示拼音", function () {
-      state.progress.pinyin = !state.progress.pinyin;
-      state.progress.pinyinSet = true;
-      saveProgress();
-      renderPiece(true);
-    }));
-    foot.appendChild(prefs);
     const turn = document.createElement("p");
     turn.className = "verse-turn";
     const step = prose ? "篇" : "首";
@@ -3113,7 +3106,7 @@
       crumbEl.appendChild(a);
     });
     document.querySelector(".top").classList.toggle("has-back", crumbs.length > 0);
-    syncReadTools(onArticle && !!state.article);
+    syncReadTools(onArticle && state.article ? "article" : (onPiece ? "piece" : ""));
     const tabbar = document.getElementById("tabbar");
     const dock = document.getElementById("dock");
     tabbar.hidden = reading;
@@ -3252,11 +3245,18 @@
     if (dx > 0 && nav.prev) location.hash = "#/read/" + nav.prev.id;
   }, { passive: true });
 
+  document.getElementById("tool-font").addEventListener("click", function () {
+    state.progress.font = state.progress.font === "t" ? "s" : "t";
+    saveProgress();
+    if (state.view === "piece" && state.piece) renderPiece(true);
+    else if (state.view === "article" && state.article) renderArticle(true);
+  });
   document.getElementById("tool-py").addEventListener("click", function () {
     state.progress.pinyin = !state.progress.pinyin;
     state.progress.pinyinSet = true;
     saveProgress();
     if (state.view === "article" && state.article) renderArticle(true);
+    else if (state.view === "piece" && state.piece) renderPiece(true);
   });
   document.querySelectorAll("#read-tools .tool-seg button").forEach(function (btn) {
     btn.addEventListener("click", function () {
