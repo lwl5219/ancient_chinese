@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16150f" media="(prefers-color-scheme: dark)">
+<title>lucca</title>
+<script>
+var _hmt = _hmt || [];
+(function () {
+  var hm = document.createElement("script");
+  hm.async = true;
+  hm.src = "https://hm.baidu.com/hm.js?b5b9eb7e229dc60c4ebcd43c57100446";
+  hm.onerror = function () {};
+  var s = document.getElementsByTagName("script")[0];
+  if (s && s.parentNode) s.parentNode.insertBefore(hm, s);
+  else document.head.appendChild(hm);
+})();
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23a33a2b'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23f6f3ec' font-family='serif'%3EL%3C/text%3E%3C/svg%3E">
+<style>
+:root{--bg:#f6f3ec;--card:#fffdf8;--ink:#2b2822;--sub:#8a8476;--line:#e6e0d3;--accent:#a33a2b;--seal:#a33a2b}
+@media (prefers-color-scheme:dark){:root{--bg:#16150f;--card:#1f1d17;--ink:#e9e4d8;--sub:#8f897b;--line:#2e2b23;--accent:#d06a55}}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:"Songti SC","Noto Serif SC","Source Han Serif SC","STSong",serif;min-height:100vh;-webkit-font-smoothing:antialiased;
+ padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.wrap{max-width:880px;margin:0 auto;padding:64px 24px 40px}
+header{margin-bottom:44px}
+.brand{display:flex;align-items:center;gap:12px}
+.seal{width:34px;height:34px;border-radius:7px;background:var(--seal);color:#f6f3ec;display:grid;place-items:center;font-size:18px}
+h1{font-size:28px;font-weight:600;letter-spacing:.06em}
+.tag{margin-top:18px;color:var(--sub);font-size:15px;letter-spacing:.12em}
+.sec{font-size:13px;color:var(--sub);letter-spacing:.3em;margin-bottom:14px}
+.grid{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:720px){.grid{grid-template-columns:repeat(3,1fr)}.wrap{padding-top:110px}h1{font-size:32px}}
+.card{position:relative;display:flex;flex-direction:column;gap:10px;min-height:132px;padding:22px 22px 20px;border-radius:16px;
+ background:var(--card);border:1px solid var(--line);color:inherit;text-decoration:none;transition:transform .2s,border-color .2s,box-shadow .2s}
+a.card:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:0 8px 24px rgba(0,0,0,.06)}
+a.card:active{transform:scale(.98)}
+.top{display:flex;align-items:center;justify-content:space-between}
+.name{font-size:24px;font-weight:600;letter-spacing:.1em}
+.desc{color:var(--sub);font-size:14px;line-height:1.7}
+.badge{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--sub);font-family:system-ui,sans-serif}
+.live .badge{color:var(--accent);border-color:var(--accent)}
+.arrow{margin-top:auto;color:var(--accent);font-size:14px;letter-spacing:.1em}
+.off{opacity:.55;cursor:default}
+footer{margin-top:56px;color:var(--sub);font-size:12px;letter-spacing:.1em;text-align:center}
+footer .copy{margin-bottom:10px}
+footer .meta{font-family:system-ui,sans-serif;font-size:11px;letter-spacing:.06em;line-height:1.6}
+footer .counts{display:none}
+footer .counts[style*="inline"]{margin-right:.75em}
+footer .stat{color:inherit;text-decoration:none;opacity:.75}
+footer .stat:hover{color:var(--accent);opacity:1}
+</style>
+</head>
+<body>
+<script>
+// 模块配置：新增模块只需在此添加一项。status: "live" | "soon"
+const MODULES = [
+  { name: "古文", desc: "古文观止 · 唐诗 · 宋词，逐句注译，拼音对照。", url: "https://guwen.lucca.top/", status: "live" },
+  { name: "英语", desc: "日常积累与精读练习。", url: "", status: "soon" },
+  { name: "AI",   desc: "工具、笔记与实验。", url: "", status: "soon" }
+];
+</script>
+<div class="wrap">
+  <header>
+    <div class="brand"><div class="seal">L</div><h1>lucca</h1></div>
+    <p class="tag">读书 · 学习 · 记录</p>
+  </header>
+  <div class="sec">模块</div>
+  <main class="grid" id="grid"></main>
+  <footer>
+    <div class="copy">© <span id="y"></span> lucca.top</div>
+    <p class="meta">
+      <span id="busuanzi_container_site_pv" class="counts">总访问量 <span id="busuanzi_value_site_pv"></span> · 访客数 <span id="busuanzi_value_site_uv"></span></span>
+      <a class="stat" href="https://tongji.baidu.com/web5/welcome/login">详细统计</a>
+    </p>
+  </footer>
+</div>
+<script>
+const g=document.getElementById('grid');
+MODULES.forEach(m=>{
+  const live=m.status==='live'&&m.url;
+  const el=document.createElement(live?'a':'div');
+  el.className='card '+(live?'live':'off');
+  if(live){el.href=m.url;}else{el.setAttribute('aria-disabled','true');}
+  el.innerHTML=`<div class="top"><span class="name"></span><span class="badge">${live?'已上线':'即将上线'}</span></div><p class="desc"></p>${live?'<span class="arrow">进入 →</span>':''}`;
+  el.querySelector('.name').textContent=m.name;el.querySelector('.desc').textContent=m.desc;
+  g.appendChild(el);
+});
+document.getElementById('y').textContent=new Date().getFullYear();
+</script>
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+</body>
+</html>
