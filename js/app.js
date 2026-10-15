@@ -398,19 +398,43 @@
     main.replaceChildren(box);
   }
 
-  function trackPageview() {
-    try {
-      const hash = location.hash || "#/";
-      const path = "/" + hash;
-      // The library's first hit already records the landing URL, including the hash.
-      if (!trackPageview.seen) {
-        trackPageview.seen = true;
-        trackPageview.last = path;
-        return;
+  function analyticsPath(hash) {
+    // Build public paths from known catalog entries, never from arbitrary hash text.
+    if (!hash || hash === "#/") return "/#/";
+    if (/^#\/(gwgz|zztj|rjch|daode|lunyu|tang|ci|ke)$/.test(hash)) return "/" + hash;
+    let match = hash.match(/^#\/read\/([vzhdl]\d{2}-\d{2})$/);
+    if (match) {
+      const meta = findArticleMeta(match[1]);
+      return meta ? "/#/read/" + meta.id : null;
+    }
+    match = hash.match(/^#\/(gwgz|zztj)\/(\d{1,2})$/);
+    if (match) {
+      const data = match[1] === "gwgz" ? state.catalog : state.zztj;
+      const volume = data && data.volumes.find(function (item) { return item.volume === Number(match[2]); });
+      return volume ? "/#/" + match[1] + "/" + volume.volume : null;
+    }
+    match = hash.match(/^#\/(tang|ci|ke)\/(?:author\/(.+)|([a-z0-9-]+))$/);
+    if (match) {
+      const data = state.collections[match[1]];
+      if (!data) return null;
+      if (match[2]) {
+        let name;
+        try { name = decodeURIComponent(match[2]); } catch (_) { return null; }
+        const piece = data.pieces.find(function (item) { return item.author.s === name || item.author.t === name; });
+        return piece ? "/#/" + match[1] + "/author/" + encodeURIComponent(piece.author.s) : null;
       }
-      if (path === trackPageview.last) return;
-      trackPageview.last = path;
+      const piece = data.pieces.find(function (item) { return item.id === match[3]; });
+      return piece ? "/#/" + match[1] + "/" + piece.id : null;
+    }
+    return null;
+  }
+
+  function trackPageview(hash) {
+    try {
+      const path = analyticsPath(hash);
+      if (!path || path === trackPageview.last) return;
       (window._hmt = window._hmt || []).push(["_trackPageview", path]);
+      trackPageview.last = path;
     } catch (err) {}
   }
 
@@ -425,8 +449,9 @@
     } catch (err) {
       if (token === loadToken && hash === location.hash) showLoadError(route);
       console.error(err);
+      return;
     }
-    if (token === loadToken && hash === location.hash) trackPageview();
+    if (token === loadToken && hash === location.hash) trackPageview(hash);
   }
 
   function dispatchRoute() {
@@ -1699,22 +1724,33 @@
     return p;
   }
 
+  function appendSourceReference(parent, label, value) {
+    let url;
+    try {
+      if (typeof value === "string" && !/[\u0000-\u0020\u007f]/.test(value)) {
+        const parsed = new URL(value);
+        if ((parsed.protocol === "http:" || parsed.protocol === "https:") && !parsed.username && !parsed.password) url = parsed.href;
+      }
+    } catch (_) { /* Invalid or non-web sources remain readable as plain text. */ }
+    if (!url) {
+      parent.appendChild(document.createTextNode(label || ""));
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = label;
+    parent.appendChild(a);
+  }
+
   function appendSourceLine(parent, id) {
     const src = state.provenance && state.provenance.pieces && state.provenance.pieces[id];
     if (!src || !src.edition) return;
     const p = document.createElement("p");
     p.className = "source-line";
     p.appendChild(document.createTextNode("出处 "));
-    if (src.url) {
-      const a = document.createElement("a");
-      a.href = src.url;
-      a.target = "_blank";
-      a.rel = "noopener";
-      a.textContent = src.edition;
-      p.appendChild(a);
-    } else {
-      p.appendChild(document.createTextNode(src.edition));
-    }
+    appendSourceReference(p, src.edition, src.url);
     parent.appendChild(p);
   }
 
@@ -1726,16 +1762,7 @@
     const b = document.createElement("b");
     b.textContent = "出处 ";
     p.appendChild(b);
-    if (src.url) {
-      const a = document.createElement("a");
-      a.href = src.url;
-      a.target = "_blank";
-      a.rel = "noopener";
-      a.textContent = src.edition;
-      p.appendChild(a);
-    } else {
-      p.appendChild(document.createTextNode(src.edition));
-    }
+    appendSourceReference(p, src.edition, src.url);
     if (src.note) p.appendChild(document.createTextNode(" " + src.note));
     panel.appendChild(p);
     const tr = src.translation;
@@ -1768,16 +1795,7 @@
     const p = document.createElement("p");
     p.className = "gloss-source";
     p.appendChild(document.createTextNode("出处 "));
-    if (src.url) {
-      const a = document.createElement("a");
-      a.href = src.url;
-      a.target = "_blank";
-      a.rel = "noopener";
-      a.textContent = src.source;
-      p.appendChild(a);
-    } else {
-      p.appendChild(document.createTextNode(src.source));
-    }
+    appendSourceReference(p, src.source, src.url);
     parent.appendChild(p);
   }
 
@@ -2524,13 +2542,11 @@
 
   function pagerLink(meta, label) {
     const a = document.createElement("a");
-    if (!meta) {
-      a.href = "#/";
-      a.innerHTML = "<small>" + label + "</small>返回目录";
-      return a;
-    }
-    a.href = "#/read/" + meta.id;
-    a.innerHTML = "<small>" + label + "</small>" + meta.title;
+    const small = document.createElement("small");
+    small.textContent = label;
+    a.appendChild(small);
+    a.href = meta ? "#/read/" + meta.id : "#/";
+    a.appendChild(document.createTextNode(meta ? meta.title : "返回目录"));
     return a;
   }
 
@@ -2994,14 +3010,7 @@
         const p = document.createElement("p");
         p.textContent = item.text || "";
         block.appendChild(p);
-        if (item.url) {
-          const a = document.createElement("a");
-          a.href = item.url;
-          a.target = "_blank";
-          a.rel = "noopener";
-          a.textContent = "出处";
-          block.appendChild(a);
-        }
+        if (item.url) appendSourceReference(block, "出处", item.url);
         sec.appendChild(block);
       });
       sheet.appendChild(sec);

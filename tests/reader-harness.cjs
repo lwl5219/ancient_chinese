@@ -34,7 +34,7 @@ function reader(localStorage = storage()) {
   };
   const window = { listeners: {}, addEventListener(key, callback) { this.listeners[key] = callback; },
     matchMedia() { return { matches: false }; }, scrollTo() {}, scrollY: 0 };
-  const context = vm.createContext({ document, window, localStorage,
+  const context = vm.createContext({ document, window, localStorage, URL,
     location: { hash: '', reload() {} }, console: { error() {}, log() {} },
     setTimeout, clearTimeout, requestAnimationFrame: fn => fn(),
     fetch: async () => { throw new Error('Unexpected network request in test'); },
@@ -44,6 +44,8 @@ function reader(localStorage = storage()) {
   assert.equal(source.split(entry).length, 2, 'Expected exactly one app entry point');
   const exposed = `  globalThis.reader = { state, saveProgress, loadProgress, syncStoredProgress,
     showArticle, route, startBoot, audioPath, playSyllable, loadAudioManifest,
+    pagerLink, appendSourceLine, appendProvenance, appendGlossCredit, openLineCard,
+    analyticsPath, trackPageview,
     setHooks(hooks) {
       renderArticle = hooks.renderArticle;
       renderPiece = hooks.renderPiece;
