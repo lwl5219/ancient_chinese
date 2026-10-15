@@ -349,15 +349,9 @@ h1 {
 }
 .orig-sent { display: inline; }
 .verse-text { position: relative; }
-.famous-line {
-  background: none;
-  text-decoration-line: underline;
-  text-decoration-style: dashed;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.26em;
-  text-decoration-color: var(--famous);
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
+.famous-char {
+  border-bottom: 1px dashed var(--famous);
+  text-decoration: none;
 }
 .famous-mark {
   position: relative;
@@ -366,15 +360,24 @@ h1 {
   justify-content: center;
   width: 18px;
   height: 18px;
-  margin: 0 0 0 0.12em;
+  margin: 0 0.16em;
   padding: 0;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--famous);
-  vertical-align: 0.12em;
+  vertical-align: middle;
   z-index: 2;
   -webkit-tap-highlight-color: transparent;
+}
+.orig.with-py .famous-mark {
+  width: 1.15em;
+  height: 1.15em;
+  margin: 0 0.12em 0.58em;
+  vertical-align: bottom;
+}
+.body.prose .orig.with-py .famous-mark {
+  margin-bottom: 0.42em;
 }
 .famous-mark::before {
   content: "";
@@ -402,14 +405,14 @@ h1 {
   line-height: 1;
 }
 .body.verse .verse-line { position: relative; }
-.body.verse .famous-mark {
+.body.verse .famous-mark.at-end {
   position: absolute;
   width: 44px;
   height: 44px;
   margin: 0;
   vertical-align: unset;
 }
-.body.verse .famous-mark::before { content: none; }
+.body.verse .famous-mark.at-end::before { content: none; }
 .famous-jump {
   display: flex;
   align-items: center;
@@ -718,7 +721,7 @@ h1 {
   appearance: none;
 }
 .zi:hover, .word > button:hover, .zi.on, .word.on > button {
-  background: var(--accent-soft);
+  background-color: var(--accent-soft);
   color: var(--accent);
 }
 .orig.with-py .word { display: inline; }
@@ -802,6 +805,10 @@ h1 {
   text-align: center;
 }
 .punct { font-family: var(--serif); }
+.zi.famous-char,
+.punct.famous-char {
+  border-bottom: 1px dashed var(--famous);
+}
 .body.verse { font-size: 1.32rem; }
 .body.verse.ci { font-size: 1.08rem; }
 .body.verse .orig { font-size: 1em; }
