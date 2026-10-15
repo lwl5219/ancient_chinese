@@ -1309,12 +1309,30 @@
     return rows;
   }
 
+  function sentenceRows(tokens) {
+    const rows = [];
+    let current = [];
+    tokens.forEach(function (tok) {
+      current.push(tok);
+      const shown = tok.s || tok.t || "";
+      if (tok.punct && "。！？".indexOf(shown) >= 0) {
+        rows.push(current);
+        current = [];
+      }
+    });
+    if (current.length) rows.push(current);
+    return rows;
+  }
+
   function addVerseLines(parent, tokens) {
     clauseRows(tokens).forEach(function (row) {
       const p = document.createElement("p");
       p.className = "orig verse-line" + (state.progress.pinyin ? " with-py" : "");
-      appendTokens(p, row);
-      if (state.piece) markFamous(p, row, state.piece.id);
+      const text = document.createElement("span");
+      text.className = "verse-text";
+      appendTokens(text, row);
+      if (state.piece) markFamous(text, row, state.piece.id);
+      p.appendChild(text);
       parent.appendChild(p);
     });
   }
@@ -1326,7 +1344,13 @@
       piece.lines.forEach(function (line) {
         const p = document.createElement("p");
         p.className = "orig para" + (state.progress.pinyin ? " with-py" : "");
-        appendTokens(p, line.tokens);
+        sentenceRows(line.tokens).forEach(function (row) {
+          const span = document.createElement("span");
+          span.className = "orig-sent";
+          appendTokens(span, row);
+          if (state.piece) markFamous(span, row, state.piece.id);
+          p.appendChild(span);
+        });
         body.appendChild(p);
       });
       return body;
@@ -1363,7 +1387,8 @@
     const limit = body.clientWidth;
     let widest = 0;
     lines.forEach(function (line) {
-      widest = Math.max(widest, line.scrollWidth);
+      const text = line.querySelector(".verse-text") || line;
+      widest = Math.max(widest, text.scrollWidth);
     });
     if (widest > limit + 1) {
       const current = parseFloat(getComputedStyle(body).fontSize);
@@ -2003,8 +2028,11 @@
         pair.className = "pair" + (index === para.sentences.length - 1 ? " para-end" : "");
         const orig = document.createElement("p");
         orig.className = "orig" + (state.progress.pinyin ? " with-py" : "");
-        appendTokens(orig, sent.tokens);
-        markFamous(orig, sent.tokens, art.id, (sent.tr || "").trim());
+        const span = document.createElement("span");
+        span.className = "orig-sent";
+        appendTokens(span, sent.tokens);
+        markFamous(span, sent.tokens, art.id, (sent.tr || "").trim());
+        orig.appendChild(span);
         if (sent.grade) {
           const tag = document.createElement("span");
           tag.className = "sent-grade";
@@ -2497,19 +2525,12 @@
     if (!hit) return;
     node.classList.add("famous-line");
     const comments = hit.comments || [];
-    const fame = hit.fame || "";
-    if (!comments.length && !fame) return;
+    if (!comments.length) return;
     const btn = document.createElement("button");
     btn.type = "button";
-    if (comments.length) {
-      btn.className = "famous-mark";
-      btn.textContent = "评";
-      btn.setAttribute("aria-label", "打开名句评点");
-    } else {
-      btn.className = "famous-mark fame";
-      btn.textContent = "句";
-      btn.setAttribute("aria-label", "打开名句说明");
-    }
+    btn.className = "famous-mark";
+    btn.textContent = "评";
+    btn.setAttribute("aria-label", "打开名句评点");
     btn.addEventListener("click", function (event) {
       event.preventDefault();
       event.stopPropagation();
