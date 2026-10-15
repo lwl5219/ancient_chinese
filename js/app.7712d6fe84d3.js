@@ -1326,9 +1326,6 @@
 
   function addVerseLines(parent, tokens) {
     const rows = clauseRows(tokens);
-    const hits = rows.map(function (row) {
-      return state.piece ? matchFamous(state.piece.id, row) : null;
-    });
     const nodes = rows.map(function (row) {
       const p = document.createElement("p");
       p.className = "orig verse-line" + (state.progress.pinyin ? " with-py" : "");
@@ -1339,7 +1336,7 @@
       parent.appendChild(p);
       return text;
     });
-    if (state.piece) placeFamousRun(nodes, hits, "");
+    if (state.piece) decorateFamous(nodes, state.piece.id, "");
   }
 
   function renderVerseBody(piece, kind, meta) {
@@ -1385,17 +1382,24 @@
     if (!body) return;
     body.querySelectorAll(".verse-line").forEach(function (line) {
       const text = line.querySelector(".verse-text");
-      const mark = line.querySelector(".famous-mark");
+      const mark = line.querySelector(".famous-mark.at-end");
       if (!text || !mark) return;
       const lineBox = line.getBoundingClientRect();
-      const textBox = text.getBoundingClientRect();
-      if (!textBox.width || !lineBox.width) return;
-      let left = textBox.right - lineBox.left + 2;
+      const anchor = mark._anchor || text;
+      const anchorBox = anchor.getBoundingClientRect();
+      const zi = text.querySelector(".zi");
+      const ziBox = zi ? zi.getBoundingClientRect() : text.getBoundingClientRect();
+      if (!ziBox.height || !lineBox.width) return;
+      const cs = zi ? getComputedStyle(zi) : null;
+      const padTop = cs ? (parseFloat(cs.paddingTop) || 0) : 0;
+      const padBot = cs ? (parseFloat(cs.paddingBottom) || 0) : 0;
+      const glyphTop = ziBox.top + padTop;
+      const glyphH = Math.max(12, ziBox.height - padTop - padBot);
+      let left = anchorBox.right - lineBox.left + 2;
       const maxLeft = Math.max(0, line.clientWidth - 44);
       if (left > maxLeft) left = maxLeft;
-      const top = textBox.top - lineBox.top + (textBox.height - 44) / 2;
       mark.style.left = left + "px";
-      mark.style.top = top + "px";
+      mark.style.top = (glyphTop - lineBox.top + (glyphH - 44) / 2) + "px";
     });
   }
 
@@ -2279,6 +2283,8 @@
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "zi";
+        const simpChars = Array.from(tok.s || tok.t || "");
+        btn.dataset.han = simpChars[index] || glyph;
         const syllable = aligned ? reading.parts[index] : "";
         if (state.progress.pinyin && syllable) {
           const ruby = document.createElement("i");
@@ -2545,25 +2551,14 @@
   }
 
   function appendMarked(parent, tokens, pieceId, translation) {
-    const rows = clauseRows(tokens);
-    const hits = rows.map(function (row) { return matchFamous(pieceId, row); });
-    if (!hits.some(Boolean)) {
-      const span = document.createElement("span");
-      span.className = "orig-sent";
-      appendTokens(span, tokens);
-      parent.appendChild(span);
-      const hit = matchFamous(pieceId, tokens);
-      if (hit) placeFamousRun([span], [hit], translation);
-      return;
-    }
-    const nodes = rows.map(function (row) {
+    const spans = clauseRows(tokens).map(function (row) {
       const span = document.createElement("span");
       span.className = "orig-sent";
       appendTokens(span, row);
       parent.appendChild(span);
       return span;
     });
-    placeFamousRun(nodes, hits, translation);
+    decorateFamous(spans, pieceId, translation);
   }
 
   function combineFamous(hits) {
@@ -2598,7 +2593,7 @@
     return merged;
   }
 
-  function addFamousButton(node, entry, translation) {
+  function addFamousButton(anchor, entry, translation) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "famous-mark";
@@ -2608,27 +2603,152 @@
       event.stopPropagation();
       openLineCard(entry, translation || "");
     });
-    if (node.parentNode) node.after(btn);
-    else node.appendChild(btn);
+    const line = anchor.closest && anchor.closest(".verse-line");
+    const text = line && line.querySelector(".verse-text");
+    if (line && text && anchorIsLast(anchor, text)) {
+      btn.classList.add("at-end");
+      btn._anchor = anchor;
+      line.appendChild(btn);
+      return;
+    }
+    if (anchor.parentNode) anchor.after(btn);
+    else anchor.appendChild(btn);
   }
 
-  function placeFamousRun(nodes, hits, translation) {
-    let run = [];
-    function flush() {
-      if (!run.length) return;
-      const entry = combineFamous(run.map(function (item) { return item.hit; }));
-      run.forEach(function (item) {
-        item.node.classList.add("famous-line");
-        item.node._famous = { hit: entry, translation: translation || "" };
+  function anchorIsLast(anchor, text) {
+    const zis = text.querySelectorAll(".zi");
+    if (!zis.length) return true;
+    const last = zis[zis.length - 1];
+    if (anchor === last) return true;
+    return !!(anchor.compareDocumentPosition(last) & Node.DOCUMENT_POSITION_PRECEDING);
+  }
+
+  function onlyHanText(str) {
+    return String(str || "").replace(/[^\u4e00-\u9fff]/g, "");
+  }
+
+  function collectInline(root) {
+    const nodes = [];
+    function walk(el) {
+      Array.from(el.children).forEach(function (child) {
+        if (!child.classList) return;
+        if (child.classList.contains("py-ruby") || child.classList.contains("famous-mark")) return;
+        if (child.classList.contains("zi")) {
+          nodes.push({ kind: "zi", el: child, ch: child.dataset.han || "" });
+          return;
+        }
+        if (child.classList.contains("punct")) {
+          nodes.push({ kind: "punct", el: child });
+          return;
+        }
+        if (child.children.length) walk(child);
       });
-      addFamousButton(run[run.length - 1].node, entry, translation);
-      run = [];
     }
-    nodes.forEach(function (node, index) {
-      if (hits[index]) run.push({ node: node, hit: hits[index] });
-      else flush();
+    walk(root);
+    return nodes;
+  }
+
+  function markQuote(nodes, zis, q0, q1, entry, translation) {
+    const first = zis[q0] && zis[q0].el;
+    const last = zis[q1 - 1] && zis[q1 - 1].el;
+    if (!first || !last) return;
+    let on = false;
+    for (let i = 0; i < nodes.length; i += 1) {
+      const node = nodes[i];
+      if (node.el === first) on = true;
+      if (!on) continue;
+      if (node.kind === "zi") {
+        node.el.classList.add("famous-char");
+        node.el._famous = { hit: entry, translation: translation || "" };
+      } else if (node.kind === "punct") {
+        node.el.classList.add("famous-char");
+      }
+      if (node.el === last) {
+        for (let j = i + 1; j < nodes.length; j += 1) {
+          if (nodes[j].kind !== "punct") break;
+          nodes[j].el.classList.add("famous-char");
+        }
+        break;
+      }
+    }
+  }
+
+  function anchorAfterHan(nodes, zis, hanEnd) {
+    if (hanEnd <= 0 || !zis[hanEnd - 1]) return null;
+    const lastZi = zis[hanEnd - 1].el;
+    let anchor = lastZi;
+    let seen = false;
+    for (let i = 0; i < nodes.length; i += 1) {
+      if (!seen) {
+        if (nodes[i].el === lastZi) seen = true;
+        continue;
+      }
+      if (nodes[i].kind !== "punct") break;
+      anchor = nodes[i].el;
+    }
+    return anchor;
+  }
+
+  function decorateFamous(roots, pieceId, translation) {
+    const nodes = [];
+    roots.forEach(function (root) {
+      collectInline(root).forEach(function (node) { nodes.push(node); });
     });
-    flush();
+    const zis = nodes.filter(function (node) { return node.kind === "zi" && node.ch; });
+    const hay = zis.map(function (node) { return node.ch; }).join("");
+    if (hay.length < 3) return;
+    const lines = (state.famous && state.famous.lines) || [];
+    const found = [];
+    lines.forEach(function (line) {
+      if (line.pieces && line.pieces.indexOf(pieceId) < 0) return;
+      const quote = onlyHanText(line.quote);
+      if (quote.length < 3 || hay.indexOf(quote) < 0) return;
+      const text = onlyHanText(line.text || line.quote);
+      let from = 0;
+      while (from <= hay.length - quote.length) {
+        const at = hay.indexOf(quote, from);
+        if (at < 0) break;
+        let t0 = at;
+        let t1 = at + quote.length;
+        if (text && text.indexOf(quote) >= 0) {
+          const start = at - text.indexOf(quote);
+          if (start >= 0 && hay.slice(start, start + text.length) === text) {
+            t0 = start;
+            t1 = start + text.length;
+          }
+        }
+        found.push({ line: line, q0: at, q1: at + quote.length, t0: t0, t1: t1 });
+        from = at + Math.max(quote.length, 1);
+      }
+    });
+    if (!found.length) return;
+    found.sort(function (a, b) {
+      return a.q0 - b.q0 || (b.t1 - b.t0) - (a.t1 - a.t0);
+    });
+    const kept = [];
+    found.forEach(function (hit) {
+      const prev = kept[kept.length - 1];
+      if (prev && hit.q0 < prev.q1) return;
+      kept.push(hit);
+    });
+    const groups = [];
+    kept.forEach(function (hit) {
+      const prev = groups[groups.length - 1];
+      if (prev && hit.t0 <= prev.t1) {
+        prev.t1 = Math.max(prev.t1, hit.t1);
+        prev.parts.push(hit);
+      } else {
+        groups.push({ t0: hit.t0, t1: hit.t1, parts: [hit] });
+      }
+    });
+    groups.forEach(function (group) {
+      const entry = combineFamous(group.parts.map(function (part) { return part.line; }));
+      group.parts.forEach(function (part) {
+        markQuote(nodes, zis, part.q0, part.q1, entry, translation);
+      });
+      const anchor = anchorAfterHan(nodes, zis, group.t1);
+      if (anchor) addFamousButton(anchor, entry, translation);
+    });
   }
 
   function closeFamous() {
@@ -2858,7 +2978,7 @@
     }
     dictSec.appendChild(block);
     popup.appendChild(dictSec);
-    const famousNode = anchor && anchor.closest(".famous-line");
+    const famousNode = anchor && (anchor.closest(".famous-char") || anchor.closest(".famous-line"));
     const famous = famousNode && famousNode._famous;
     if (famous && famous.hit) {
       const jump = document.createElement("button");
