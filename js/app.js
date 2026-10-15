@@ -1325,16 +1325,21 @@
   }
 
   function addVerseLines(parent, tokens) {
-    clauseRows(tokens).forEach(function (row) {
+    const rows = clauseRows(tokens);
+    const hits = rows.map(function (row) {
+      return state.piece ? matchFamous(state.piece.id, row) : null;
+    });
+    const nodes = rows.map(function (row) {
       const p = document.createElement("p");
       p.className = "orig verse-line" + (state.progress.pinyin ? " with-py" : "");
       const text = document.createElement("span");
       text.className = "verse-text";
       appendTokens(text, row);
       p.appendChild(text);
-      if (state.piece) markFamous(text, row, state.piece.id);
       parent.appendChild(p);
+      return text;
     });
+    if (state.piece) placeFamousRun(nodes, hits, "");
   }
 
   function renderVerseBody(piece, kind, meta) {
@@ -2547,23 +2552,53 @@
       span.className = "orig-sent";
       appendTokens(span, tokens);
       parent.appendChild(span);
-      markFamous(span, tokens, pieceId, translation);
+      const hit = matchFamous(pieceId, tokens);
+      if (hit) placeFamousRun([span], [hit], translation);
       return;
     }
-    rows.forEach(function (row, index) {
+    const nodes = rows.map(function (row) {
       const span = document.createElement("span");
       span.className = "orig-sent";
       appendTokens(span, row);
       parent.appendChild(span);
-      if (hits[index]) markFamous(span, row, pieceId, translation);
+      return span;
     });
+    placeFamousRun(nodes, hits, translation);
   }
 
-  function markFamous(node, tokens, pieceId, translation) {
-    const hit = matchFamous(pieceId, tokens);
-    if (!hit) return;
-    node.classList.add("famous-line");
-    node._famous = { hit: hit, translation: translation || "" };
+  function combineFamous(hits) {
+    if (hits.length === 1) return hits[0];
+    const texts = [];
+    const verns = [];
+    const notes = [];
+    const comments = [];
+    const seen = {};
+    hits.forEach(function (hit) {
+      const text = String(hit.text || hit.quote || "").trim();
+      if (text && texts.indexOf(text) < 0) texts.push(text);
+      const vern = String(hit.vernacular || "").trim();
+      if (vern && verns.indexOf(vern) < 0) verns.push(vern);
+      const note = String(hit.appreciate || "").trim();
+      if (note && notes.indexOf(note) < 0) notes.push(note);
+      (hit.comments || []).forEach(function (item) {
+        const key = (item.author || "") + "\n" + (item.text || "");
+        if (seen[key]) return;
+        seen[key] = 1;
+        comments.push(item);
+      });
+    });
+    const merged = {};
+    const last = hits[hits.length - 1];
+    Object.keys(last).forEach(function (key) { merged[key] = last[key]; });
+    merged.text = texts.join("");
+    merged.quote = merged.text;
+    if (verns.length) merged.vernacular = verns.join("");
+    if (notes.length) merged.appreciate = notes.join("\n");
+    if (comments.length) merged.comments = comments;
+    return merged;
+  }
+
+  function addFamousButton(node, entry, translation) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "famous-mark";
@@ -2571,10 +2606,29 @@
     btn.addEventListener("click", function (event) {
       event.preventDefault();
       event.stopPropagation();
-      openLineCard(hit, translation || "");
+      openLineCard(entry, translation || "");
     });
     if (node.parentNode) node.after(btn);
     else node.appendChild(btn);
+  }
+
+  function placeFamousRun(nodes, hits, translation) {
+    let run = [];
+    function flush() {
+      if (!run.length) return;
+      const entry = combineFamous(run.map(function (item) { return item.hit; }));
+      run.forEach(function (item) {
+        item.node.classList.add("famous-line");
+        item.node._famous = { hit: entry, translation: translation || "" };
+      });
+      addFamousButton(run[run.length - 1].node, entry, translation);
+      run = [];
+    }
+    nodes.forEach(function (node, index) {
+      if (hits[index]) run.push({ node: node, hit: hits[index] });
+      else flush();
+    });
+    flush();
   }
 
   function closeFamous() {

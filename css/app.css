@@ -452,7 +452,7 @@ h1 {
   line-height: 1.65;
   color: var(--ink);
 }
-.famous-sheet .line-body { margin: 0; line-height: 1.7; color: var(--ink-soft); }
+.famous-sheet .line-body { margin: 0; line-height: 1.7; color: var(--ink-soft); white-space: pre-line; }
 .famous-sheet .site-note {
   font-size: 0.68rem;
   font-weight: 650;
