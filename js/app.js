@@ -392,6 +392,22 @@
     main.replaceChildren(box);
   }
 
+  function trackPageview() {
+    try {
+      const hash = location.hash || "#/";
+      const path = "/" + hash;
+      // The library's first hit already records the landing URL, including the hash.
+      if (!trackPageview.seen) {
+        trackPageview.seen = true;
+        trackPageview.last = path;
+        return;
+      }
+      if (path === trackPageview.last) return;
+      trackPageview.last = path;
+      (window._hmt = window._hmt || []).push(["_trackPageview", path]);
+    } catch (err) {}
+  }
+
   async function route() {
     if (!state.catalog) return;
     const hash = location.hash;
@@ -404,6 +420,7 @@
       if (token === loadToken && hash === location.hash) showLoadError(route);
       console.error(err);
     }
+    if (token === loadToken && hash === location.hash) trackPageview();
   }
 
   function dispatchRoute() {

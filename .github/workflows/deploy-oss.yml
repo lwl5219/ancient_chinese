@@ -45,3 +45,19 @@ jobs:
           python3 scripts/deploy_oss.py site oss://guwen-lucca
       - name: Verify public OSS bytes against the audited artifact
         run: python3 scripts/verify_live.py site https://guwen-lucca.oss-cn-hongkong.aliyuncs.com/
+      - name: Publish lucca homepage
+        env:
+          OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
+          OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+          OSS_ENDPOINT: https://oss-cn-hongkong.aliyuncs.com
+          OSS_REGION: cn-hongkong
+        run: |
+          set -euo pipefail
+          test -f www/index.html
+          grep -q 'hm.js?b5b9eb7e229dc60c4ebcd43c57100446' www/index.html
+          grep -q '网站统计' www/index.html
+          ossutil cp www/index.html oss://lucca-www/index.html \
+            --content-type "text/html; charset=utf-8" \
+            --cache-control "no-cache, must-revalidate" \
+            --force \
+            --no-progress
