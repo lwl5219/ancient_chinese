@@ -6,10 +6,11 @@
 
 ## 本地运行
 
-在仓库根目录启动任意静态服务器，然后用浏览器打开。不要直接双击 `index.html`，否则浏览器会拦截 `fetch` 本地文件。
+先生成隔离的预览目录，再启动静态服务器。仓库内首页可能还引用上一版哈希；直接服务原目录不会展示未发布的源码修改。不要直接双击 `index.html`，否则浏览器会拦截 `fetch` 本地文件。
 
 ```bash
-python3 -m http.server 8765
+python3 scripts/stage_site.py /tmp/dianji-preview
+python3 -m http.server 8765 --directory /tmp/dianji-preview
 ```
 
 打开 <http://127.0.0.1:8765/> 。电脑上读《古文观止》的某一卷时，这一卷的篇目在左侧。
@@ -19,17 +20,37 @@ python3 -m http.server 8765
 - 首页是典籍。进入《古文观止》后按卷选择，再点开篇目。唐诗、宋词各是一份篇目，点开就能读。
 - 拼音默认显示在字的上方。文白对照是卷一的默认读法；系统讲解在篇末的「看系统讲解」。简繁、隐藏拼音和「这篇读完了」也放在篇末，不挡正文。诗词页可以切换简繁和拼音，不记入古文观止的已读篇数。
 - 点原文中的字：弹出该字在本句中的读音和义项；下面附《说文》字头的今读参考、反切和本义。未做逐句审定的篇目和诗词，弹出的是《说文》本义，并标明还不是核定过的句中义。诗词字上的拼音是现代汉语今读。
-- 「这篇读完了」和上次读到的篇目存在 `localStorage`（键名 `gwgz-progress-v1`），只留在这台浏览器里。
+- 「这篇读完了」和上次读到的篇目存在 `localStorage`（保留旧键 `gwgz-progress-v1`，新变更按字段写入 `gwgz-progress-v2:*`），只留在这台浏览器里。
 - 底本是繁体，简体由 OpenCC 转换。宋词上游文本是简体，繁体由 OpenCC 转出。
 
-## 部署到 GitHub Pages
+## 验证和发布
 
-1. 把本仓库推到 GitHub。
-2. 打开仓库 Settings → Pages。
-3. Source 选要发布的分支（例如 `master` 或本功能分支），文件夹选 `/ (root)`。
-4. 保存后访问 `https://<用户名>.github.io/<仓库名>/`。
+GitHub Pages 的 Settings → Pages → Source 使用 **GitHub Actions**。
+`Audit and release` 在 `master` 上先执行 Python、Node 回归和三项内容审计，再生成并校验同一份站点产物；只有审计成功才调用 Pages 和 OSS 发布流程。`codex/reader-fixes-*` 分支仅运行检查和打包，不发布；PR 同样只检查。工作流不再修改或回推源码。
 
-站点入口是根目录的 `index.html`，数据在 `data/`。仓库里已放 `.nojekyll`，避免 GitHub Pages 的 Jekyll 处理漏掉文件。
+```bash
+python3 -m pip install -r requirements-dev.txt
+python3 -m unittest discover -s tests -p 'test_*.py' -v
+node --test tests/*.test.js
+python3 scripts/audit_content.py
+python3 scripts/verify_sources.py
+python3 scripts/verify_glosses.py
+python3 scripts/stage_site.py /tmp/site-new
+```
+
+Python 依赖版本锁定在 `requirements-dev.txt`；CI 使用 Python 3.12 和 Node 22。前端回归运行实际 `js/app.js`，以最小 DOM/存储/网络桩验证竞态、跨标签页、断网、存储失败和音频反馈；它不替代真实浏览器布局检查。CI 明确检查 `tests/app.test.js` 存在，避免通配符未匹配时误报零测试通过。
+
+`stage_site.py` 只写新的输出目录，校验哈希、入口引用、文章目录和音频 manifest 中的真实录音。OSS 先完成全部资源上传，再依次上传首页和 `version.json`；任何资源失败都不会切换入口，旧远端哈希不删除。音频缺失时显示“暂无录音”，不生成虚构音频。
+
+Pages 产物保留**上一版成功发布的活动哈希资源**，不递归积累更早版本。发布前从公开 Pages 入口读取当前版本、资源映射及真实资源，逐文件验证 SHA-256，并再次检查版本以防下载期间发生切换；不读取或扩展任何凭据权限。第一次迁移若没有公开版本文件，则使用 checkout 的活动哈希。仅在哈希一致时，才能从真实 canonical 文件恢复 checkout 中缺失的哈希副本。`compatibility.json` 记录兼容版本和文件列表，审核产物保留 90 天供追溯。
+
+本地复现两版兼容：
+
+```bash
+python3 scripts/stage_site.py /tmp/site-next --previous-site /tmp/site-previous
+```
+
+兼容窗口为前一版，连续发布两次后更早的标签页可能需要刷新。若上一版公开资源不可用或摘要不符，CI 明确失败；确认可以结束旧版兼容后，可手动运行工作流并选择 `reset-compatibility`，会使用 checkout 中仍可验证的哈希。默认不重置。源码与已审计产物是回滚依据：撤销问题提交后重新运行相同审计发布流程，不直接覆盖生产资源。
 
 ## 数据从哪里来
 
@@ -42,26 +63,21 @@ python3 -m http.server 8765
 
 维基文库个别篇目的引号不完整。导入时只补标点，不改汉字。卷一标注与底本逐字对齐，由 `scripts/build_site.py` 在生成时检查。
 
-## 重新生成数据
+## 安全更新原文和讲解
 
-已生成的 `data/` 可以直接使用。若要改标注或重新抓取：
+已发布的 `data/` 包含后续章节的译文、校订和逐句释义，不能从最初的卷一生成器直接覆盖。默认 `python3 scripts/build_site.py` 保留既有篇目、其他典籍、字典扩展和哈希文件；输入变化会明确失败。`data/build-inputs.json` 保存每篇原文和 annotations 的输入摘要，初始基准为 `b789040e52e9d81a1c0cd7647e5eedb239942c07`；不要删除或自动重建该文件来绕过检查。
 
-```bash
-python3 scripts/fetch_wikisource.py
-git clone --depth 1 https://github.com/shuowenjiezi/shuowen.git /tmp/shuowen
-python3 scripts/build_site.py
-python3 scripts/build_poetry.py
-```
+更新流程：
 
-`scripts/build_poetry.py` 读取 `/tmp/poetry/tang/tang-*.json` 和 `/tmp/poetry/ci/ci-*.json`（[chinese-poetry](https://github.com/chinese-poetry/chinese-poetry) 的全唐诗、宋词分片，不提交进本仓库），按 `sources/poetry/selection.json` 抽出当前这一批，写成 `data/tang.json` 和 `data/songci.json`。要加一首，在清单里补一条能唯一对上的作者、篇名或首句，再运行脚本。
+1. 修改 `sources/wikisource/` 或 `annotations/` 后，运行 `python3 scripts/build_site.py --plan-update /tmp/guwen-review`。它不修改发布数据，只生成变化篇目的 `.published.json`（现有校订）、`.generated.json`（生成器草稿）、`.reviewed.json`（待人工合并）和 `plan.json`。
+2. 对照原文和两份版本，编辑 `.reviewed.json`。它默认从现有发布数据开始，保留后续章节译注；不要把缺少译注的 generated 草稿整份覆盖进去。原文与卷一标注不对齐时，生成计划即失败。
+3. 运行 `python3 scripts/build_site.py --summarize-update /tmp/guwen-review/plan.json`。核对输出对应的实际差异，再把该篇的 `reviewed_sha256`、`approved_field_changes` 填入 `plan.json`，填写 `review_note`。输出仅帮助核对，不会自动批准或修改计划。每个变更的既有顶层字段都要求前后摘要，包括正文、译注、讲解和自定义校订字段；仅新增字段无需覆盖批准。
+4. 运行 `python3 scripts/build_site.py --apply-update /tmp/guwen-review/plan.json`。输入或发布数据在审阅后又变化、正文无效、摘要不符、译注变更未批准，都会在写入前失败。通过后同步更新文章、目录和输入基线。再次执行默认构建应稳定。
+5. 运行本页的回归、三项内容审计和打包命令，审阅 Git 差异，再提交。
 
-依赖：Python 3，以及 `opencc`、`pypinyin`。
+删除篇目不会自动应用，必须同时审阅目录及输入基线。审阅更新中新引入的字才需要 `build_dict.py` 的既有《说文》数据来源；已有字典条目和其他典籍用字保持不变。已发布文章没有输入变更时，不调用外部字典，也不自动填补既有字典缺口。写入前会序列化并解析全部输出，单文件替换是原子的；它不是跨文件系统事务，磁盘故障后应先检查 Git 差异再重试。
 
-```bash
-pip install opencc-python-reimplemented pypinyin
-```
-
-`scripts/build_site.py` 读取十二卷维基文库文本和 `annotations/volume1.py`。卷一十八篇必须齐全，否则构建会停下。其余二百零四篇写入原文、断句和可点的字，讲解字段留空，方便以后按同一结构补进 `annotations/`。
+`build_poetry.py` 是单独的诗词生成流程，读取 `/tmp/poetry/` 外部底本和 `sources/poetry/selection.json`；本次输入保护只覆盖 `build_site.py` 的古文观止流程。不要将多个生成器未经审查的输出直接部署。
 
 ## 目录
 

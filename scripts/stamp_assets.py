@@ -77,11 +77,12 @@ def reset_tree(root: Path) -> None:
     index_path.write_text(index, encoding="utf-8")
 
 
-def main() -> int:
-    if len(sys.argv) != 2:
+def main(args: list[str] | None = None) -> int:
+    args = sys.argv[1:] if args is None else args
+    if len(args) != 1:
         print("用法：python3 scripts/stamp_assets.py <site目录>", file=sys.stderr)
         return 2
-    root = Path(sys.argv[1]).resolve()
+    root = Path(args[0]).resolve()
     index_path = root / "index.html"
     if not index_path.is_file():
         print(f"没有 {index_path}", file=sys.stderr)

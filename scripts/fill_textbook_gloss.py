@@ -810,6 +810,10 @@ def fill_tokens(tokens: list[dict], pid: str) -> None:
     apply_phrases(hans, han_slots)
     for pos, item in enumerate(han_slots):
         tok = item["tok"]
+        # A reviewed meaning and a contextual pronunciation are independent.
+        # Existing ctx must not suppress explicit phrase reading corrections.
+        if item["py"]:
+            tok["py"] = item["py"]
         if item["locked"]:
             continue
         if not item["hit"]:
@@ -825,8 +829,6 @@ def fill_tokens(tokens: list[dict], pid: str) -> None:
                 raise SystemExit("没有释义：%s（%s）" % (tok["s"], pid))
             item["ctx"] = gloss
         tok["ctx"] = item["ctx"]
-        if item["py"]:
-            tok["py"] = item["py"]
         tok["level"] = "sentence"
 
 

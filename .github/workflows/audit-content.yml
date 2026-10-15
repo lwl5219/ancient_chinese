@@ -1,20 +1,84 @@
-name: audit-content
+name: Audit and release
 
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [master, 'codex/reader-fixes-*']
+  workflow_dispatch:
+    inputs:
+      reset-compatibility:
+        description: 'Explicitly reset compatibility if previous public Pages resources are unavailable (old tabs may need refresh)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Serialize the complete release, including audit and both destinations.
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   audit:
     runs-on: ubuntu-latest
+    outputs:
+      artifact-id: ${{ steps.site.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
-      - name: Check Guwen Guanzhi fields
-        run: python3 scripts/audit_content.py
-      - name: Install OpenCC for the source check
-        run: python3 -m pip install opencc-python-reimplemented
-      - name: Diff texts against cached sources
-        run: python3 scripts/verify_sources.py
-      - name: Check which lesson notes have a cited source
-        run: python3 scripts/verify_glosses.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python3 -m pip install -r requirements-dev.txt
+      - name: Regression tests
+        run: |
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          test -f tests/app.test.js
+          node --test tests/*.test.js
+      - name: Audit published content and sources
+        run: |
+          python3 scripts/audit_content.py
+          python3 scripts/verify_sources.py
+          python3 scripts/verify_glosses.py
+      - name: Read the previous public Pages release without credentials
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master' && !inputs.reset-compatibility
+        run: node scripts/previous_release.cjs https://maruiduan.github.io/ancient_chinese/ .previous-site
+      - name: Stage and validate this commit
+        run: |
+          if [ -d .previous-site ]; then
+            python3 scripts/stage_site.py site --previous-site .previous-site
+          else
+            python3 scripts/stage_site.py site
+          fi
+      - uses: actions/upload-artifact@v4
+        id: site
+        with:
+          name: site-${{ github.sha }}
+          path: site/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 90
+
+  pages:
+    needs: audit
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/deploy-pages.yml
+    with:
+      artifact-id: ${{ needs.audit.outputs.artifact-id }}
+
+  oss:
+    needs: audit
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    uses: ./.github/workflows/deploy-oss.yml
+    with:
+      artifact-id: ${{ needs.audit.outputs.artifact-id }}
+    secrets:
+      OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
+      OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
