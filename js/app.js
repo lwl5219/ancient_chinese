@@ -2648,29 +2648,60 @@
     return nodes;
   }
 
-  function markQuote(nodes, zis, q0, q1, entry, translation) {
-    const first = zis[q0] && zis[q0].el;
-    const last = zis[q1 - 1] && zis[q1 - 1].el;
-    if (!first || !last) return;
-    let on = false;
-    for (let i = 0; i < nodes.length; i += 1) {
-      const node = nodes[i];
-      if (node.el === first) on = true;
-      if (!on) continue;
-      if (node.kind === "zi") {
-        node.el.classList.add("famous-char");
-        node.el._famous = { hit: entry, translation: translation || "" };
-      } else if (node.kind === "punct") {
-        node.el.classList.add("famous-char");
-      }
-      if (node.el === last) {
-        for (let j = i + 1; j < nodes.length; j += 1) {
-          if (nodes[j].kind !== "punct") break;
-          nodes[j].el.classList.add("famous-char");
-        }
-        break;
-      }
+  function isFlowParent(el) {
+    return !!(el && el.classList && (el.classList.contains("word") || el.classList.contains("keep")));
+  }
+
+  function dropEmpty(el) {
+    while (el && isFlowParent(el) && el.childNodes.length === 0) {
+      const parent = el.parentNode;
+      el.remove();
+      el = parent;
     }
+  }
+
+  function liftPhrase(phrase) {
+    while (isFlowParent(phrase.parentElement)) {
+      const parent = phrase.parentElement;
+      const grand = parent.parentNode;
+      const afterNodes = [];
+      let sibling = phrase.nextSibling;
+      while (sibling) {
+        afterNodes.push(sibling);
+        sibling = sibling.nextSibling;
+      }
+      const before = phrase.previousSibling;
+      if (!before) grand.insertBefore(phrase, parent);
+      else grand.insertBefore(phrase, parent.nextSibling);
+      if (afterNodes.length) {
+        const after = document.createElement("span");
+        after.className = parent.className;
+        afterNodes.forEach(function (node) { after.appendChild(node); });
+        phrase.after(after);
+      }
+      if (!parent.childNodes.length) parent.remove();
+    }
+  }
+
+  function wrapQuote(zis, q0, q1, entry, translation) {
+    const els = [];
+    for (let i = q0; i < q1; i += 1) {
+      if (zis[i] && zis[i].el) els.push(zis[i].el);
+    }
+    if (!els.length) return;
+    const phrase = document.createElement("span");
+    phrase.className = "famous-phrase";
+    const pack = { hit: entry, translation: translation || "" };
+    phrase._famous = pack;
+    els[0].parentNode.insertBefore(phrase, els[0]);
+    const leftovers = [];
+    els.forEach(function (el) {
+      leftovers.push(el.parentNode);
+      el._famous = pack;
+      phrase.appendChild(el);
+    });
+    leftovers.forEach(dropEmpty);
+    liftPhrase(phrase);
   }
 
   function anchorAfterHan(nodes, zis, hanEnd) {
@@ -2744,7 +2775,7 @@
     groups.forEach(function (group) {
       const entry = combineFamous(group.parts.map(function (part) { return part.line; }));
       group.parts.forEach(function (part) {
-        markQuote(nodes, zis, part.q0, part.q1, entry, translation);
+        wrapQuote(zis, part.q0, part.q1, entry, translation);
       });
       const anchor = anchorAfterHan(nodes, zis, group.t1);
       if (anchor) addFamousButton(anchor, entry, translation);
@@ -2978,7 +3009,7 @@
     }
     dictSec.appendChild(block);
     popup.appendChild(dictSec);
-    const famousNode = anchor && (anchor.closest(".famous-char") || anchor.closest(".famous-line"));
+    const famousNode = anchor && anchor.closest(".famous-phrase");
     const famous = famousNode && famousNode._famous;
     if (famous && famous.hit) {
       const jump = document.createElement("button");

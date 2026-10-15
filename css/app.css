@@ -349,9 +349,21 @@ h1 {
 }
 .orig-sent { display: inline; }
 .verse-text { position: relative; }
-.famous-char {
-  border-bottom: 1px dashed var(--famous);
-  text-decoration: none;
+.famous-phrase {
+  display: inline;
+  padding: 0;
+  background-image: linear-gradient(90deg, var(--famous) 0 3px, transparent 3px 7px);
+  background-size: 7px 1px;
+  background-repeat: repeat-x;
+  background-position: left bottom;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.orig.with-py .famous-phrase {
+  background-position: left calc(100% - 0.58em);
+}
+.body.prose .orig.with-py .famous-phrase {
+  background-position: left calc(100% - 0.42em);
 }
 .famous-mark {
   position: relative;
@@ -805,9 +817,9 @@ h1 {
   text-align: center;
 }
 .punct { font-family: var(--serif); }
-.zi.famous-char,
-.punct.famous-char {
-  border-bottom: 1px dashed var(--famous);
+.famous-phrase .zi {
+  border-bottom: 0;
+  padding-bottom: 0;
 }
 .body.verse { font-size: 1.32rem; }
 .body.verse.ci { font-size: 1.08rem; }
