@@ -95,11 +95,66 @@
   <script>
     window.API_BASE = "";
     (function () {
-      if (!window.API_BASE) return;
-      var account = document.createElement("script");
-      account.src = "js/account.js";
-      account.onerror = function () {};
-      document.body.appendChild(account);
+      var API = String(window.API_BASE || "").replace(/\/$/, "");
+      if (!API) return;
+      var TOKEN_KEY = "gwgz-session-v1";
+      function token() {
+        try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (err) { return ""; }
+      }
+      function accountHash() {
+        return /^#\/(login|me|terms|privacy)$/.test(location.hash || "");
+      }
+      var loading = false;
+      var waiters = [];
+      function loadAccount(done) {
+        if (window.gwgzAccount && window.gwgzAccount.ready) {
+          if (done) done();
+          return;
+        }
+        if (done) waiters.push(done);
+        if (loading) return;
+        loading = true;
+        var script = document.createElement("script");
+        script.src = "js/account.js";
+        script.async = true;
+        script.onload = function () {
+          var pending = waiters.splice(0);
+          pending.forEach(function (fn) { fn(); });
+        };
+        script.onerror = function () {};
+        document.body.appendChild(script);
+      }
+      function showEntry() {
+        if (document.querySelector(".account-entry")) return;
+        var header = document.querySelector("header.top");
+        if (!header) return;
+        var link = document.createElement("a");
+        link.className = "account-entry";
+        link.href = "#/login";
+        link.textContent = "登录";
+        link.addEventListener("click", function (event) {
+          event.preventDefault();
+          loadAccount(function () {
+            if (location.hash !== "#/login") location.hash = "#/login";
+            else if (window.gwgzAccount && window.gwgzAccount.route) window.gwgzAccount.route("#/login");
+          });
+        });
+        header.appendChild(link);
+      }
+      function afterHealth() {
+        if (token() || accountHash()) loadAccount();
+        else showEntry();
+      }
+      if (token()) {
+        loadAccount();
+        return;
+      }
+      var schedule = window.requestIdleCallback || function (fn) { setTimeout(fn, 1); };
+      schedule(function () {
+        fetch(API + "/health", { method: "GET", cache: "no-store" }).then(function (res) {
+          if (res && res.ok) afterHealth();
+        }).catch(function () {});
+      });
     })();
   </script>
 </body>

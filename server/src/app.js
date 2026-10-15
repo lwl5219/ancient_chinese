@@ -18,7 +18,6 @@ const HOUR = 60 * 60 * 1000;
 const MAX_SESSIONS = 8;
 const MAX_EVENTS = 20;
 const USER_EVENTS_HOUR = 120;
-const DEVICE_EVENTS_HOUR = 60;
 const IP_EVENTS_HOUR = 200;
 
 function sha256(text) {
@@ -305,13 +304,8 @@ function createApp(options) {
 
   async function postEvents(req, body) {
     if (body.__tooBig) return send(413, { error: "事件太大" }, req.origin);
-    const token = bearer(req.headers);
-    const auth = token ? await userFromToken(req.headers) : null;
-    if (token && !auth) return send(401, { error: "请先登录" }, req.origin);
-    const deviceId = typeof body.deviceId === "string" ? body.deviceId.trim() : "";
-    const deviceOk = /^[A-Za-z0-9_-]{8,64}$/.test(deviceId);
-    if (!auth && !deviceOk) return send(400, { error: "需要登录或设备标识" }, req.origin);
-    if (deviceId && !deviceOk) return send(400, { error: "设备标识不正确" }, req.origin);
+    const auth = await userFromToken(req.headers);
+    if (!auth) return send(401, { error: "请先登录" }, req.origin);
     const list = Array.isArray(body.events) ? body.events : null;
     if (!list || !list.length || list.length > MAX_EVENTS) return send(400, { error: "事件格式不正确" }, req.origin);
     const nowMs = now();
@@ -321,13 +315,10 @@ function createApp(options) {
       if (!item) return send(400, { error: "事件格式不正确" }, req.origin);
       cleaned.push(item);
     }
-    const deviceHash = deviceOk ? sha256("device\n" + deviceId).slice(0, 32) : "";
-    const userId = auth ? auth.user.userId : "anon:" + deviceHash;
-    const actorKey = auth ? "evuser:" + userId : "evdev:" + deviceHash;
-    const actorCap = auth ? USER_EVENTS_HOUR : DEVICE_EVENTS_HOUR;
+    const userId = auth.user.userId;
     const ipLimit = await loadLimit("evip:" + req.ip, nowMs);
-    const actorLimit = await loadLimit(actorKey, nowMs);
-    if (ipLimit.hourCount + cleaned.length > IP_EVENTS_HOUR || actorLimit.hourCount + cleaned.length > actorCap) {
+    const actorLimit = await loadLimit("evuser:" + userId, nowMs);
+    if (ipLimit.hourCount + cleaned.length > IP_EVENTS_HOUR || actorLimit.hourCount + cleaned.length > USER_EVENTS_HOUR) {
       return send(429, { error: "记录太频繁，请稍后再试" }, req.origin);
     }
     const nonce = randomEventNonce();
@@ -338,7 +329,7 @@ function createApp(options) {
         type: item.type,
         pieceId: item.pieceId,
         payload: JSON.stringify(item.payload),
-        deviceHash: deviceHash,
+        deviceHash: "",
         clientTs: item.clientTs,
       };
     });
@@ -346,7 +337,7 @@ function createApp(options) {
     ipLimit.hourCount += cleaned.length;
     actorLimit.hourCount += cleaned.length;
     await store.putLimit("evip:" + req.ip, ipLimit);
-    await store.putLimit(actorKey, actorLimit);
+    await store.putLimit("evuser:" + userId, actorLimit);
     return send(200, { ok: true, accepted: cleaned.length }, req.origin);
   }
 
