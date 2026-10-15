@@ -126,8 +126,6 @@ def load_quotes() -> list[str]:
         "后天下之乐而乐",
         "曲则全",
         "枉则直",
-        "洼则盈",
-        "敝则新",
     ]
     seen = []
     got = set()
