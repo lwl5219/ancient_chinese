@@ -690,8 +690,16 @@ def main() -> None:
     for line in lines:
         for pid in line["pieces"]:
             pieces.setdefault(pid, {"collection": ""})
+    famous_path = ROOT / "data" / "famous.json"
+    if famous_path.is_file():
+        old_pieces = json.loads(famous_path.read_text(encoding="utf-8")).get("pieces") or {}
+        merged = dict(old_pieces)
+        merged.update(pieces)
+        pieces = merged
     famous = {"pieces": pieces, "lines": lines}
-    dump(ROOT / "data" / "famous.json", famous)
+    dump(famous_path, famous)
+    from expand_famous import rebuild
+    rebuild()
 
     low = []
     for art in daode + lunyu:
