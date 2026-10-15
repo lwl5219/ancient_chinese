@@ -1,0 +1,74 @@
+{{header2
+| title    = [[../]]
+| section  = 學而第一
+| override_author = [[作者:孔子|孔子]]的弟子與再传弟子
+| previous = [[../序說|序說]]
+| next     = [[../爲政第二|爲政第二]]
+| notes    =
+}}
+*[[論語註疏/卷01|註疏]]
+<onlyinclude>
+<div id="一之一" style="background: #d9e3f1">'''一之一'''</div>
+子曰：「學而時習之，不亦說乎？有朋自遠方來，不亦樂乎？人不知而不慍，不亦君子乎？」
+
+<div id="一之二" style="background: #d9e3f1">'''一之二'''</div>
+有子曰：「其爲人也孝弟，而好犯上者，鮮矣；不好犯上，而好作亂者，未之有也。君子務本，本立而道生；孝弟也者，其爲仁之本與？」
+
+<div id="一之三" style="background: #d9e3f1">'''一之三'''</div>
+子曰：「巧言令色，鮮矣仁。」
+
+<div id="一之四" style="background: #d9e3f1">'''一之四'''</div>
+曾子曰：「吾日三省吾身：爲人謀而不忠乎？與朋友交而不信乎？傳不習乎？」
+
+<div id="一之五" style="background: #d9e3f1">'''一之五'''</div>
+子曰：「道千乘之國，敬事而信，節用而愛人，使民以時。」
+
+<div id="一之六" style="background: #d9e3f1">'''一之六'''</div>
+子曰：「弟子入則孝，出則弟，謹而信，汎愛眾，而親仁。行有餘力，則以學文。」
+
+<div id="一之七" style="background: #d9e3f1">'''一之七'''</div>
+子夏曰：「賢賢易色<ref>牛鵬濤根據郭店簡《五行》中「心」與「色」的關係認爲「賢賢易色」應理解爲「尊尚賢人，改易顔色」。牛鵬濤：《簡帛零札
+二則》，上海：中西書局，2012年，第199-201頁。 </ref>；事父母，能竭其力；事君，能致其身；與朋友交，言而有信；雖曰未學，吾必謂之學{{另2|已|一無「已」字}}矣。」
+
+<div id="一之八" style="background: #d9e3f1">'''一之八'''</div>
+子曰：「君子不重則不威，學則不固。主忠信，無友不如己者，過則勿憚改。」
+
+<div id="一之九" style="background: #d9e3f1">'''一之九'''</div>
+曾子曰：「愼終追遠，民德歸厚矣。」
+
+<div id="一之十" style="background: #d9e3f1">'''一之十'''</div>
+子禽問於子貢曰：「夫子至於是邦也，必聞其政，求之與？抑與之與？」子貢曰：「夫子溫、良、恭、儉、讓以得之。夫子之求之也，其諸異乎人之求之與？」
+
+<div id="一之十一" style="background: #d9e3f1">'''一之十一'''</div>
+子曰：「父在觀其志，父沒觀其行。三年無改於父之道，可謂孝矣。」
+
+<div id="一之十二" style="background: #d9e3f1">'''一之十二'''</div>
+有子曰：「{{另2|禮之用，和爲貴；先王之道，斯爲美；小大由之。有所不行，知和而和，不以禮節之，亦不可行也。|一說該章的句讀應作「禮之用，和爲貴；先王之道，斯爲美。小大由之，有所不行，知和而和，不以禮節之，亦不可行也。」}}」
+
+<div id="一之十三" style="background: #d9e3f1">'''一之十三'''</div>
+有子曰：「信近於義，言可復也；恭近於禮，遠恥辱也。因不失其親，亦可宗也。」
+
+<div id="一之十四" style="background: #d9e3f1">'''一之十四'''</div>
+子曰：「君子食無求飽，居無求安，敏於事而愼於言，就有道而正焉：可謂好學{{另|也已|也已矣}}。」
+
+<div id="一之十五" style="background: #d9e3f1">'''一之十五'''</div>
+子貢曰：「貧而無諂，富而無驕，何如？」子曰：「可也。未若{{另|貧而樂|貧而樂道}}，富而好禮者也」。子貢曰：「《[[詩經|詩]]》云：『如切如磋，如琢如磨。』其斯之謂與？」子曰：「賜也，始可與言《詩》已矣！{{另|吿諸往而知來者|吿諸往而知來者也}}。」
+
+<div id="一之十六" style="background: #d9e3f1">'''一之十六'''</div>
+子曰：「不患人之不己知，患不知人也。」
+</onlyinclude>
+
+<div id="section_SpokenWikisource_ext" class="noprint toccolours" style="clear: right; margin: 0 0 1em 1em; font-size: 90%; width: 300px; text-align: left; float: right;">
+-{zh-hant;zh-hans|
+<div style="text-align: center">[http://www.ximalaya.com/swf/sound/red.swf?id=1411635 -{zh-hans:汉语普通话朗读; zh-hant:中華民國國語朗讀}-]</div>
+<div style="text-align: center; font-size: xx-small;">（[http://www.ximalaya.com/4228109/sound/1411635 完整的外部鏈接]）</div>
+<div style="float: left; margin-left: 5px;">[[Image:Sound-icon.png|41px|]]</div>
+<div style="margin-left: 50px; margin-top: 2px; font-size: xx-small;">此錄音来自外部鏈接、內容同2016年7月23日的版本、由<u>白雲出岫</u>使用-{zh-hans:汉语普通话; zh-hant:中華民國國語}-錄製，不會隨條目修訂而自動改變。</div>
+<div style="text-align: center; clear: both">'''[[:Category:有聲文獻|更多有聲文獻]]'''</div>
+}-<includeonly>[[Category:有聲文獻]]</includeonly>
+</div>
+===校勘記===
+{{reflist}}
+{{Spoken_Wikisource|論語-學而第一.ogg|2016年|7月22日|中華民國國語}}
+{{先秦作品}}
+[[Category:香港中學文憑考試指定文言篇章]]

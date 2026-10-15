@@ -1,0 +1,100 @@
+{{header2
+| previous = [[../八佾第三|八佾第三]]
+| next     = [[../公冶長第五|公冶長第五]]
+}}
+*[[論語註疏/卷04|註疏]]
+<onlyinclude>
+<div id="四之一" style="background: #d9e3f1">'''四之一'''</div>
+子曰：「里仁爲美。擇不處仁，焉得知？」
+
+<div id="四之二" style="background: #d9e3f1">'''四之二'''</div>
+子曰：「不仁者，不可以久處約，不可以長處樂。仁者安仁，知者利仁。」
+
+<div id="四之三" style="background: #d9e3f1">'''四之三'''</div>
+子曰：「惟仁者能好人，能惡人。」
+
+<div id="四之四" style="background: #d9e3f1">'''四之四'''</div>
+子曰：「苟志於仁矣，無惡也。」
+
+<div id="四之五" style="background: #d9e3f1">'''四之五'''</div>
+子曰：「富與貴，是人之所欲也，不以其道得之，不處也。貧與賤，是人之所惡也；不以其道得之，不去也。君子去仁，惡乎成名？君子無終食之閒違仁，造次必於是，-{zh:顚;zh-hant:顛;zh-hans:颠}-沛必於是。」
+
+<div id="四之六" style="background: #d9e3f1">'''四之六'''</div>
+子曰：「我未見好仁者，惡不仁者。好仁者，無以尙之；惡不仁者，其爲仁矣。不使不仁者加乎其身。有能一日用其力於仁矣乎？我未見力不足者！蓋有之矣，我未之見也。」
+
+<div id="四之七" style="background: #d9e3f1">'''四之七'''</div>
+子曰：「人之過也，各於其黨。觀過，斯知仁矣。」
+
+<div id="四之八" style="background: #d9e3f1">'''四之八'''</div>
+子曰：「朝聞道，夕死可矣！」
+
+<div id="四之九" style="background: #d9e3f1">'''四之九'''</div>
+子曰：「士志於道，而恥惡衣惡食者，未足與議也！」
+
+<div id="四之十" style="background: #d9e3f1">'''四之十'''</div>
+子曰：「君子之於天下也，無適也，無莫也，義之與比。」
+
+<div id="四之十一" style="background: #d9e3f1">'''四之十一'''</div>
+子曰：「君子懷德，小人懷土；君子懷刑，小人懷惠。」
+
+<div id="四之十二" style="background: #d9e3f1">'''四之十二'''</div>
+子曰：「放於利而行，多怨。」
+
+<div id="四之十三" style="background: #d9e3f1">'''四之十三'''</div>
+子曰：「能以禮讓爲國乎，何有？不能以禮讓爲國，如禮何？」
+
+<div id="四之十四" style="background: #d9e3f1">'''四之十四'''</div>
+子曰：「不患無位，患所以立。不患莫己知，未<ref>傳世本『未』作『求』。《憲問》有『不患人之不己知，患其不能也。』，《衞靈公》有『君子病無能焉，不病人之不己知也。』，與本章語意近，《定州漢墓竹簡・論語》正作『不患無位，患所以立。不患莫己知，未爲可知也。』，得傳世本作『求』爲訛誤。</ref>爲可知也。」
+
+<div id="四之十五" style="background: #d9e3f1">'''四之十五'''</div>
+子曰：「參乎！吾道一以貫之。」曾子曰：「唯。」子出，門人問曰：「何謂也？」曾子曰：「夫子之道，忠恕而已矣！」
+
+<div id="四之十六" style="background: #d9e3f1">'''四之十六'''</div>
+子曰：「君子喻於義，小人喻於利。」
+
+<div id="四之十七" style="background: #d9e3f1">'''四之十七'''</div>
+子曰：「見賢思齊焉，見不賢而內自省也。」
+
+<div id="四之十八" style="background: #d9e3f1">'''四之十八'''</div>
+子曰：「事父母幾諫；見志不從，又敬而不違，勞而不怨。」
+
+<div id="四之十九" style="background: #d9e3f1">'''四之十九'''</div>
+子曰：「父母在，不遠遊；遊必有方。」
+
+<div id="四之二十" style="background: #d9e3f1">'''四之二十'''</div>
+子曰：「三年無改於父之道，可謂孝矣。」
+
+<div id="四之二一" style="background: #d9e3f1">'''四之二一'''</div>
+子曰：「父母之年，不可不知也。一則以喜，一則以懼。」
+
+<div id="四之二二" style="background: #d9e3f1">'''四之二二'''</div>
+子曰：「古者言之不出，恥躬之不逮也。」
+
+<div id="四之二三" style="background: #d9e3f1">'''四之二三'''</div>
+子曰：「以約失之者，鮮矣。」
+
+<div id="四之二四" style="background: #d9e3f1">'''四之二四'''</div>
+子曰：「君子欲訥於言而敏於行。」
+
+<div id="四之二五" style="background: #d9e3f1">'''四之二五'''</div>
+子曰：「德不孤，必有鄰。」
+
+<div id="四之二六" style="background: #d9e3f1">'''四之二六'''</div>
+子游曰：「事君數，斯辱矣。朋友數，斯疏矣。」
+
+===校勘記===
+{{reflist}}
+</onlyinclude>
+
+<div id="section_SpokenWikisource_ext" class="noprint toccolours" style="clear: right; margin: 0 0 1em 1em; font-size: 90%; width: 300px; text-align: left; float: right;">
+-{zh-hant;zh-hans|
+<div style="text-align: center">[http://www.ximalaya.com/swf/sound/red.swf?id=12518227 -{zh-hans:汉语普通话; zh-hant:中華民國國語}-朗讀]</div>
+<div style="text-align: center; font-size: xx-small;">（[http://www.ximalaya.com/4228109/sound/12518227 完整的外部鏈接]）</div>
+<div style="float: left; margin-left: 5px;">[[Image:Sound-icon.png|41px|]]</div>
+<div style="margin-left: 50px; margin-top: 2px; font-size: xx-small;">此錄音来自外部鏈接、內容同2016年7月23日的版本、由<u>白雲出岫</u>使用-{zh-hans:汉语普通话; zh-hant:中華民國國語}-錄製，不會隨條目修訂而自動改變。</div>
+<div style="text-align: center; clear: both">'''[[:Category:有聲文獻|更多有聲文獻]]'''</div>
+}-<includeonly>[[Category:有聲文獻]]</includeonly>
+</div>
+
+{{先秦作品}}
+[[Category:香港中學文憑考試指定文言篇章]]

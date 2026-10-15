@@ -1,0 +1,30 @@
+{{header2
+| previous =[[../子張第十九|子張第十九]]
+| next = [[../知道第二十二|知道第二十二]]
+}}
+*[[論語註疏/卷20|註疏]]
+<onlyinclude>
+<div id="二十之一" style="background: #d9e3f1">'''二十之一'''</div>
+堯曰：「咨！爾舜！天之曆數在爾躬，允執其中！四海困窮，天祿永終。」舜亦以命禹。曰：「予小子履，敢用玄牡，敢昭吿于皇皇后帝：有罪不敢赦。帝臣不蔽，簡在帝心！朕躬有罪，無以萬方；萬方有罪，罪在朕躬。」「周有大賚，善人是富。」「雖有周親，不如仁人；百姓有過，在予一人。」謹權量，審法度，脩廢官，四方之政行焉。興滅國，繼絕世，擧逸民，天下之民歸心焉。所重：民、食、喪、祭。寬則得眾，信則民任焉，敏則有功，公則說。
+
+<div id="二十之二" style="background: #d9e3f1">'''二十之二'''</div>
+子張問於孔子曰：「何如斯可以從政矣？」子曰：「尊五美，屛四惡，斯可以從政矣。」子張曰：「何謂五美？」子曰：「君子惠而不費，勞而不怨，欲而不貪，泰而不驕，威而不猛。」子張曰：「何謂惠而不費？」子曰：「因民之所利而利之，斯不亦惠而不費乎！擇可勞而勞之，又誰怨？欲仁而得仁，又焉貪？君子無眾寡，無小大，無敢慢，斯不亦泰而不驕乎？君子正其衣冠，尊其瞻視，儼然人望而畏之，斯不亦威而不猛乎！」子張曰：「何謂四惡？」子曰：「不教而殺謂之虐；不戒視成謂之暴；慢令致期謂之賊；猶之與人也，出納之吝，謂之貪<ref>傳世本『貪』作『有司』二字，據[http://www.fdgwz.org.cn/Web/Show/2177 侯乃峯《據新出楚簡校讀〈論語〉一則》]改。</ref>。」
+
+<div id="二十之三" style="background: #d9e3f1">'''二十之三'''</div>
+子曰：「不知命，無以爲君子也；不知禮，無以立也；不知言，無以知人也。」
+
+===校勘記===
+{{reflist}}
+</onlyinclude>
+
+<div id="section_SpokenWikisource_ext" class="noprint toccolours" style="clear: right; margin: 0 0 1em 1em; font-size: 90%; width: 300px; text-align: left; float: right;">
+-{zh-hant;zh-hans|
+<div style="text-align: center">[http://www.ximalaya.com/swf/sound/red.swf?id=1411654 漢語普通話朗讀]</div>
+<div style="text-align: center; font-size: xx-small;">（[http://www.ximalaya.com/4228109/sound/1411654 完整的外部鏈接]）</div>
+<div style="float: left; margin-left: 5px;">[[Image:Sound-icon.png|41px|]]</div>
+<div style="margin-left: 50px; margin-top: 2px; font-size: xx-small;">此錄音来自外部鏈接、內容同2017年7月7日的版本、由<u>白雲出岫</u>使用漢語普通話錄製，不會隨條目修訂而自動改變。</div>
+<div style="text-align: center; clear: both">'''[[:Category:有聲文獻|更多有聲文獻]]'''</div>
+}-<includeonly>[[Category:有聲文獻]]</includeonly>
+</div>
+
+{{PD-old}}

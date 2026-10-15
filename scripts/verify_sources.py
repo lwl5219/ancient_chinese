@@ -241,6 +241,16 @@ def translation_ref(collection: str) -> dict:
             "edition": "唐圭璋《宋词三百首笺注》（1958年中华书局上海编辑所重版、上海古籍出版社重印，82家283首）",
             "status": "未逐句抄录笺注。正文用字另对《全宋词》，仓库里的数字文本不是该点校本。拿不准的标待复核",
         }
+    if collection == "道德经":
+        return {
+            "edition": "中华书局楼宇烈《老子道德经注校释》；陈鼓应《老子注译及评介》",
+            "status": "两书作校释和章旨参考，未逐字抄录。正文对照维基文库王弼本。白话是本书另写的，未按陈鼓应逐句核定",
+        }
+    if collection == "论语":
+        return {
+            "edition": "中华书局杨伯峻《论语译注》",
+            "status": "译注参考，未逐句抄录。正文对照维基文库《论语》主文。白话是本书另写的",
+        }
     return {"edition": "未指定译注本", "status": "译文未核定"}
 
 
@@ -504,6 +514,52 @@ def check_poetry(canonical: dict) -> tuple[list[dict], list[dict]]:
                 unexpected.append({"id": piece["id"], "title": piece["title"]["t"], "detail": first_diff(cached["han"], got)})
     if len(pieces) != len(sel["tang"]) + len(sel["ci"]):
         unexpected.append({"id": "poetry", "title": "", "detail": "选篇数量和 selection.json 不一致"})
+    return pieces, unexpected
+
+
+LY_PAGES = {
+    1: "學而第一", 2: "爲政第二", 3: "八佾第三", 4: "里仁第四", 5: "公冶長第五",
+    6: "雍也第六", 7: "述而第七", 8: "泰伯第八", 9: "子罕第九", 10: "鄉黨第十",
+    11: "先進第十一", 12: "顏淵第十二", 13: "子路第十三", 14: "憲問第十四", 15: "衛靈公第十五",
+    16: "季氏第十六", 17: "陽貨第十七", 18: "微子第十八", 19: "子張第十九", 20: "堯曰第二十",
+}
+
+
+def check_classics() -> tuple[list[dict], list[dict]]:
+    path = ROOT / "sources" / "classics" / "canonical.json"
+    if not path.is_file():
+        return [], [{"id": "classics", "title": "", "detail": "缺少 sources/classics/canonical.json"}]
+    canonical = json.loads(path.read_text(encoding="utf-8"))
+    pieces = []
+    unexpected = []
+    for pid, expect in canonical.items():
+        art_path = ARTICLES / ("%s.json" % pid)
+        if not art_path.is_file():
+            unexpected.append({"id": pid, "title": "", "detail": "正文文件缺失"})
+            continue
+        art = load_article(art_path)
+        got = published_han(art)
+        if pid.startswith("d"):
+            pieces.append({
+                "id": pid,
+                "collection": "道德经",
+                "edition": "维基文库《道德经》（王弼本，华亭张氏原本）",
+                "url": "https://zh.wikisource.org/wiki/道德經_(王弼本)",
+                "note": "八十一章用这一本的正文，不改从河上公或楼宇烈的异文。简体按通行归并，乾与神祇不改。晁说之、熊克题记不收进章内。白话和逐字注是本书编写的。",
+                "chars": len(got),
+            })
+        else:
+            book = int(pid.split("-")[1])
+            pieces.append({
+                "id": pid,
+                "collection": "论语",
+                "edition": "维基文库《论语·%s》" % LY_PAGES[book],
+                "url": "https://zh.wikisource.org/wiki/論語/" + LY_PAGES[book],
+                "note": "取维基文库主文。模板里近年异说改回通行本的有：执礼、色斯举、直躬、以直报怨。章界依这一本，与杨伯峻偶有合并，正文不删。白话和逐字注是本书编写的。",
+                "chars": len(got),
+            })
+        if expect != got:
+            unexpected.append({"id": pid, "title": art["title"]["s"], "detail": first_diff(expect, got)})
     return pieces, unexpected
 
 
@@ -838,7 +894,8 @@ def main() -> int:
     zztj, zztj_bad, zztj_resolved = check_zztj()
     renjian, renjian_bad, renjian_resolved = check_renjian()
     poetry, poetry_bad = check_poetry(canonical)
-    unexpected = gwgz_bad + zztj_bad + renjian_bad + poetry_bad
+    classics, classics_bad = check_classics()
+    unexpected = gwgz_bad + zztj_bad + renjian_bad + poetry_bad + classics_bad
     resolved = zztj_resolved + renjian_resolved + [
         {
             "id": "v06-15",
@@ -898,7 +955,7 @@ def main() -> int:
     policy, dict_flags = reading_policy(handian, shuowen)
     lesson, coverage = lesson_flags(handian, shuowen)
     flags = dict_flags + lesson
-    pieces = gwgz + zztj + renjian + poetry
+    pieces = gwgz + zztj + classics + renjian + poetry
     provenance = {
         "note": "每篇出处。正文对照的是仓库里的底本缓存。译文参考是命名的通行本，不是逐句抄录。",
         "pieces": {
@@ -922,6 +979,8 @@ def main() -> int:
     for name, rows, bad in (
         ("古文观止", gwgz, gwgz_bad),
         ("资治通鉴", zztj, zztj_bad),
+        ("道德经", [item for item in classics if item["collection"] == "道德经"], [item for item in classics_bad if str(item.get("id", "")).startswith("d")]),
+        ("论语", [item for item in classics if item["collection"] == "论语"], [item for item in classics_bad if str(item.get("id", "")).startswith("l")]),
         ("人间词话", renjian, renjian_bad),
         ("唐诗", [item for item in poetry if item["collection"] == "唐诗"], [item for item in poetry_bad if item["id"] in {p["id"] for p in poetry if p["collection"] == "唐诗"}]),
         ("宋词", [item for item in poetry if item["collection"] == "宋词"], [item for item in poetry_bad if item["id"] in {p["id"] for p in poetry if p["collection"] == "宋词"}]),

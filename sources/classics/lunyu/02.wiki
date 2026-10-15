@@ -1,0 +1,92 @@
+{{header2
+| previous = [[../學而第一|學而第一]]
+| next     = [[../八佾第三|八佾第三]]
+}}
+*[[論語註疏/卷02|註疏]]
+<onlyinclude>
+<div id="二之一" style="background: #d9e3f1">'''二之一'''</div>
+子曰：「爲政以德，譬如北辰，居其所，而眾星共之。」
+
+<div id="二之二" style="background: #d9e3f1">'''二之二'''</div>
+子曰：「詩三百，一言以蔽之，曰思無邪。」
+
+<div id="二之三" style="background: #d9e3f1">'''二之三'''</div>
+子曰：「道之以政，齊之以刑，民免而無恥<ref>侯乃峰根據傳世文獻與出土文獻中「恥」「止」二字相通認爲這裏的「恥」應讀爲「止」，訓爲「止度」「節度」。侯乃峰：《〈天子建州〉禮學字詞疏證三則》，《古籍研究》2013年第1期。</ref>；道之以德，齊之以禮，有恥且格。」
+
+<div id="二之四" style="background: #d9e3f1">'''二之四'''</div>
+子曰：「吾十有五而志于學；三十而立；四十而不惑；五十而知天命；六十而耳順；七十而從心所欲，不踰矩。」
+
+<div id="二之五" style="background: #d9e3f1">'''二之五'''</div>
+孟懿子問孝。子曰：「無違。」樊遲御，子吿之曰：「孟孫問孝於我，我對曰：『無違。』」樊遲曰：「何謂也？」子曰：「生，事之以禮；死，葬之以禮，祭之以禮。」
+
+<div id="二之六" style="background: #d9e3f1">'''二之六'''</div>
+孟武伯問孝。子曰：「父母，唯其疾之憂。」
+
+<div id="二之七" style="background: #d9e3f1">'''二之七'''</div>
+子游問孝。子曰：「今之孝者，是謂能養。至於犬馬，皆能有養。不敬，何以別乎？」
+
+<div id="二之八" style="background: #d9e3f1">'''二之八'''</div>
+子夏問孝。子曰：「色難。有事，弟子服其勞；有酒食，先生饌。曾是以爲孝乎？」
+
+<div id="二之九" style="background: #d9e3f1">'''二之九'''</div>
+子曰：「吾與回言終日，不違如愚。退而省其私，亦足以發。回也不愚。」
+
+<div id="二之十" style="background: #d9e3f1">'''二之十'''</div>
+子曰：「視其所以，觀其所由，察其所安，人焉廋哉！人焉廋哉！」
+
+<div id="二之十一" style="background: #d9e3f1">'''二之十一'''</div>
+子曰：「溫故而知新，可以爲師矣。」
+
+<div id="二之十二" style="background: #d9e3f1">'''二之十二'''</div>
+子曰：「君子不器。」
+
+<div id="二之十三" style="background: #d9e3f1">'''二之十三'''</div>
+子貢問君子。子曰：「先行其言，而後從之。」
+
+<div id="二之十四" style="background: #d9e3f1">'''二之十四'''</div>
+子曰：「君子周而不比，小人比而不周。」
+
+<div id="二之十五" style="background: #d9e3f1">'''二之十五'''</div>
+子曰：「學而不思則罔，思而不學則殆。」
+
+<div id="二之十六" style="background: #d9e3f1">'''二之十六'''</div>
+子曰：「攻乎異端，斯害也已。」
+
+<div id="二之十七" style="background: #d9e3f1">'''二之十七'''</div>
+子曰：「由，誨女知之乎！知之爲知之，不知爲不知，是知也。」
+
+<div id="二之十八" style="background: #d9e3f1">'''二之十八'''</div>
+子張學干祿。子曰：「多聞闕疑，愼言其餘，則寡尤；多見闕殆，愼行其餘，則寡悔。言寡尤，行寡悔，祿在其中矣。」
+
+<div id="二之十九" style="background: #d9e3f1">'''二之十九'''</div>
+哀公問曰：「何爲則民服？」孔子對曰：「擧直錯諸枉，則民服；擧枉錯諸直，則民不服。」
+
+<div id="二之二十" style="background: #d9e3f1">'''二之二十'''</div>
+季康子問：「使民敬忠以勸，如之何？」子曰：「臨之以莊，則敬；孝慈，則忠；擧善而教不能，則勸。」
+
+<div id="二之二一" style="background: #d9e3f1">'''二之二一'''</div>
+或謂孔子曰：「子奚不爲政？」子曰：「{{另2|《[[尚書|書]]》-{云}-：『孝乎惟孝，友於兄弟。』施於有政，|也有點作「《書》-{云}-：『孝乎惟孝，友於兄弟，施於有政。』」的。今本《尚書·周書·君陳篇》有「惟孝友於兄弟，克施有政」的文字，但通常認爲這是後人作的偽古文。由於原典早已失傳，此處無法判定引用究竟在何處終止。}}{{另|是亦爲政|是亦爲政也}}，奚其爲爲政？」
+
+<div id="二之二二" style="background: #d9e3f1">'''二之二二'''</div>
+子曰：「人而無信，不知其可也。大車無輗，小車無軏，其何以行之哉？」
+
+<div id="二之二三" style="background: #d9e3f1">'''二之二三'''</div>
+子張問：「十世可知也？」子曰：「殷因於夏禮，所損益可知也；周因於殷禮，所損益可知也；其或繼周者，雖百世可知也。」
+
+<div id="二之二四" style="background: #d9e3f1">'''二之二四'''</div>
+子曰：「非其鬼而祭之，諂也。見義不爲，無勇也。」
+</onlyinclude>
+
+<div id="section_SpokenWikisource_ext" class="noprint toccolours" style="clear: right; margin: 0 0 1em 1em; font-size: 90%; width: 300px; text-align: left; float: right;">
+-{zh-hant;zh-hans|
+<div style="text-align: center">[http://www.ximalaya.com/swf/sound/red.swf?id=1411636 -{zh-hans:汉语普通话朗读; zh-hant:中華民國國語朗讀}-]</div>
+<div style="text-align: center; font-size: xx-small;">（[http://www.ximalaya.com/4228109/sound/1411636 完整的外部鏈接]）</div>
+<div style="float: left; margin-left: 5px;">[[Image:Sound-icon.png|41px|]]</div>
+<div style="margin-left: 50px; margin-top: 2px; font-size: xx-small;">此錄音来自外部鏈接、內容同2016年7月23日的版本、由<u>白雲出岫</u>使用-{zh-hans:汉语普通话; zh-hant:中華民國國語}-錄製，不會隨條目修訂而自動改變。</div>
+<div style="text-align: center; clear: both">'''[[:Category:有聲文獻|更多有聲文獻]]'''</div>
+}-<includeonly>[[Category:有聲文獻]]</includeonly>
+</div>
+===校勘記===
+{{reflist}}
+{{先秦作品}}
+[[Category:香港中學文憑考試指定文言篇章]]
