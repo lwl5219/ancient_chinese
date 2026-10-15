@@ -46,6 +46,7 @@ function reader(localStorage = storage()) {
     showArticle, route, startBoot, audioPath, playSyllable, loadAudioManifest,
     pagerLink, appendSourceLine, appendProvenance, appendGlossCredit, openLineCard,
     analyticsPath, trackPageview,
+    noteReading, markRead, historySnapshot, mergeHistory, applyHistory, historyRev: historyRevCount,
     setHooks(hooks) {
       renderArticle = hooks.renderArticle;
       renderPiece = hooks.renderPiece;

@@ -187,6 +187,22 @@ function createTableStore(client, codec) {
         start = data.nextStartPrimaryKey;
       }
     },
+    async getState(userId) {
+      const cols = await get("state", "userId", userId);
+      if (!cols) return null;
+      let recent = [];
+      let read = {};
+      try { recent = JSON.parse(cols.recent || "[]"); } catch (_) { recent = []; }
+      try { read = JSON.parse(cols.read || "{}"); } catch (_) { read = {}; }
+      return { recent: recent, read: read };
+    },
+    async putState(userId, row) {
+      await put("state", "userId", userId, [
+        { recent: JSON.stringify(row.recent || []) },
+        { read: JSON.stringify(row.read || {}) },
+      ]);
+    },
+    async deleteState(userId) { await remove("state", "userId", userId); },
   };
 }
 

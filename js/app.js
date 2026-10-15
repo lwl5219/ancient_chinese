@@ -140,6 +140,284 @@
     try { api.track(event); } catch (err) { console.error(err); }
   }
 
+  const HISTORY_KEY = "gwgz-history-v1";
+  const RESUME_KEY = "gwgz-resume";
+  const HISTORY_SCOPE = /^(?:v\d{2}-\d{2}|(?:tang|ci):[A-Za-z0-9_-]{1,40})$/;
+  const HISTORY_RECENT_CAP = 24;
+  const HISTORY_READ_CAP = 400;
+  const READ_AFTER_MS = 15000;
+  let historyRev = 0;
+  let historySilent = false;
+  let readingId = "";
+  let readTimer = 0;
+  let scrollTimer = 0;
+  let historyState = { recent: [], read: {} };
+
+  function historyHref(id) {
+    if (id.indexOf("tang:") === 0) return "#/tang/" + id.slice(5);
+    if (id.indexOf("ci:") === 0) return "#/ci/" + id.slice(3);
+    return "#/read/" + id;
+  }
+
+  function clampHistoryAt(at, nowMs) {
+    if (!Number.isFinite(at)) return 0;
+    const value = Math.floor(at);
+    if (value < 0) return 0;
+    if (value > nowMs + 60 * 1000) return nowMs;
+    return value;
+  }
+
+  function cleanHistoryTitle(value) {
+    if (typeof value !== "string") return "";
+    return value.replace(/\s+/g, " ").trim().slice(0, 40);
+  }
+
+  function cleanHistoryItem(raw, nowMs) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const id = typeof raw.id === "string" ? raw.id : "";
+    if (!HISTORY_SCOPE.test(id)) return null;
+    const title = cleanHistoryTitle(raw.title);
+    if (!title) return null;
+    const at = clampHistoryAt(Number(raw.at), nowMs);
+    if (!at) return null;
+    let y = Number(raw.y);
+    if (!Number.isFinite(y) || y < 0) y = 0;
+    if (y > 200000) y = 200000;
+    return { id: id, title: title, at: at, y: Math.floor(y), href: historyHref(id) };
+  }
+
+  function trimHistoryRead(read) {
+    const ids = Object.keys(read);
+    if (ids.length <= HISTORY_READ_CAP) return read;
+    ids.sort(function (a, b) { return read[b] - read[a]; });
+    const next = {};
+    ids.slice(0, HISTORY_READ_CAP).forEach(function (id) { next[id] = read[id]; });
+    return next;
+  }
+
+  function cleanHistoryRead(raw, nowMs) {
+    const out = {};
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+    Object.keys(raw).forEach(function (id) {
+      if (!HISTORY_SCOPE.test(id)) return;
+      const at = clampHistoryAt(Number(raw[id]), nowMs);
+      if (!at) return;
+      out[id] = at;
+    });
+    return trimHistoryRead(out);
+  }
+
+  function mergeHistory(incoming, saved, nowMs) {
+    const now = nowMs || Date.now();
+    const read = cleanHistoryRead(saved && saved.read, now);
+    const incomingRead = cleanHistoryRead(incoming && incoming.read, now);
+    Object.keys(incomingRead).forEach(function (id) {
+      if (!read[id] || incomingRead[id] >= read[id]) read[id] = incomingRead[id];
+    });
+    const recentMap = {};
+    function take(list) {
+      (Array.isArray(list) ? list : []).forEach(function (item) {
+        const clean = cleanHistoryItem(item, now);
+        if (!clean) return;
+        const prev = recentMap[clean.id];
+        if (!prev || clean.at >= prev.at) recentMap[clean.id] = clean;
+      });
+    }
+    take(saved && saved.recent);
+    take(incoming && incoming.recent);
+    const recent = Object.keys(recentMap).map(function (id) { return recentMap[id]; });
+    recent.sort(function (a, b) {
+      if (b.at !== a.at) return b.at - a.at;
+      return a.id < b.id ? -1 : 1;
+    });
+    return { recent: recent.slice(0, HISTORY_RECENT_CAP), read: trimHistoryRead(read) };
+  }
+
+  function persistHistory() {
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(historyState)); } catch (_) {}
+    if (historySilent) return;
+    historyRev += 1;
+    const api = window.gwgzAccount;
+    if (!api || typeof api.onHistory !== "function") return;
+    try { api.onHistory(); } catch (err) { console.error(err); }
+  }
+
+  function loadHistoryState() {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      if (!raw) return;
+      historyState = mergeHistory(JSON.parse(raw), { recent: [], read: {} }, Date.now());
+    } catch (_) {}
+  }
+
+  function historySnapshot() {
+    return JSON.parse(JSON.stringify(historyState));
+  }
+
+  function historyRevCount() {
+    return historyRev;
+  }
+
+  function applyHistory(remote) {
+    historySilent = true;
+    try {
+      historyState = mergeHistory(remote, historyState, Date.now());
+      try { localStorage.setItem(HISTORY_KEY, JSON.stringify(historyState)); } catch (_) {}
+    } finally {
+      historySilent = false;
+    }
+    if (!state.catalog) return;
+    if (state.view === "hub") showHub();
+    else if (state.view === "book") showBook();
+    else if (state.view === "volume") showVolume(state.openVol);
+    else if (state.view === "collection" && (state.kind === "tang" || state.kind === "ci") && state.collections[state.kind]) renderCollection(state.kind);
+    else if (state.view === "article" && state.article && /^v\d{2}-\d{2}$/.test(state.article.id)) renderRail(state.article.volume);
+  }
+
+  function noteReading(id, title, at, nowMs) {
+    if (typeof id !== "string" || !HISTORY_SCOPE.test(id)) return;
+    const now = nowMs || Date.now();
+    const when = at == null ? now : at;
+    const existing = historyState.recent.find(function (item) { return item.id === id; });
+    historyState = mergeHistory({
+      recent: [{ id: id, title: title || (existing && existing.title) || "", at: when, y: existing ? existing.y : 0 }],
+      read: {},
+    }, historyState, now);
+    persistHistory();
+  }
+
+  function markRead(id, at, nowMs) {
+    if (typeof id !== "string" || !HISTORY_SCOPE.test(id)) return;
+    const now = nowMs || Date.now();
+    const stamped = clampHistoryAt(Number(at == null ? now : at), now);
+    if (!stamped) return;
+    if (historyState.read[id] && historyState.read[id] >= stamped) return;
+    const read = {};
+    read[id] = stamped;
+    historyState = mergeHistory({ recent: [], read: read }, historyState, now);
+    persistHistory();
+    if (state.view === "article" && state.article && /^v\d{2}-\d{2}$/.test(state.article.id)) renderRail(state.article.volume);
+  }
+
+  function currentReadingId() {
+    if (state.view === "article" && state.article && /^v\d{2}-\d{2}$/.test(state.article.id)) return state.article.id;
+    if (state.view === "piece" && state.piece && (state.kind === "tang" || state.kind === "ci")) {
+      const id = state.kind + ":" + state.piece.id;
+      if (HISTORY_SCOPE.test(id)) return id;
+    }
+    return "";
+  }
+
+  function readingTitle() {
+    if (state.view === "article" && state.article) {
+      const art = state.article;
+      return state.progress.font === "t" ? art.title.t : art.title.s;
+    }
+    if (state.view === "piece" && state.piece) return pieceTitle(state.piece);
+    return "";
+  }
+
+  function atEnd() {
+    const doc = document.documentElement;
+    if (!doc) return false;
+    const height = doc.scrollHeight || 0;
+    const view = window.innerHeight || 0;
+    if (!height || !view) return false;
+    if (height <= view + 80) return true;
+    return (window.scrollY || 0) + view >= height - 80;
+  }
+
+  function stopReading() {
+    clearTimeout(readTimer);
+    clearTimeout(scrollTimer);
+    readTimer = 0;
+    scrollTimer = 0;
+    readingId = "";
+  }
+
+  function takeResume(id) {
+    let resume = "";
+    try { resume = sessionStorage.getItem(RESUME_KEY) || ""; } catch (_) { return; }
+    if (resume !== id) return;
+    try { sessionStorage.removeItem(RESUME_KEY); } catch (_) {}
+    const item = historyState.recent.find(function (row) { return row.id === id; });
+    if (item && item.y) window.scrollTo(0, item.y);
+  }
+
+  function beginReading() {
+    const id = currentReadingId();
+    if (!id) {
+      stopReading();
+      return;
+    }
+    if (id !== readingId) {
+      clearTimeout(readTimer);
+      readingId = id;
+      noteReading(id, readingTitle());
+      takeResume(id);
+      readTimer = setTimeout(function () {
+        if (readingId === id) markRead(id);
+      }, READ_AFTER_MS);
+    }
+    setTimeout(function () {
+      if (readingId === id && atEnd()) markRead(id);
+    }, 0);
+  }
+
+  function rememberY() {
+    if (!readingId) return;
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(function () {
+      const id = readingId;
+      if (!id) return;
+      let y = Math.floor(window.scrollY || 0);
+      if (!Number.isFinite(y) || y < 0) y = 0;
+      if (y > 200000) y = 200000;
+      const item = historyState.recent.find(function (row) { return row.id === id; });
+      if (item && item.y !== y) {
+        item.y = y;
+        persistHistory();
+      }
+      if (atEnd()) markRead(id);
+    }, 400);
+  }
+
+  function appendSeen(parent, id) {
+    if (!id || !historyState.read[id]) return;
+    const mark = document.createElement("span");
+    mark.className = "seen";
+    mark.textContent = "已读";
+    parent.appendChild(mark);
+  }
+
+  function appendRecent(parent, prefix) {
+    const items = historyState.recent.filter(function (item) {
+      if (!prefix) return true;
+      if (prefix === "v") return /^v\d{2}-\d{2}$/.test(item.id);
+      return item.id.indexOf(prefix + ":") === 0;
+    }).slice(0, 6);
+    if (!items.length) return;
+    const block = document.createElement("section");
+    block.className = "recent-reads";
+    const heading = document.createElement("h2");
+    heading.textContent = "最近阅读";
+    const line = document.createElement("p");
+    items.forEach(function (item) {
+      const link = document.createElement("a");
+      link.href = item.href;
+      link.textContent = item.title;
+      link.addEventListener("click", function () {
+        try { sessionStorage.setItem(RESUME_KEY, item.id); } catch (_) {}
+      });
+      line.appendChild(link);
+    });
+    block.appendChild(heading);
+    block.appendChild(line);
+    parent.appendChild(block);
+  }
+
+  loadHistoryState();
+
   function syncStoredProgress(event) {
     if (event.key !== null && event.key !== KEY && event.key.indexOf(PROGRESS_PREFIX) !== 0) return;
     const merged = loadProgress(state.progress);
@@ -317,7 +595,7 @@
         mark.className = "done";
         mark.textContent = "已读";
         a.appendChild(mark);
-      }
+      } else appendSeen(a, art.id);
       li.appendChild(a);
       list.appendChild(li);
     });
@@ -455,6 +733,7 @@
   }
 
   function dispatchRoute() {
+    stopReading();
     const hash = location.hash || "#/";
     const read = hash.match(/^#\/read\/((?:v|h|z|d|l)\d{2}-\d{2})$/);
     const vol = hash.match(/^#\/gwgz\/(\d{1,2})$/);
@@ -534,6 +813,7 @@
       wrap.appendChild(resume);
     }
 
+    appendRecent(wrap);
     const list = document.createElement("div");
     list.className = "book-list";
     bookList().forEach(function (book) {
@@ -834,6 +1114,7 @@
     resume.appendChild(copy);
     resume.appendChild(go);
     wrap.appendChild(resume);
+    appendRecent(wrap, "v");
 
     const input = document.createElement("input");
     input.className = "catalog-search";
@@ -933,7 +1214,7 @@
       mark.className = "done";
       mark.textContent = "已读";
       a.appendChild(mark);
-    }
+    } else appendSeen(a, art.id);
     return a;
   }
 
@@ -1259,6 +1540,7 @@
       resume.appendChild(go);
       wrap.appendChild(resume);
     }
+    if (kind === "tang" || kind === "ci") appendRecent(wrap, kind);
     appendCatalogTools(wrap, kind);
     const list = document.createElement("div");
     list.className = "piece-list";
@@ -1299,6 +1581,7 @@
       link.appendChild(title);
       link.appendChild(sub);
       appendGradeTag(link, item.id);
+      if (kind === "tang" || kind === "ci") appendSeen(link, kind + ":" + item.id);
       list.appendChild(link);
     });
     wrap.appendChild(list);
@@ -1357,6 +1640,7 @@
       title.textContent = font === "t" ? item.title.t : item.title.s;
       link.appendChild(title);
       appendGradeTag(link, item.id);
+      if (kind === "tang" || kind === "ci") appendSeen(link, kind + ":" + item.id);
       list.appendChild(link);
     });
     wrap.appendChild(list);
@@ -1993,6 +2277,7 @@
     syncChrome();
     window.scrollTo(0, y);
     if (!keepScroll) trackAccount({ type: "page_view", pieceId: kind + ":" + piece.id });
+    beginReading();
   }
 
   function pieceTurn(kind, item, label) {
@@ -2100,6 +2385,7 @@
     window.scrollTo(0, y);
     scheduleBalance();
     if (!keepScroll) trackAccount({ type: "page_view", pieceId: art.id });
+    beginReading();
   }
 
   function textLink(label, fn) {
@@ -3376,6 +3662,7 @@
     closePopup();
   });
   window.addEventListener("hashchange", route);
+  window.addEventListener("scroll", rememberY, { passive: true });
   window.addEventListener("storage", syncStoredProgress);
   window.addEventListener("resize", function () {
     if (!popup.hidden && state.popupTok) placePopup(state.popupTok.anchor);
@@ -3447,6 +3734,10 @@
 
   window.gwgzAccountBridge = {
     preparePage: showAccountPage,
+    historySnapshot: historySnapshot,
+    historyRev: historyRevCount,
+    mergeHistory: mergeHistory,
+    applyHistory: applyHistory,
   };
 
   function startBoot() {

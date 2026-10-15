@@ -574,6 +574,14 @@ h1 {
   padding: 2px 8px;
 }
 .piece .done { color: var(--ok); background: var(--ok-soft); }
+.vol-list a .seen,
+.piece .seen {
+  margin-left: auto;
+  flex: none;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
 .piece.next-up { background: var(--accent-soft); }
 .piece .up { color: var(--accent); background: var(--chip); }
 .piece.next-up::after { border-color: var(--accent); }
@@ -1485,6 +1493,19 @@ h1 {
   .tabbar, .dock { display: none !important; }
   .main { padding: 36px 28px 72px; }
   .shell.has-rail .catalog { display: block; }
+}
+.recent-reads { margin: 2px 0 16px; }
+.recent-reads h2 {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.recent-reads p { margin: 0; line-height: 1.75; }
+.recent-reads a {
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  margin-right: 0.9em;
 }
 .account-entry {
   margin-left: 8px;

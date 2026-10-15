@@ -6,6 +6,7 @@ const TABLES = [
   { tableName: "limits", primaryKey: [{ name: "id", type: "STRING" }] },
   { tableName: "sessions", primaryKey: [{ name: "tokenHash", type: "STRING" }] },
   { tableName: "events", primaryKey: [{ name: "userId", type: "STRING" }, { name: "ts", type: "STRING" }] },
+  { tableName: "state", primaryKey: [{ name: "userId", type: "STRING" }] },
 ];
 
 module.exports = { TABLES };

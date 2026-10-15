@@ -240,11 +240,19 @@ test("logout and delete account drop the session and that user's events", async 
   const me = await call(w.app, { path: "/me", headers: { authorization: "Bearer " + again } });
   assert.equal(me.body.email, "gone@example.com");
   assert.equal(w.store.dump().events.filter(function (row) { return row.userId === me.body.userId; }).length, 1);
+  const saved = await call(w.app, {
+    method: "PUT",
+    path: "/state",
+    headers: { authorization: "Bearer " + again },
+    body: { recent: [{ id: "v01-01", title: "郑伯克段于鄢", at: 1500000, y: 0 }], read: { "v01-01": 1500000 } },
+  });
+  assert.equal(saved.status, 200);
   const removed = await call(w.app, { method: "DELETE", path: "/account", headers: { authorization: "Bearer " + again } });
   assert.equal(removed.status, 200);
   const dead = await call(w.app, { path: "/me", headers: { authorization: "Bearer " + again } });
   assert.equal(dead.status, 401);
   assert.equal(await w.store.getUser("gone@example.com"), null);
+  assert.equal(await w.store.getState(me.body.userId), null);
   assert.equal(w.store.dump().events.length, 0);
   assert.equal([...w.store.dump().sessions.values()].length, 0);
 });
@@ -307,6 +315,15 @@ test("tablestore adapter round-trips rows through a fake client", async () => {
   assert.match(eventKey, /0000000001000-00-ab/);
   await store.deleteUser("a@example.com");
   assert.equal(await store.getUser("a@example.com"), null);
+  await store.putState("u1", {
+    recent: [{ id: "v01-01", title: "郑伯克段于鄢", at: 5, y: 2, href: "#/read/v01-01" }],
+    read: { "tang:jingyesi": 5 },
+  });
+  const reading = await store.getState("u1");
+  assert.equal(reading.recent[0].title, "郑伯克段于鄢");
+  assert.equal(reading.read["tang:jingyesi"], 5);
+  await store.deleteState("u1");
+  assert.equal(await store.getState("u1"), null);
 });
 
 test("the function entry parses an HTTP event and keeps the bearer body", async () => {
@@ -332,6 +349,138 @@ test("the function entry parses an HTTP event and keeps the bearer body", async 
   assert.equal(sent[0].to, "a@example.com");
   const limit = await store.getLimit("ip:203.0.113.10");
   assert.equal(limit.hourCount, 1);
+});
+
+test("reading state merges per piece, rate limits writes, and stays behind login", async () => {
+  const w = world();
+  const anon = await call(w.app, { method: "GET", path: "/state" });
+  assert.equal(anon.status, 401);
+  const anonWrite = await call(w.app, {
+    method: "PUT",
+    path: "/state",
+    body: { recent: [{ id: "v01-01", title: "郑伯克段于鄢", at: 10, y: 0 }], read: {} },
+  });
+  assert.equal(anonWrite.status, 401);
+  assert.equal(w.store.dump().states.size, 0);
+
+  const token = await login(w, "hist@example.com");
+  const auth = { authorization: "Bearer " + token };
+  const empty = await call(w.app, { path: "/state", headers: auth });
+  assert.deepEqual(empty.body, { recent: [], read: {} });
+  assert.equal(empty.headers["Access-Control-Allow-Origin"], ORIGIN);
+
+  const tooBig = await call(w.app, { method: "PUT", path: "/state", headers: auth, body: "x".repeat(200001) });
+  assert.equal(tooBig.status, 413);
+
+  w.at(2_000_000);
+  const put = await call(w.app, {
+    method: "PUT",
+    path: "/state",
+    headers: auth,
+    body: {
+      recent: [
+        { id: "v01-01", title: "郑伯克段于鄢", at: 1_500_000, y: 20, href: "https://evil.example" },
+        { id: "ke:foo", title: "课文", at: 1_500_000, y: 0 },
+        { id: "h01-01", title: "词话", at: 1_500_000, y: 0 },
+        { id: "tang:jingyesi", title: "静夜思", at: 1_400_000, y: -4 },
+      ],
+      read: { "tang:jingyesi": 1_400_000, "ci:sumu": 1_200_000, "z01-01": 1_400_000, "不是篇号": 1_400_000 },
+    },
+  });
+  assert.equal(put.status, 200);
+  assert.deepEqual(put.body.recent.map(function (item) { return item.id; }), ["v01-01", "tang:jingyesi"]);
+  assert.equal(put.body.recent[0].href, "#/read/v01-01");
+  assert.equal(put.body.recent[1].href, "#/tang/jingyesi");
+  assert.equal(put.body.recent[1].y, 0);
+  assert.equal(put.body.read["tang:jingyesi"], 1_400_000);
+  assert.equal(put.body.read["ci:sumu"], 1_200_000);
+  assert.equal(put.body.read["z01-01"], undefined);
+  assert.equal(put.body.read["不是篇号"], undefined);
+
+  const soon = await call(w.app, {
+    method: "PUT",
+    path: "/state",
+    headers: auth,
+    body: { recent: [{ id: "v01-01", title: "新题", at: 1_800_000, y: 1 }], read: {} },
+  });
+  assert.equal(soon.status, 429);
+  assert.equal((await w.store.getState((await call(w.app, { path: "/me", headers: auth })).body.userId)).recent[0].title, "郑伯克段于鄢");
+
+  w.advance(11 * 1000);
+  const newer = await call(w.app, {
+    method: "PUT",
+    path: "/state",
+    headers: auth,
+    body: {
+      recent: [
+        { id: "v01-01", title: "新题", at: 1_600_000, y: 4 },
+        { id: "tang:jingyesi", title: "旧题", at: 1_000_000, y: 9 },
+        { id: "ci:sumu", title: "水调歌头", at: 1_700_000, y: 300000 },
+      ],
+      read: { "v01-01": 1_800_000, "tang:jingyesi": 1_000_000 },
+    },
+  });
+  assert.equal(newer.status, 200);
+  const byId = {};
+  newer.body.recent.forEach(function (item) { byId[item.id] = item; });
+  assert.equal(byId["v01-01"].title, "新题");
+  assert.equal(byId["v01-01"].y, 4);
+  assert.equal(byId["tang:jingyesi"].title, "静夜思");
+  assert.equal(byId["tang:jingyesi"].y, 0);
+  assert.equal(byId["ci:sumu"].y, 200000);
+  assert.equal(byId["ci:sumu"].href, "#/ci/sumu");
+  assert.equal(newer.body.read["tang:jingyesi"], 1_400_000);
+  assert.equal(newer.body.read["v01-01"], 1_800_000);
+
+  w.advance(11 * 1000);
+  const future = await call(w.app, {
+    method: "PUT",
+    path: "/state",
+    headers: auth,
+    body: { recent: [{ id: "v01-02", title: "周郑交质", at: 9_000_000, y: 1 }], read: { "v01-02": 9_000_000 } },
+  });
+  assert.equal(future.status, 200);
+  const stamped = future.body.recent.find(function (item) { return item.id === "v01-02"; });
+  assert.equal(stamped.at <= 2_000_000 + 22 * 1000, true);
+  assert.equal(future.body.read["v01-02"], stamped.at);
+
+  const other = await login(w, "other@example.com", "203.0.113.99");
+  const foreign = await call(w.app, { path: "/state", headers: { authorization: "Bearer " + other } });
+  assert.deepEqual(foreign.body, { recent: [], read: {} });
+
+  const custom = await w.app({
+    method: "GET",
+    path: "/state",
+    headers: { origin: ORIGIN, authorization: "Bearer " + token, host: "api.lucca.top" },
+    domainName: "api.lucca.top",
+  });
+  assert.equal(custom.status, 200);
+  assert.equal(custom.headers["Access-Control-Allow-Origin"], undefined);
+
+  w.advance(60 * 60 * 1000);
+  const me = await call(w.app, { path: "/me", headers: auth });
+  for (let n = 0; n < 30; n += 1) {
+    w.advance(11 * 1000);
+    const sent = await call(w.app, {
+      method: "PUT",
+      path: "/state",
+      headers: auth,
+      body: { recent: [{ id: "v01-01", title: "郑伯克段于鄢", at: 5_000_000 + n, y: 0 }], read: {} },
+    });
+    assert.equal(sent.status, 200);
+  }
+  w.advance(11 * 1000);
+  const capped = await call(w.app, {
+    method: "PUT",
+    path: "/state",
+    headers: auth,
+    body: { recent: [], read: {} },
+  });
+  assert.equal(capped.status, 429);
+  const removed = await call(w.app, { method: "DELETE", path: "/account", headers: auth });
+  assert.equal(removed.status, 200);
+  assert.equal(await w.store.getState(me.body.userId), null);
+  assert.equal(await w.store.getLimit("stuser:" + me.body.userId), null);
 });
 
 test("custom domain api.lucca.top leaves CORS to the FC gateway", async function () {
