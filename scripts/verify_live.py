@@ -36,7 +36,10 @@ def verify(site: Path, base: str, read=None) -> dict:
 
     def check(relative):
         expected = hashlib.sha256((site / relative).read_bytes()).digest()
-        actual = hashlib.sha256(read(relative)).digest()
+        try:
+            actual = hashlib.sha256(read(relative)).digest()
+        except Exception as exc:
+            raise ValueError("Cannot read live asset " + relative + ": " + str(exc)) from exc
         if actual != expected:
             raise ValueError("Live bytes disagree with audited artifact: " + relative)
     with ThreadPoolExecutor(max_workers=8) as pool:

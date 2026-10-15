@@ -32,6 +32,14 @@ class LiveVerificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "index.html"):
             verify_live.verify(self.site, "https://example.test/site/", read)
 
+    def test_missing_public_asset_identifies_the_requested_path(self):
+        def read(relative):
+            if relative == "index.html":
+                raise OSError("HTTP 404")
+            return (self.site / relative).read_bytes()
+        with self.assertRaisesRegex(ValueError, "Cannot read live asset index.html: HTTP 404"):
+            verify_live.verify(self.site, "https://example.test/site/", read)
+
     def test_requires_https(self):
         with self.assertRaisesRegex(ValueError, "HTTPS"):
             verify_live.verify(self.site, "http://example.test/site/")

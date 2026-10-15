@@ -16,3 +16,10 @@ class WorkflowSecurityTests(unittest.TestCase):
             self.assertEqual(len(checkouts), 1, str(path))
             for config in checkouts:
                 self.assertIn('persist-credentials: false', config, str(path))
+
+    def test_pages_retry_uses_a_unique_artifact_name_for_upload_and_deployment(self):
+        workflow = Path(__file__).resolve().parents[1] / '.github/workflows/deploy-pages.yml'
+        text = workflow.read_text()
+        name = 'github-pages-${{ github.run_id }}-${{ github.run_attempt }}'
+        self.assertIn('name: ' + name, text)
+        self.assertIn('artifact_name: ' + name, text)
