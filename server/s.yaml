@@ -1,0 +1,44 @@
+edition: 3.0.0
+name: gwgz-api
+access: default
+
+vars:
+  region: cn-hongkong
+
+resources:
+  gwgz-api:
+    component: fc3
+    props:
+      region: ${vars.region}
+      functionName: gwgz-api
+      description: 典籍可选账号。邮箱验证码、书签和阅读进度同步。
+      runtime: nodejs20
+      handler: index.handler
+      timeout: 30
+      memorySize: 256
+      internetAccess: true
+      code: ./
+      environmentVariables:
+        AUTH_SECRET: ${env('AUTH_SECRET')}
+        TABLESTORE_ENDPOINT: ${env('TABLESTORE_ENDPOINT')}
+        TABLESTORE_INSTANCE: ${env('TABLESTORE_INSTANCE')}
+        TABLESTORE_ACCESS_KEY_ID: ${env('TABLESTORE_ACCESS_KEY_ID')}
+        TABLESTORE_ACCESS_KEY_SECRET: ${env('TABLESTORE_ACCESS_KEY_SECRET')}
+        ALIBABA_CLOUD_ACCESS_KEY_ID: ${env('ALIBABA_CLOUD_ACCESS_KEY_ID')}
+        ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${env('ALIBABA_CLOUD_ACCESS_KEY_SECRET')}
+        DIRECTMAIL_ACCOUNT_NAME: ${env('DIRECTMAIL_ACCOUNT_NAME')}
+        DIRECTMAIL_FROM_ALIAS: 典籍
+        APP_ORIGINS: https://guwen.lucca.top,https://lucca.top,https://www.lucca.top,https://maruiduan.github.io
+      triggers:
+        - triggerName: http
+          triggerType: http
+          qualifier: LATEST
+          triggerConfig:
+            authType: anonymous
+            disableURLInternet: false
+            methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS

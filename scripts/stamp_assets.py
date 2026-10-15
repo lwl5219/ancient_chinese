@@ -28,6 +28,10 @@ CANONICAL_REFS = (
     ("js/asset-urls.js", re.compile(r"js/asset-urls\.[0-9a-f]{12}\.js")),
     ("favicon.svg", re.compile(r"favicon\.[0-9a-f]{12}\.svg")),
 )
+OPTIONAL_REFS = (
+    ("js/account.js", re.compile(r"js/account\.[0-9a-f]{12}\.js")),
+    ("js/sync-merge.js", re.compile(r"js/sync-merge\.[0-9a-f]{12}\.js")),
+)
 
 
 def digest(data: bytes) -> str:
@@ -71,7 +75,7 @@ def reset_tree(root: Path) -> None:
     if not index_path.is_file():
         return
     index = index_path.read_text(encoding="utf-8")
-    for canonical, pattern in CANONICAL_REFS:
+    for canonical, pattern in CANONICAL_REFS + OPTIONAL_REFS:
         index = pattern.sub(canonical, index)
     index = re.sub(r'data-build="[0-9a-f]*"', 'data-build=""', index)
     index_path.write_text(index, encoding="utf-8")
@@ -125,8 +129,14 @@ def main(args: list[str] | None = None) -> int:
         "js/app.js": url_map["js/app.js"],
         "favicon.svg": url_map["favicon.svg"],
     }
+    for canonical, _pattern in OPTIONAL_REFS:
+        if canonical in url_map:
+            replacements[canonical] = url_map[canonical]
+    optional = {canonical for canonical, _pattern in OPTIONAL_REFS}
     for old, new in replacements.items():
         count = index.count(old)
+        if count == 0 and old in optional:
+            continue
         if count != 1:
             print(f"index.html 里 {old} 出现 {count} 次", file=sys.stderr)
             return 1

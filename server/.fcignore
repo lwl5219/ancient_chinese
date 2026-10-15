@@ -1,0 +1,7 @@
+test/
+scripts/
+README.md
+**/*.md
+.env
+.s
+.serverless/

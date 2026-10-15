@@ -1486,6 +1486,73 @@ h1 {
   .main { padding: 36px 28px 72px; }
   .shell.has-rail .catalog { display: block; }
 }
+.account-entry {
+  margin-left: auto;
+  flex: none;
+  color: var(--muted);
+  font-size: 0.84rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding-left: 8px;
+}
+.top.has-tools .account-entry { display: none; }
+.bookmark-piece {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  min-height: 32px;
+}
+.bookmark-piece.on { color: var(--accent); }
+.bookmark-sent {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1;
+  vertical-align: text-top;
+  opacity: 0.55;
+}
+.bookmark-sent.on { color: var(--accent); opacity: 1; }
+.account-page .account-form,
+.account-page .account-list { max-width: 36rem; }
+.account-page h2 { font-size: 1.05rem; font-weight: 650; margin: 22px 0 8px; }
+.account-page label { display: block; margin: 14px 0 6px; color: var(--muted); font-size: 0.88rem; }
+.account-page input {
+  width: 100%;
+  max-width: 22rem;
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--chip);
+  color: var(--ink);
+}
+.account-page .account-actions { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 8px; }
+.account-page .text-btn {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 0;
+  min-height: 44px;
+}
+.account-page .text-btn.danger { color: var(--accent); }
+.account-page .account-error { color: var(--accent); min-height: 1.4em; margin: 8px 0; }
+.account-page .account-links { color: var(--muted); font-size: 0.88rem; }
+.account-page .account-links a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.account-list { list-style: none; padding: 0; margin: 0 0 8px; }
+.account-list li { border-top: 1px solid var(--line); }
+.account-list a { display: block; padding: 10px 0; }
+.account-list small { display: block; color: var(--muted); font-size: 0.82rem; }
 .app-notice {
   position: fixed;
   top: 4rem;

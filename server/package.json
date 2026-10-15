@@ -1,0 +1,11 @@
+{
+  "name": "gwgz-api",
+  "private": true,
+  "description": "Optional account and sync API for the classics reader",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "tablestore": "^5.6.1"
+  }
+}

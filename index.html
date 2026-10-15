@@ -92,5 +92,20 @@
   <div class="famous-sheet" id="famous-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="famous-title"></div>
   <div class="popup" id="popup" hidden role="dialog" aria-modal="true" aria-labelledby="popup-title"></div>
   <script src="js/app.882bdf08b519.js"></script>
+  <script>
+    window.API_BASE = "";
+    (function () {
+      if (!window.API_BASE) return;
+      var merge = document.createElement("script");
+      merge.src = "js/sync-merge.js";
+      merge.onload = function () {
+        var account = document.createElement("script");
+        account.src = "js/account.js";
+        document.body.appendChild(account);
+      };
+      merge.onerror = function () {};
+      document.body.appendChild(merge);
+    })();
+  </script>
 </body>
 </html>
