@@ -3,8 +3,11 @@
 
 from __future__ import annotations
 
+import argparse
 import json
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +17,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import opencc
 from pypinyin import Style, pinyin
 
+import build_updates
 from build_dict import load_shuowen
 from hanzi import is_han, only_han
 from parse_wikisource import parse_volume, split_sentences
@@ -324,13 +328,46 @@ def public_article(src: dict, body: dict) -> dict:
     }
 
 
-def main() -> None:
+def main(args: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--plan-update", type=Path, help="write a review directory; do not publish data")
+    group.add_argument("--apply-update", type=Path, help="apply a reviewed plan with SHA preconditions")
+    group.add_argument("--summarize-update", type=Path, help="print review hashes without approving or writing data")
+    options = parser.parse_args([] if args is None else args)
+    if options.summarize_update:
+        build_updates.summarize(options.summarize_update, OUT)
+        return
     from annotations.volume1 import ARTICLES
 
     notes = {item["id"]: item for item in ARTICLES}
     source = load_source_articles()
+    def candidate(src):
+        apply_author(src)
+        body = annotated_payload(src, notes[src["id"]]) if src["id"] in notes else plain_payload(src)
+        return public_article(src, body)
+
+    manifest_path = OUT / "build-inputs.json"
+    replacements, manifest = build_updates.prepare(
+        source, notes, manifest_path, OUT, candidate, options.plan_update, options.apply_update
+    )
+    if options.plan_update:
+        return
     built = []
     for src in source:
+        if src["id"] in replacements:
+            built.append(replacements[src["id"]])
+            continue
+        # Published articles also contain reviewed readings, edition corrections,
+        # translations and lessons from later pipelines. They are authoritative;
+        # rebuilding a skeleton must not discard those fields.
+        existing = OUT / "articles" / f"{src['id']}.json"
+        if existing.is_file():
+            art = json.loads(existing.read_text(encoding="utf-8"))
+            if art.get("id") != src["id"] or not art.get("paragraphs"):
+                raise SystemExit(f"已发布篇目无效，未写入任何文件：{existing}")
+            built.append(art)
+            continue
         apply_author(src)
         if src["id"] in notes:
             body = annotated_payload(src, notes[src["id"]])
@@ -343,15 +380,29 @@ def main() -> None:
         raise SystemExit(f"卷一未标注篇目：{missing}")
 
     chars = collect_chars(built)
-    dictionary = build_dict(chars)
-    covered = sum(1 for ch in chars if dictionary[ch]["inShuowen"])
+    dict_path = OUT / "dict.json"
+    dict_payload = json.loads(dict_path.read_text(encoding="utf-8")) if dict_path.is_file() else {
+        "source": "shuowenjiezi/shuowen", "license": "Apache-2.0", "chars": {}
+    }
+    dictionary = dict_payload["chars"]
+    # This index is shared by every book. Preserve reviewed entries and coverage
+    # beyond Guwen Guanzhi; only new characters need the upstream dictionary.
+    published_chars = set()
+    for src in source:
+        previous_path = OUT / "articles" / f"{src['id']}.json"
+        if previous_path.is_file():
+            published_chars.update(collect_chars([json.loads(previous_path.read_text(encoding="utf-8"))]))
+    # A no-op rebuild must not silently enrich old dictionary gaps or require
+    # an external checkout. Only newly introduced characters need generation.
+    missing_chars = (chars - published_chars if dict_path.is_file() else chars) - dictionary.keys()
+    if missing_chars:
+        dictionary.update(build_dict(missing_chars))
+    covered = sum(1 for ch in chars if dictionary.get(ch, {}).get("inShuowen"))
 
     OUT.mkdir(parents=True, exist_ok=True)
     art_dir = OUT / "articles"
     art_dir.mkdir(exist_ok=True)
-    # 清掉旧篇，避免篇目变动后残留
-    for old in art_dir.glob("*.json"):
-        old.unlink()
+    outputs = {}
 
     catalog_volumes: dict[int, dict] = {}
     for art in built:
@@ -376,10 +427,7 @@ def main() -> None:
                 "annotated": art["annotated"],
             }
         )
-        (art_dir / f"{art['id']}.json").write_text(
-            json.dumps(art, ensure_ascii=False, separators=(",", ":")),
-            encoding="utf-8",
-        )
+        outputs[f"articles/{art['id']}.json"] = art
 
     catalog = {
         "title": "古文观止",
@@ -389,22 +437,8 @@ def main() -> None:
         "annotatedCount": sum(1 for a in built if a["annotated"]),
         "volumes": [catalog_volumes[i] for i in range(1, 13)],
     }
-    (OUT / "catalog.json").write_text(
-        json.dumps(catalog, ensure_ascii=False, separators=(",", ":")),
-        encoding="utf-8",
-    )
-    (OUT / "dict.json").write_text(
-        json.dumps(
-            {
-                "source": "shuowenjiezi/shuowen",
-                "license": "Apache-2.0",
-                "chars": dictionary,
-            },
-            ensure_ascii=False,
-            separators=(",", ":"),
-        ),
-        encoding="utf-8",
-    )
+    outputs["catalog.json"] = catalog
+    outputs["dict.json"] = dict_payload
     meta = {
         "articles": len(built),
         "annotated": catalog["annotatedCount"],
@@ -412,11 +446,25 @@ def main() -> None:
         "shuowenHit": covered,
         "shuowenMiss": len(chars) - covered,
     }
-    (OUT / "build-meta.json").write_text(
-        json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    outputs["build-meta.json"] = meta
+    outputs["build-inputs.json"] = manifest
+    # Serialize and validate the complete batch before touching published files.
+    # Each replacement is atomic. No wildcard cleanup: other books and hashes
+    # belong to other generators/the release pipeline.
+    with tempfile.TemporaryDirectory(prefix=".guwen-build-", dir=OUT.parent) as temp:
+        staging = Path(temp)
+        for rel, payload in outputs.items():
+            path = staging / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            json.loads(path.read_text(encoding="utf-8"))
+        # Validate every existing destination before the first replacement.
+        changed = [rel for rel in outputs if not (OUT / rel).is_file()
+                   or json.loads((OUT / rel).read_text(encoding="utf-8")) != outputs[rel]]
+        for rel in changed:
+            os.replace(staging / rel, OUT / rel)
     print(json.dumps(meta, ensure_ascii=False))
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

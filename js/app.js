@@ -2,6 +2,8 @@
   "use strict";
 
   const KEY = "gwgz-progress-v1";
+  const PROGRESS_PREFIX = "gwgz-progress-v2:";
+  const PROGRESS_FIELDS = ["font", "mode", "sentence", "sentenceSet", "last", "pinyin", "pinyinSet"];
   const state = {
     catalog: null,
     dict: null,
@@ -31,7 +33,10 @@
     daode: null,
     lunyu: null,
     listMode: "work",
+    audioManifest: null,
   };
+  let progressBase = progressFields(state.progress);
+  const pendingProgress = {};
   let loadToken = 0;
 
   const main = document.getElementById("main");
@@ -42,26 +47,103 @@
   const topProgress = document.getElementById("top-progress");
   const meter = document.getElementById("top-meter-fill");
 
-  function loadProgress() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(KEY) || "{}");
-      raw.learned = raw.learned || {};
-      raw.font = raw.font === "t" ? "t" : "s";
-      raw.mode = raw.mode || "read";
-      raw.sentenceSet = !!raw.sentenceSet;
-      raw.sentence = raw.sentenceSet ? !!raw.sentence : true;
-      raw.pinyinSet = !!raw.pinyinSet;
-      if (!raw.pinyinSet) raw.pinyin = true;
-      else raw.pinyin = !!raw.pinyin;
-      raw.collections = raw.collections && typeof raw.collections === "object" ? raw.collections : {};
-      return raw;
-    } catch (err) {
-      return { learned: {}, font: "s", mode: "read", sentence: true, sentenceSet: false, last: "", pinyin: true, pinyinSet: false, collections: {} };
+  function normalizeProgress(value) {
+    const raw = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    const learned = {};
+    Object.keys(raw.learned || {}).forEach(function (id) {
+      if (/^[vhdzl]\d{2}-\d{2}$/.test(id) && Number.isFinite(raw.learned[id]) && raw.learned[id] > 0) learned[id] = raw.learned[id];
+    });
+    const collections = {};
+    ["tang", "ci", "ke"].forEach(function (kind) {
+      const id = raw.collections && raw.collections[kind];
+      if (typeof id === "string" && /^[a-z0-9-]+$/.test(id)) collections[kind] = id;
+    });
+    return {
+      learned: learned, collections: collections,
+      font: raw.font === "t" ? "t" : "s", mode: raw.mode === "study" ? "study" : "read",
+      sentenceSet: !!raw.sentenceSet, sentence: raw.sentenceSet ? !!raw.sentence : true,
+      pinyinSet: !!raw.pinyinSet, pinyin: raw.pinyinSet ? !!raw.pinyin : true,
+      last: typeof raw.last === "string" ? raw.last : "",
+    };
+  }
+
+  function progressFields(progress) {
+    const fields = {};
+    PROGRESS_FIELDS.forEach(function (key) { fields[key] = progress[key]; });
+    ["learned", "collections"].forEach(function (group) {
+      Object.keys(progress[group] || {}).forEach(function (id) { fields[group + ":" + id] = progress[group][id]; });
+    });
+    return fields;
+  }
+
+  function applyProgressField(progress, key, value) {
+    const parts = key.split(":");
+    if (parts.length === 1 && PROGRESS_FIELDS.indexOf(key) >= 0) progress[key] = value;
+    else if (parts.length === 2 && (parts[0] === "learned" || parts[0] === "collections") && /^[a-z0-9-]+$/.test(parts[1])) {
+      if (value === null) delete progress[parts[0]][parts[1]];
+      else progress[parts[0]][parts[1]] = value;
     }
   }
 
+  function loadProgress(fallback) {
+    let progress = normalizeProgress(fallback);
+    try {
+      try { progress = normalizeProgress(JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (_) { /* Ignore corrupt legacy data. */ }
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key || key.indexOf(PROGRESS_PREFIX) !== 0) continue;
+        try { applyProgressField(progress, key.slice(PROGRESS_PREFIX.length), JSON.parse(localStorage.getItem(key))); } catch (_) { /* Isolate a corrupt field. */ }
+      }
+    } catch (_) { /* Storage can be unavailable; reading remains usable. */ }
+    return normalizeProgress(progress);
+  }
+
+  function showNotice(message) {
+    let notice = document.getElementById("app-notice");
+    if (!notice) {
+      notice = document.createElement("p");
+      notice.id = "app-notice";
+      notice.className = "app-notice";
+      notice.setAttribute("role", "status");
+      document.body.appendChild(notice);
+    }
+    notice.textContent = message;
+  }
+
   function saveProgress() {
-    localStorage.setItem(KEY, JSON.stringify(state.progress));
+    const current = progressFields(state.progress);
+    const keys = new Set(Object.keys(progressBase).concat(Object.keys(current)));
+    keys.forEach(function (key) {
+      if (current[key] !== progressBase[key]) pendingProgress[key] = current[key] === undefined ? null : current[key];
+    });
+    const merged = loadProgress(state.progress);
+    Object.keys(pendingProgress).forEach(function (key) {
+      const value = pendingProgress[key];
+      applyProgressField(merged, key, value);
+      try {
+        // Each field has its own key. Other tabs cannot overwrite unrelated
+        // changes; null persists an explicit removal over the legacy snapshot.
+        localStorage.setItem(PROGRESS_PREFIX + key, JSON.stringify(value));
+        delete pendingProgress[key];
+      } catch (_) {
+        showNotice("浏览器未能保存进度。本页仍可阅读，未保存的更改暂留在当前页面。");
+      }
+    });
+    state.progress = normalizeProgress(merged);
+    progressBase = progressFields(state.progress);
+    syncChrome();
+  }
+
+  function syncStoredProgress(event) {
+    if (event.key !== null && event.key !== KEY && event.key.indexOf(PROGRESS_PREFIX) !== 0) return;
+    const merged = loadProgress(state.progress);
+    Object.keys(pendingProgress).forEach(function (key) { applyProgressField(merged, key, pendingProgress[key]); });
+    state.progress = normalizeProgress(merged);
+    progressBase = progressFields(state.progress);
+    if (!state.catalog) return;
+    if (state.view === "article" && state.article) renderArticle(true);
+    else if (state.view === "piece" && state.piece) renderPiece(true);
+    else route();
     syncChrome();
   }
 
@@ -166,36 +248,16 @@
 
   async function boot() {
     skeleton("正在载入");
-    const [catRes, booksRes, authorsRes, renjianRes, zztjRes, provRes, readRes, glossRes, gradeRes, daodeRes, lunyuRes, famousRes] = await Promise.all([
-      fetch(assetUrl("data/catalog.json")),
-      fetch(assetUrl("data/books.json")),
-      fetch(assetUrl("data/prose-authors.json")),
-      fetch(assetUrl("data/renjian.json")),
-      fetch(assetUrl("data/zztj.json")),
-      fetch(assetUrl("data/provenance.json")),
-      fetch(assetUrl("data/reading-policy.json")),
-      fetch(assetUrl("data/gloss-sources.json")),
-      fetch(assetUrl("data/grades.json")),
-      fetch(assetUrl("data/daode.json")),
-      fetch(assetUrl("data/lunyu.json")),
-      fetch(assetUrl("data/famous.json")),
-    ]);
-    if (!catRes.ok) {
-      main.innerHTML = "<p class='empty'>没有读到目录。请在仓库根目录运行本地服务器后再打开本页。</p>";
-      return;
-    }
-    state.catalog = await catRes.json();
-    if (booksRes.ok) state.books = await booksRes.json();
-    if (authorsRes.ok) state.proseAuthors = await authorsRes.json();
-    if (renjianRes.ok) state.renjian = await renjianRes.json();
-    if (zztjRes.ok) state.zztj = await zztjRes.json();
-    if (provRes.ok) state.provenance = await provRes.json();
-    if (readRes.ok) state.readingPolicy = await readRes.json();
-    if (glossRes.ok) state.glossSources = await glossRes.json();
-    if (gradeRes.ok) state.grades = await gradeRes.json();
-    if (daodeRes.ok) state.daode = await daodeRes.json();
-    if (lunyuRes.ok) state.lunyu = await lunyuRes.json();
-    if (famousRes.ok) state.famous = await famousRes.json();
+    const paths = {
+      catalog: "data/catalog.json", books: "data/books.json", proseAuthors: "data/prose-authors.json",
+      renjian: "data/renjian.json", zztj: "data/zztj.json", provenance: "data/provenance.json",
+      readingPolicy: "data/reading-policy.json", glossSources: "data/gloss-sources.json", grades: "data/grades.json",
+      daode: "data/daode.json", lunyu: "data/lunyu.json", famous: "data/famous.json",
+    };
+    const keys = Object.keys(paths);
+    const data = await Promise.all(keys.map(function (key) { return fetchJson(paths[key]); }));
+    keys.forEach(function (key, i) { state[key] = data[i]; });
+    loadAudioManifest().catch(function () { /* The reader works without audio. */ });
     if (state.progress.last) {
       const meta = findArticleMeta(state.progress.last);
       if (meta) state.openVol = Number(meta.id.slice(1, 3));
@@ -304,24 +366,64 @@
     ke: { file: "data/ke.json", label: "课文", unit: "篇" },
   };
 
-  function route() {
+  async function fetchJson(path) {
+    const response = await fetch(assetUrl(path));
+    if (!response.ok) throw new Error("HTTP " + response.status + ": " + path);
+    return response.json();
+  }
+
+  function showLoadError(retry) {
+    const box = document.createElement("div");
+    box.className = "empty";
+    box.setAttribute("role", "alert");
+    const message = document.createElement("p");
+    message.textContent = "页面数据暂时无法载入，请检查网络后重试。";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "重新载入";
+    button.addEventListener("click", retry);
+    box.appendChild(message);
+    box.appendChild(button);
+    const refresh = document.createElement("button");
+    refresh.type = "button";
+    refresh.textContent = "刷新页面";
+    refresh.addEventListener("click", function () { location.reload(); });
+    box.appendChild(refresh);
+    main.replaceChildren(box);
+  }
+
+  async function route() {
+    if (!state.catalog) return;
+    const hash = location.hash;
+    let token = loadToken;
+    try {
+      const pending = dispatchRoute();
+      token = loadToken;
+      await pending;
+    } catch (err) {
+      if (token === loadToken && hash === location.hash) showLoadError(route);
+      console.error(err);
+    }
+  }
+
+  function dispatchRoute() {
     const hash = location.hash || "#/";
     const read = hash.match(/^#\/read\/((?:v|h|z|d|l)\d{2}-\d{2})$/);
     const vol = hash.match(/^#\/gwgz\/(\d{1,2})$/);
     const zjuan = hash.match(/^#\/zztj\/(\d{1,2})$/);
     const authorPage = hash.match(/^#\/(tang|ci|ke)\/author\/(.+)$/);
     const piece = hash.match(/^#\/(tang|ci|ke)\/([a-z0-9-]+)$/);
-    if (read) showArticle(read[1]);
-    else if (vol) showVolume(Number(vol[1]));
-    else if (zjuan) showZztjJuan(Number(zjuan[1]));
+    if (read) return showArticle(read[1]);
+    else if (vol) return showVolume(Number(vol[1]));
+    else if (zjuan) return showZztjJuan(Number(zjuan[1]));
     else if (hash === "#/gwgz") showBook();
     else if (hash === "#/zztj") showZztj();
     else if (hash === "#/rjch") showRenjian();
-    else if (hash === "#/daode") showClassic("daode");
-    else if (hash === "#/lunyu") showClassic("lunyu");
-    else if (authorPage) showAuthor(authorPage[1], decodeURIComponent(authorPage[2]));
-    else if (piece) showPiece(piece[1], piece[2]);
-    else if (hash === "#/tang" || hash === "#/ci" || hash === "#/ke") showCollection(hash.slice(2));
+    else if (hash === "#/daode") return showClassic("daode");
+    else if (hash === "#/lunyu") return showClassic("lunyu");
+    else if (authorPage) return showAuthor(authorPage[1], decodeURIComponent(authorPage[2]));
+    else if (piece) return showPiece(piece[1], piece[2]);
+    else if (hash === "#/tang" || hash === "#/ci" || hash === "#/ke") return showCollection(hash.slice(2));
     else showHub();
   }
 
@@ -917,18 +1019,14 @@
   }
 
   async function ensureCollection(kind, token) {
-    if (state.collections[kind]) return true;
+    if (state.collections[kind]) return token === loadToken;
     const meta = POETRY[kind];
     skeleton("正在打开" + meta.label);
     syncChrome();
-    const res = await fetch(assetUrl(meta.file));
+    const data = await fetchJson(meta.file);
     if (token !== loadToken) return false;
-    if (!res.ok) {
-      main.innerHTML = "<p class='empty'>" + meta.label + "还没有生成。在仓库根目录运行 python3 scripts/build_poetry.py。</p>";
-      return false;
-    }
-    state.collections[kind] = await res.json();
-    return token === loadToken;
+    state.collections[kind] = data;
+    return true;
   }
 
   function gradeOf(id) {
@@ -1282,11 +1380,11 @@
   };
 
   async function ensureNotes(token) {
-    if (state.notes) return true;
-    const res = await fetch(assetUrl("data/poetry-notes.json"));
+    if (state.notes) return token === loadToken;
+    const data = await fetchJson("data/poetry-notes.json");
     if (token !== loadToken) return false;
-    state.notes = res.ok ? await res.json() : { authors: {}, pieces: {}, credit: { s: "", t: "" } };
-    return token === loadToken;
+    state.notes = data;
+    return true;
   }
 
   function bi(node) {
@@ -1898,13 +1996,9 @@
     state.openVol = Number(id.slice(1, 3));
     skeleton("正在打开篇目");
     syncChrome();
-    const res = await fetch(assetUrl("data/articles/" + id + ".json"));
+    const article = await fetchJson("data/articles/" + id + ".json");
     if (token !== loadToken) return;
-    if (!res.ok) {
-      main.innerHTML = "<p class='empty'>没有这一篇。</p>";
-      return;
-    }
-    state.article = await res.json();
+    state.article = article;
     state.progress.last = id;
     state.openVol = state.article.volume;
     saveProgress();
@@ -2453,17 +2547,48 @@
   }
 
   let syllableAudio = null;
+  let audioManifestPromise = null;
 
-  function playSyllable(syl) {
-    if (!syl) return;
-    const url = "audio/" + syllableKey(syl) + ".ogg";
-    if (syllableAudio) {
-      syllableAudio.pause();
+  function audioPath(syl) {
+    const key = String(syl || "").normalize("NFC").toLowerCase();
+    const manifest = state.audioManifest;
+    const file = manifest && Object.prototype.hasOwnProperty.call(manifest, key) ? manifest[key] : "";
+    return typeof file === "string" && /^[a-z]+[1-5]$/.test(file) ? "audio/" + file + ".ogg" : "";
+  }
+
+  function loadAudioManifest() {
+    if (state.audioManifest) return Promise.resolve(state.audioManifest);
+    if (!audioManifestPromise) {
+      audioManifestPromise = fetchJson("audio/manifest.json").then(function (manifest) {
+        state.audioManifest = manifest;
+        const open = state.popupTok;
+        if (open) openPopup(open.tok, open.index, open.anchor);
+        return manifest;
+      }).finally(function () { audioManifestPromise = null; });
     }
-    syllableAudio = new Audio(url);
-    syllableAudio.play().catch(function () {
-      if (syllableAudio) syllableAudio = null;
-    });
+    return audioManifestPromise;
+  }
+
+  async function playSyllable(syl) {
+    if (!syl) return false;
+    let audio;
+    try {
+      await loadAudioManifest();
+      const url = audioPath(syl);
+      if (!url) {
+        showNotice("这个读音暂无录音。");
+        return false;
+      }
+      if (syllableAudio) syllableAudio.pause();
+      audio = new Audio(url);
+      syllableAudio = audio;
+      await audio.play();
+      return true;
+    } catch (_) {
+      if (syllableAudio === audio) syllableAudio = null;
+      showNotice("录音暂时无法播放，请稍后重试。");
+      return false;
+    }
   }
 
   function syllables(py) {
@@ -2893,7 +3018,10 @@
     speak.className = "speak";
     speak.setAttribute("aria-label", syllable ? "朗读 " + syllable : "没有读音");
     speak.innerHTML = "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 9.5v5h3.2L12 19V5L7.2 9.5H4z\"/><path d=\"M15.2 9.2a3.6 3.6 0 010 5.6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/><path d=\"M17.4 7a6.2 6.2 0 010 10\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/></svg>";
-    speak.disabled = !syllable;
+    const missingAudio = !!state.audioManifest && !audioPath(syllable);
+    speak.disabled = !syllable || missingAudio;
+    speak.title = !syllable ? "没有读音" : missingAudio ? "这个读音暂无录音" : "朗读 " + syllable;
+    speak.setAttribute("aria-label", speak.title);
     speak.addEventListener("click", function (event) {
       event.stopPropagation();
       playSyllable(syllable);
@@ -2907,6 +3035,7 @@
     if (syllable) pyEl.textContent = syllable;
     else if (entry.pending) pyEl.textContent = "读音载入中";
     else pyEl.textContent = "读音未收";
+    if (syllable && missingAudio) pyEl.textContent += " · 暂无录音";
     titles.appendChild(nameRow);
     titles.appendChild(pyEl);
     const close = document.createElement("button");
@@ -3217,6 +3346,7 @@
     closePopup();
   });
   window.addEventListener("hashchange", route);
+  window.addEventListener("storage", syncStoredProgress);
   window.addEventListener("resize", function () {
     if (!popup.hidden && state.popupTok) placePopup(state.popupTok.anchor);
     fitVerse(document.querySelector(".body.verse"));
@@ -3269,8 +3399,11 @@
     });
   });
 
-  boot().catch(function (err) {
-    main.innerHTML = "<p class='empty'>页面数据没有载入。请用本地服务器打开本站，不要直接双击文件。</p>";
-    console.error(err);
-  });
+  function startBoot() {
+    return boot().catch(function (err) {
+      showLoadError(startBoot);
+      console.error(err);
+    });
+  }
+  startBoot();
 })();

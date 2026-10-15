@@ -1484,3 +1484,20 @@ h1 {
   .main { padding: 36px 28px 72px; }
   .shell.has-rail .catalog { display: block; }
 }
+.app-notice {
+  position: fixed;
+  top: 4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: max-content;
+  max-width: min(90vw, 36rem);
+  padding: .75rem 1rem;
+  border: 1px solid #b7a98b;
+  border-radius: .4rem;
+  background: #fffaf0;
+  color: #3b3428;
+  box-shadow: 0 2px 12px #0002;
+  pointer-events: none;
+}
+
