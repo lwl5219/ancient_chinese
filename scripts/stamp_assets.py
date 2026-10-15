@@ -30,7 +30,6 @@ CANONICAL_REFS = (
 )
 OPTIONAL_REFS = (
     ("js/account.js", re.compile(r"js/account\.[0-9a-f]{12}\.js")),
-    ("js/sync-merge.js", re.compile(r"js/sync-merge\.[0-9a-f]{12}\.js")),
 )
 
 

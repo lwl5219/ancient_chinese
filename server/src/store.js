@@ -144,22 +144,49 @@ function createTableStore(client, codec) {
       ]);
     },
     async deleteSession(tokenHash) { await remove("sessions", "tokenHash", tokenHash); },
-    async getSync(userId) {
-      const cols = await get("sync", "userId", userId);
-      if (!cols) return null;
-      let bookmarks = [];
-      let state = {};
-      try { bookmarks = JSON.parse(cols.bookmarks || "[]"); } catch (_) { bookmarks = []; }
-      try { state = JSON.parse(cols.state || "{}"); } catch (_) { state = {}; }
-      return { bookmarks: bookmarks, state: state };
+    async putEvents(rows) {
+      for (let i = 0; i < rows.length; i += 1) {
+        const row = rows[i];
+        await call(client, "putRow", {
+          tableName: "events",
+          primaryKey: [{ userId: row.userId }, { ts: row.ts }],
+          attributeColumns: [
+            { type: row.type },
+            { pieceId: row.pieceId || "" },
+            { payload: row.payload || "{}" },
+            { deviceHash: row.deviceHash || "" },
+            { clientTs: toInt(row.clientTs || 0) },
+          ],
+          condition: condition(),
+        });
+      }
     },
-    async putSync(userId, row) {
-      await put("sync", "userId", userId, [
-        { bookmarks: JSON.stringify(row.bookmarks || []) },
-        { state: JSON.stringify(row.state || {}) },
-      ]);
+    async deleteEventsForUser(userId) {
+      if (typeof client.getRange !== "function") return;
+      const bounds = codec && codec.range || {};
+      let start = [{ userId: userId }, { ts: bounds.min }];
+      const end = [{ userId: userId }, { ts: bounds.max }];
+      for (let round = 0; round < 20; round += 1) {
+        const data = await call(client, "getRange", {
+          tableName: "events",
+          direction: bounds.forward,
+          inclusiveStartPrimaryKey: start,
+          exclusiveEndPrimaryKey: end,
+          limit: 50,
+        });
+        const found = data.rows || [];
+        if (!found.length) return;
+        for (let i = 0; i < found.length; i += 1) {
+          const pk = (found[i].primaryKey || []).map(function (col) {
+            const name = col.name || col.columnName;
+            return { [name]: col.value };
+          });
+          await call(client, "deleteRow", { tableName: "events", primaryKey: pk, condition: condition() });
+        }
+        if (!data.nextStartPrimaryKey || !data.nextStartPrimaryKey.length) return;
+        start = data.nextStartPrimaryKey;
+      }
     },
-    async deleteSync(userId) { await remove("sync", "userId", userId); },
   };
 }
 
@@ -179,6 +206,11 @@ function createStore(env) {
     fromInt: fromInt,
     condition: function () {
       return new TableStore.Condition(TableStore.RowExistenceExpectation.IGNORE, null);
+    },
+    range: {
+      min: TableStore.INF_MIN,
+      max: TableStore.INF_MAX,
+      forward: TableStore.Direction.FORWARD,
     },
   });
 }

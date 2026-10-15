@@ -4,7 +4,6 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createApp } = require("../src/app");
 const { createMemoryStore } = require("../src/memory-store");
-const { mergeBookmarks, mergeState } = require("../src/merge");
 const { createTableStore } = require("../src/store");
 const { handleEvent } = require("../index");
 
@@ -157,63 +156,78 @@ test("verify accepts one code, locks attempts, and rejects expiry", async () => 
   assert.equal(w.store.dump().sessions.has(ok.body.token), false);
 });
 
-test("sync unions bookmarks, keeps the newer state, and unions read marks", async () => {
+test("events accept a batch for a user or an anonymous device and enforce limits", async () => {
   const w = world();
-  const token = await login(w, "sync@example.com");
+  const token = await login(w, "read@example.com");
   const auth = { authorization: "Bearer " + token };
-  const first = await call(w.app, {
-    method: "PUT",
-    path: "/sync",
+  const missing = await call(w.app, { method: "POST", path: "/events", body: { events: [{ type: "page_view", pieceId: "v01-01", ts: 5 }] } });
+  assert.equal(missing.status, 400);
+  const bad = await call(w.app, {
+    method: "POST",
+    path: "/events",
     headers: auth,
-    body: {
-      bookmarks: [{ id: "piece:v01-01", kind: "piece", href: "#/read/v01-01", title: "郑伯克段于鄢", at: 10 }],
-      state: { font: "s", updatedAt: 10, learned: { "v01-01": 10 }, last: "v01-01" },
-    },
+    body: { deviceId: "device-1234", events: [{ type: "Not Valid", pieceId: "v01-01" }] },
   });
-  assert.equal(first.status, 200);
-  const second = await call(w.app, {
-    method: "PUT",
-    path: "/sync",
+  assert.equal(bad.status, 400);
+  const ok = await call(w.app, {
+    method: "POST",
+    path: "/events",
     headers: auth,
     body: {
-      bookmarks: [
-        { id: "piece:v01-01", kind: "piece", href: "#/read/v01-01", title: "郑伯克段于鄢", quote: "", at: 12 },
-        { id: "sent:v01-01:0", kind: "sentence", href: "#/read/v01-01", title: "郑伯克段于鄢", quote: "初郑武公娶于申", at: 20 },
+      deviceId: "device-1234",
+      events: [
+        { type: "page_view", pieceId: "v01-01", ts: 1000000, payload: { href: "#/read/v01-01" } },
+        { type: "char_lookup", pieceId: "tang:t010", payload: { ch: "床" } },
       ],
-      state: { font: "t", updatedAt: 5, learned: { "v01-02": 30 }, last: "v01-02", pinyinSet: true, pinyin: false },
     },
   });
-  assert.equal(second.body.bookmarks.map(function (item) { return item.id; }).sort().join(","), "piece:v01-01,sent:v01-01:0");
-  assert.equal(second.body.state.font, "s");
-  assert.equal(second.body.state.last, "v01-01");
-  assert.equal(second.body.state.learned["v01-01"], 10);
-  assert.equal(second.body.state.learned["v01-02"], 30);
-  assert.equal(second.body.state.updatedAt, 10);
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.accepted, 2);
+  const me = await call(w.app, { path: "/me", headers: auth });
+  const stored = w.store.dump().events.filter(function (row) { return row.userId === me.body.userId; });
+  assert.equal(stored.length, 2);
+  assert.deepEqual(stored.map(function (row) { return row.type; }), ["page_view", "char_lookup"]);
+  assert.equal(stored[0].ts < stored[1].ts, true);
+  assert.equal(stored[0].payload.includes("床") || stored[1].payload.includes("床"), true);
+  assert.equal(stored[0].deviceHash.includes("device-1234"), false);
 
-  const newer = await call(w.app, {
-    method: "PUT",
-    path: "/sync",
-    headers: auth,
-    body: { bookmarks: [], state: { font: "t", updatedAt: 40, learned: { "v01-01": 4 }, last: "v02-01" } },
+  const anon = await call(w.app, {
+    method: "POST",
+    path: "/events",
+    body: { deviceId: "device-1234", events: [{ type: "page_view", pieceId: "v01-02" }] },
   });
-  assert.equal(newer.body.state.font, "t");
-  assert.equal(newer.body.state.last, "v02-01");
-  assert.equal(newer.body.state.learned["v01-01"], 10);
-  assert.equal(newer.body.bookmarks.length, 2);
+  assert.equal(anon.status, 200);
+  assert.equal(w.store.dump().events.some(function (row) { return row.userId.indexOf("anon:") === 0; }), true);
 
-  const anon = await call(w.app, { method: "PUT", path: "/sync", body: { bookmarks: [], state: {} } });
-  assert.equal(anon.status, 401);
+  const huge = { type: "page_view", pieceId: "v01-01", payload: { note: "x".repeat(900) } };
+  const tooBig = await call(w.app, { method: "POST", path: "/events", headers: auth, body: { events: [huge] } });
+  assert.equal(tooBig.status, 400);
+
+  w.at(1_000_000 + 60 * 60 * 1000);
+  for (let n = 0; n < 6; n += 1) {
+    const batch = [];
+    for (let i = 0; i < 20; i += 1) batch.push({ type: "page_view", pieceId: "v01-01" });
+    const sent = await call(w.app, { method: "POST", path: "/events", headers: auth, body: { events: batch } });
+    assert.equal(sent.status, 200);
+  }
+  const capped = await call(w.app, {
+    method: "POST",
+    path: "/events",
+    headers: auth,
+    body: { events: [{ type: "page_view", pieceId: "v01-01" }] },
+  });
+  assert.equal(capped.status, 429);
 });
 
-test("logout and delete account drop the session and stored sync", async () => {
+test("logout and delete account drop the session and that user's events", async () => {
   const w = world();
   const token = await login(w, "gone@example.com");
   const auth = { authorization: "Bearer " + token };
   await call(w.app, {
-    method: "PUT",
-    path: "/sync",
+    method: "POST",
+    path: "/events",
     headers: auth,
-    body: { bookmarks: [{ id: "piece:v01-01", kind: "piece", href: "#/read/v01-01", title: "郑伯", at: 1 }], state: { updatedAt: 1 } },
+    body: { events: [{ type: "page_view", pieceId: "v01-01" }] },
   });
   const out = await call(w.app, { method: "POST", path: "/auth/logout", headers: auth });
   assert.equal(out.status, 200);
@@ -223,13 +237,14 @@ test("logout and delete account drop the session and stored sync", async () => {
   w.advance(60 * 1000);
   const again = await login(w, "gone@example.com");
   const me = await call(w.app, { path: "/me", headers: { authorization: "Bearer " + again } });
-  assert.equal(me.body.bookmarks.length, 1);
+  assert.equal(me.body.email, "gone@example.com");
+  assert.equal(w.store.dump().events.filter(function (row) { return row.userId === me.body.userId; }).length, 1);
   const removed = await call(w.app, { method: "DELETE", path: "/account", headers: { authorization: "Bearer " + again } });
   assert.equal(removed.status, 200);
   const dead = await call(w.app, { path: "/me", headers: { authorization: "Bearer " + again } });
   assert.equal(dead.status, 401);
   assert.equal(await w.store.getUser("gone@example.com"), null);
-  assert.equal([...w.store.dump().sync.values()].length, 0);
+  assert.equal(w.store.dump().events.length, 0);
   assert.equal([...w.store.dump().sessions.values()].length, 0);
 });
 
@@ -253,27 +268,6 @@ test("mail failure does not leave a usable code", async () => {
   const res = await call(app, { method: "POST", path: "/auth/request-code", body: { email: "a@example.com" } });
   assert.equal(res.status, 502);
   assert.equal(await store.getCode("a@example.com"), null);
-});
-
-test("merge helpers prefer the newer snapshot without dropping reads", () => {
-  const bookmarks = mergeBookmarks(
-    [{ id: "piece:a", kind: "piece", href: "#/read/v01-01", title: "旧", at: 1 }, { id: "nope", kind: "piece" }],
-    [{ id: "piece:a", kind: "piece", href: "#/read/v01-01", title: "新", at: 2 }]
-  );
-  assert.deepEqual(bookmarks.map(function (item) { return item.title; }), ["新"]);
-  const removed = mergeBookmarks(
-    [{ id: "piece:a", kind: "piece", href: "#/read/v01-01", title: "新", at: 2 }],
-    [{ id: "piece:a", kind: "piece", href: "#/read/v01-01", title: "新", at: 4, deleted: true }]
-  );
-  assert.equal(removed[0].deleted, true);
-  const state = mergeState(
-    { updatedAt: 5, font: "t", learned: { "v01-01": 9 } },
-    { updatedAt: 8, font: "s", learned: { "v01-01": 3, "v01-02": 4 }, last: "v01-02" }
-  );
-  assert.equal(state.font, "s");
-  assert.equal(state.learned["v01-01"], 9);
-  assert.equal(state.learned["v01-02"], 4);
-  assert.equal(state.last, "v01-02");
 });
 
 test("tablestore adapter round-trips rows through a fake client", async () => {
@@ -300,16 +294,16 @@ test("tablestore adapter round-trips rows through a fake client", async () => {
   };
   const store = createTableStore(client);
   await store.putUser({ email: "a@example.com", userId: "u1", createdAt: 7, sessionHashes: ["h1"] });
-  await store.putSync("u1", {
-    bookmarks: [{ id: "piece:v01-01", kind: "piece", href: "#/read/v01-01", title: "郑伯", at: 1 }],
-    state: { font: "t", updatedAt: 7, learned: {} },
-  });
+  await store.putEvents([{
+    userId: "u1", ts: "0000000001000-00-ab", type: "page_view", pieceId: "v01-01",
+    payload: "{}", deviceHash: "abc", clientTs: 1000,
+  }]);
   const user = await store.getUser("a@example.com");
   assert.equal(user.userId, "u1");
   assert.deepEqual(user.sessionHashes, ["h1"]);
-  const sync = await store.getSync("u1");
-  assert.equal(sync.bookmarks[0].title, "郑伯");
-  assert.equal(sync.state.font, "t");
+  const eventKey = [...rows.keys()].find(function (item) { return item.indexOf("events") === 0; });
+  assert.match(eventKey, /userId/);
+  assert.match(eventKey, /0000000001000-00-ab/);
   await store.deleteUser("a@example.com");
   assert.equal(await store.getUser("a@example.com"), null);
 });
