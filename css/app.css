@@ -346,11 +346,12 @@ h1 {
 @media (min-width: 720px) {
   .book-list { grid-template-columns: repeat(4, 1fr); }
 }
-.orig.famous-line, .verse-line.famous-line {
+.orig.famous-line, .verse-line.famous-line, .orig-sent.famous-line {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   border-radius: 8px;
   box-shadow: inset 2px 0 0 var(--accent);
 }
+.orig-sent { display: inline; }
 .famous-mark {
   display: inline-flex;
   align-items: center;
@@ -365,6 +366,10 @@ h1 {
   font-size: 0.72rem;
   line-height: 1;
   vertical-align: 0.1em;
+}
+.famous-mark.fame {
+  border-color: var(--line);
+  color: var(--muted);
 }
 .famous-sheet {
   position: fixed;

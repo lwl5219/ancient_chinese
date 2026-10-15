@@ -1979,7 +1979,13 @@
       art.paragraphs.forEach(function (para) {
         const p = document.createElement("p");
         p.className = "orig para" + (state.progress.pinyin ? " with-py" : "");
-        para.sentences.forEach(function (sent) { appendTokens(p, sent.tokens); });
+        para.sentences.forEach(function (sent) {
+          const span = document.createElement("span");
+          span.className = "orig-sent";
+          appendTokens(span, sent.tokens);
+          markFamous(span, sent.tokens, art.id, (sent.tr || "").trim());
+          p.appendChild(span);
+        });
         body.appendChild(p);
       });
       return body;
@@ -1998,7 +2004,7 @@
         const orig = document.createElement("p");
         orig.className = "orig" + (state.progress.pinyin ? " with-py" : "");
         appendTokens(orig, sent.tokens);
-        markFamous(orig, sent.tokens, art.id);
+        markFamous(orig, sent.tokens, art.id, (sent.tr || "").trim());
         if (sent.grade) {
           const tag = document.createElement("span");
           tag.className = "sent-grade";
@@ -2467,30 +2473,47 @@
     const lines = (state.famous && state.famous.lines) || [];
     const han = simplifiedHan(tokens);
     if (!han || han.length < 2) return null;
+    let best = null;
+    let bestScore = -1;
     for (let i = 0; i < lines.length; i += 1) {
       const line = lines[i];
       if (line.pieces && line.pieces.indexOf(pieceId) < 0) continue;
       const quote = String(line.quote || "").replace(/[^\u4e00-\u9fff]/g, "");
-      if (quote.length < 4) continue;
-      if (han.indexOf(quote) >= 0) return line;
-      if (han.length >= 6 && quote.indexOf(han) >= 0) return line;
+      if (quote.length < 3) continue;
+      const inside = han.indexOf(quote) >= 0;
+      const covers = han.length >= 4 && quote.indexOf(han) >= 0;
+      if (!inside && !covers) continue;
+      const score = ((line.comments || []).length ? 1000 : 0) + quote.length;
+      if (score > bestScore) {
+        best = line;
+        bestScore = score;
+      }
     }
-    return null;
+    return best;
   }
 
-  function markFamous(node, tokens, pieceId) {
+  function markFamous(node, tokens, pieceId, translation) {
     const hit = matchFamous(pieceId, tokens);
-    if (!hit || !(hit.comments || []).length) return;
+    if (!hit) return;
     node.classList.add("famous-line");
+    const comments = hit.comments || [];
+    const fame = hit.fame || "";
+    if (!comments.length && !fame) return;
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "famous-mark";
-    btn.setAttribute("aria-label", "打开名句评点");
-    btn.textContent = "评";
+    if (comments.length) {
+      btn.className = "famous-mark";
+      btn.textContent = "评";
+      btn.setAttribute("aria-label", "打开名句评点");
+    } else {
+      btn.className = "famous-mark fame";
+      btn.textContent = "句";
+      btn.setAttribute("aria-label", "打开名句说明");
+    }
     btn.addEventListener("click", function (event) {
       event.preventDefault();
       event.stopPropagation();
-      openFamous(hit);
+      openFamous(hit, translation || "");
     });
     node.appendChild(btn);
   }
@@ -2502,7 +2525,7 @@
     sheet.innerHTML = "";
   }
 
-  function openFamous(entry) {
+  function openFamous(entry, translation) {
     closePopup();
     const sheet = document.getElementById("famous-sheet");
     sheet.innerHTML = "";
@@ -2523,8 +2546,20 @@
     sheet.appendChild(head);
     const quote = document.createElement("p");
     quote.className = "quote";
-    quote.textContent = entry.quote || "";
+    quote.textContent = entry.text || entry.quote || "";
     sheet.appendChild(quote);
+    if (entry.fame) {
+      const fame = document.createElement("p");
+      fame.className = "sheet-credit";
+      fame.textContent = "收录 " + entry.fame;
+      sheet.appendChild(fame);
+    }
+    if ((translation || "").trim()) {
+      const tr = document.createElement("p");
+      tr.className = "quote";
+      tr.textContent = translation.trim();
+      sheet.appendChild(tr);
+    }
     (entry.comments || []).forEach(function (item) {
       const block = document.createElement("div");
       block.className = "comment";
