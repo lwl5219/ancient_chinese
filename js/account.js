@@ -61,10 +61,36 @@
     });
   }
 
+  var PIECE_OK = /^[A-Za-z0-9:_-]{1,80}$/;
+
+  function hex32(n) {
+    return (n >>> 0).toString(16).padStart(8, "0");
+  }
+
+  function pieceKey(value) {
+    var text = String(value == null ? "" : value);
+    if (!text) return "";
+    if (PIECE_OK.test(text)) return text;
+    var h1 = 0x811c9dc5;
+    var h2 = 0x811c9dc5 ^ text.length;
+    for (var i = 0; i < text.length; i += 1) {
+      var code = text.charCodeAt(i);
+      h1 ^= code & 0xff;
+      h1 = Math.imul(h1, 0x01000193);
+      h2 ^= (code >>> 8) & 0xff;
+      h2 = Math.imul(h2, 0x01000193);
+      h2 ^= code & 0xff;
+    }
+    return "id-" + hex32(h1) + hex32(h2);
+  }
+
   function track(event) {
     if (!enabled || !token() || !event || !event.type) return;
     var item = { type: event.type, ts: Date.now() };
-    if (event.pieceId) item.pieceId = String(event.pieceId).slice(0, 80);
+    if (event.pieceId) {
+      var pieceId = pieceKey(event.pieceId);
+      if (pieceId) item.pieceId = pieceId;
+    }
     if (event.payload && typeof event.payload === "object") item.payload = event.payload;
     queue.push(item);
     if (queue.length >= 8) flush();
