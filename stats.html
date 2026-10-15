@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="robots" content="noindex" />
+  <title>古文访问量</title>
+  <style>
+    html, body { margin: 0; background: transparent; overflow: hidden; }
+    body {
+      font-family: system-ui, sans-serif;
+      font-size: 11px;
+      letter-spacing: .06em;
+      line-height: 16px;
+      color: #8a8476;
+      white-space: nowrap;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { color: #8f897b; }
+    }
+    p { margin: 0; display: none; }
+  </style>
+</head>
+<body>
+  <p id="line"></p>
+  <script>
+    (function () {
+      var key = "gwgz-stats-v1";
+      var maxAge = 6 * 60 * 60 * 1000;
+      var line = document.getElementById("line");
+      function show(pv, uv) {
+        line.textContent = "古文 · 访问量 " + pv + " · 访客 " + uv;
+        line.style.display = "block";
+      }
+      try {
+        var cached = JSON.parse(localStorage.getItem(key) || "null");
+        if (cached && typeof cached.pv === "number" && typeof cached.uv === "number" && Date.now() - cached.at < maxAge) {
+          show(cached.pv, cached.uv);
+          return;
+        }
+      } catch (err) {}
+      var cb = "BusuanziCallback_" + Math.floor(Math.random() * 1e12);
+      window[cb] = function (data) {
+        try { delete window[cb]; } catch (err) {}
+        if (!data || typeof data.site_pv !== "number" || typeof data.site_uv !== "number") return;
+        var page = typeof data.page_pv === "number" ? data.page_pv : 0;
+        var pv = data.site_pv - page;
+        if (pv < 0) pv = 0;
+        try { localStorage.setItem(key, JSON.stringify({ pv: pv, uv: data.site_uv, at: Date.now() })); } catch (err) {}
+        show(pv, data.site_uv);
+      };
+      var s = document.createElement("script");
+      s.async = true;
+      s.referrerPolicy = "no-referrer-when-downgrade";
+      s.src = "https://busuanzi.ibruce.info/busuanzi?jsonpCallback=" + cb;
+      s.onerror = function () {};
+      document.head.appendChild(s);
+    })();
+  </script>
+</body>
+</html>
