@@ -50,7 +50,7 @@ node --test server/test/*.test.js
 | 访问节点 | `https://gwgz.cn-hongkong.ots.aliyuncs.com` |
 | 网络 | 允许公网访问。函数不在 VPC 里，走公网即可 |
 
-五张表。除 `events` 外主键是一列字符串。`events` 的主键是 `userId` + `ts` 两列，都是字符串，按用户分区、按时间排序。属性列最大版本数 **1**，数据生命周期 **-1**（不过期），预留读写容量 **0 / 0**。可以在控制台逐张建，也可以在 `server/` 里装好依赖后执行 `node scripts/create-tables.js`（用下面的环境变量）。
+六张表。除 `events` 外主键是一列字符串。`events` 的主键是 `userId` + `ts` 两列，都是字符串，按用户分区、按时间排序。属性列最大版本数 **1**，数据生命周期 **-1**（不过期），预留读写容量 **0 / 0**。可以在控制台逐张建，也可以在 `server/` 里装好依赖后执行 `node scripts/create-tables.js`（用下面的环境变量）。已有实例要补上新的 `state` 表，再建表时临时加上 `ots:CreateTable`，建完可以去掉。现有 `table/*` 的行读写权限已经覆盖新表，不用改 RAM。
 
 | 表名 | 主键 | 属性列 |
 | --- | --- | --- |
@@ -59,8 +59,9 @@ node --test server/test/*.test.js
 | `limits` | `id` STRING | `hourStart` INTEGER，`hourCount` INTEGER，`lastSent` INTEGER |
 | `sessions` | `tokenHash` STRING | `userId` STRING，`email` STRING，`expiresAt` INTEGER |
 | `events` | `userId` STRING，`ts` STRING | `type` STRING，`pieceId` STRING，`payload` STRING，`deviceHash` STRING，`clientTs` INTEGER |
+| `state` | `userId` STRING | `recent` STRING，`read` STRING |
 
-`limits.id` 是 `email:`、`ip:`、`evuser:` 或 `evip:` 加上对应的值。验证码和会话在表里只存哈希。`users.userId` 由邮箱稳定算出。以后如果要加书签或阅读进度同步，另建一张以 `userId` 为主键的表即可，不用改现在这四张账号表。这一版不建那张表。未登录的访问不写入 `events`。
+`limits.id` 是 `email:`、`ip:`、`evuser:`、`evip:`、`stuser:` 或 `stip:` 加上对应的值。验证码和会话在表里只存哈希。`users.userId` 由邮箱稳定算出。`state.recent` 和 `state.read` 是 JSON 字符串：最近阅读最多 24 条，已读最多 400 条，只收古文观止（`v##-##`）、唐诗（`tang:`）和宋词（`ci:`）。未登录的访问不写入 `events`，也不读 `state`。
 
 ### 2. 邮件推送
 
@@ -181,13 +182,19 @@ curl -sS "https://api.lucca.top/health"
 | POST | `/auth/request-code` | `{email}`。6 位验证码，10 分钟有效 |
 | POST | `/auth/verify` | `{email,code}`，返回 `{token,email,userId}` |
 | POST | `/auth/logout` | 作废当前令牌 |
-| DELETE | `/account` | 删除用户、会话、验证码和记在该账号下的行为 |
+| DELETE | `/account` | 删除用户、会话、验证码、行为记录和阅读记录 |
 | GET | `/me` | `{email,userId}` |
+| GET | `/state` | 必须登录。返回 `{recent, read}`，没有记录时是空列表和空对象 |
+| PUT | `/state` | 必须登录。上传 `{recent, read}`，与云端按篇合并后返回结果 |
 | POST | `/events` | 必须登录。`{events:[{type, pieceId?, payload?, ts?}]}`，最多 20 条 |
 
 限流：同一邮箱 60 秒内最多 1 封，每小时最多 5 封；同一 IP 每小时最多 20 次发信。验证码最多错 5 次。会话大约 180 天。令牌是随机串，服务端只存哈希，浏览器放在 `localStorage` 的 `gwgz-session-v1`。
 
 行为记录只接受已登录用户：每小时最多 120 条，同一 IP 每小时最多 200 条。没有令牌的请求直接拒绝，不建匿名设备。单条 `payload` 不超过约 800 字。`type` 是小写字母开头的短名字。主键里的 `ts` 用服务器收到的时间，避免客户端时钟把顺序打乱；客户端自己的时间放在 `clientTs`。
+
+阅读记录只接受已登录用户。`GET /state` 和 `PUT /state` 都要带 Bearer。同一用户 10 秒最多写 1 次，每小时最多 30 次；同一 IP 每小时最多 60 次。请求体上限与其它接口一样，大约 200KB，正常的一份记录远小于此。合并按篇比较客户端时间 `at`，较新的留下；时间相同以这次上传为准。超出当前时间 60 秒的时间戳会收到服务器时间。篇号不符合范围的条目会被丢掉，链接由服务端按篇号重写。`api.lucca.top` 上的 CORS 仍由函数计算网关添加，函数本身不重复写 `Access-Control-*`；直接访问 fcapp.run 地址时函数照旧返回这些头。
+
+静态站发布不会更新函数。补上 `state` 表之后，在本机 `server/` 执行 `s deploy`。函数还没更新时，未登录的最近阅读只存在浏览器里，仍然可用；登录后的同步要等新函数生效。
 
 允许的网页来源只有：
 
@@ -202,4 +209,6 @@ curl -sS "https://api.lucca.top/health"
 
 登录成功之后，阅读一篇会记 `page_view`，点开一个字会记 `char_lookup`。事件先留在页面内存里，凑满 8 条或等 4 秒再 `POST /events`。未登录不生成设备标识，也不发送。功能关闭时整段账号代码都不加载。
 
-`userId` 是账号 id。删除账号会按 `userId` 删掉记在该账号下的事件。
+`userId` 是账号 id。删除账号会按 `userId` 删掉记在该账号下的事件和 `state` 行。
+
+登录后，页面先 `GET /state`，与本机记录按篇合并，大约 12 秒后再 `PUT /state`。未登录不请求这两个接口。离开页面时如果还登录着，会再尝试写一次。返回 429 时这一次放弃，下次阅读再传整份快照。

@@ -1,6 +1,7 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const { mergeHistory } = require("./history");
 
 const DEFAULT_ORIGINS = [
   "https://guwen.lucca.top",
@@ -19,6 +20,9 @@ const MAX_SESSIONS = 8;
 const MAX_EVENTS = 20;
 const USER_EVENTS_HOUR = 120;
 const IP_EVENTS_HOUR = 200;
+const STATE_GAP = 10 * 1000;
+const STATE_HOUR = 30;
+const STATE_IP_HOUR = 60;
 
 function sha256(text) {
   return crypto.createHash("sha256").update(text).digest("hex");
@@ -302,7 +306,9 @@ function createApp(options) {
     await store.deleteUser(auth.user.email);
     await store.deleteCode(auth.user.email);
     await store.deleteEventsForUser(auth.user.userId);
+    await store.deleteState(auth.user.userId);
     await store.deleteLimit("email:" + auth.user.email);
+    await store.deleteLimit("stuser:" + auth.user.userId);
     await store.deleteLimit("evuser:" + auth.user.userId);
     return send(200, { ok: true }, req.origin, req);
   }
@@ -352,6 +358,35 @@ function createApp(options) {
     return send(200, { ok: true, accepted: cleaned.length }, req.origin, req);
   }
 
+  async function readState(req) {
+    const auth = await userFromToken(req.headers);
+    if (!auth) return send(401, { error: "请先登录" }, req.origin, req);
+    const saved = await store.getState(auth.user.userId);
+    return send(200, saved || { recent: [], read: {} }, req.origin, req);
+  }
+
+  async function writeState(req, body) {
+    const auth = await userFromToken(req.headers);
+    if (!auth) return send(401, { error: "请先登录" }, req.origin, req);
+    if (body.__tooBig) return send(413, { error: "阅读记录太大" }, req.origin, req);
+    const nowMs = now();
+    const userKey = "stuser:" + auth.user.userId;
+    const userLimit = await loadLimit(userKey, nowMs);
+    const ipLimit = await loadLimit("stip:" + req.ip, nowMs);
+    if ((userLimit.lastSent && nowMs - userLimit.lastSent < STATE_GAP) || userLimit.hourCount >= STATE_HOUR || ipLimit.hourCount >= STATE_IP_HOUR) {
+      return send(429, { error: "同步太频繁，请稍后再试" }, req.origin, req);
+    }
+    const saved = (await store.getState(auth.user.userId)) || { recent: [], read: {} };
+    const merged = mergeHistory(body, saved, nowMs);
+    await store.putState(auth.user.userId, merged);
+    userLimit.hourCount += 1;
+    userLimit.lastSent = nowMs;
+    ipLimit.hourCount += 1;
+    await store.putLimit(userKey, userLimit);
+    await store.putLimit("stip:" + req.ip, ipLimit);
+    return send(200, merged, req.origin, req);
+  }
+
   return async function handle(raw) {
     const headers = lowerHeaders(raw.headers);
     const origin = String(raw.origin || headers.origin || "").trim();
@@ -385,6 +420,8 @@ function createApp(options) {
       if (method === "POST" && path === "/auth/logout") return await logout(Object.assign({ origin: origin }, req));
       if (method === "DELETE" && path === "/account") return await removeAccount(Object.assign({ origin: origin }, req));
       if (method === "GET" && path === "/me") return await me(Object.assign({ origin: origin }, req));
+      if (method === "GET" && path === "/state") return await readState(Object.assign({ origin: origin }, req));
+      if (method === "PUT" && path === "/state") return await writeState(Object.assign({ origin: origin }, req), body);
       if (method === "POST" && path === "/events") return await postEvents(Object.assign({ origin: origin }, req), body);
       return send(404, { error: "没有这个接口" }, origin);
     } catch (err) {

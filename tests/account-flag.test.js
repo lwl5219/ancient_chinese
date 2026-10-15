@@ -205,7 +205,7 @@ test("event piece ids stay inside the server charset", async () => {
       return Promise.resolve({ ok: true, status: 200, json() { return Promise.resolve({ ok: true }); } });
     },
     console: { error() {}, log() {} },
-    setTimeout: setTimeout,
+    setTimeout(fn, ms) { if (!ms) return setTimeout(fn, 0); return 0; },
     clearTimeout: clearTimeout,
     Math: Math,
   });
@@ -216,8 +216,10 @@ test("event piece ids stay inside the server charset", async () => {
     window.gwgzAccount.track({ type: "char_lookup", pieceId: pieceId, payload: { ch: "床" } });
   });
   await new Promise(function (resolve) { setTimeout(resolve, 0); });
-  assert.equal(calls.length, 2);
-  const sent = JSON.parse(calls[0].body).events.concat(JSON.parse(calls[1].body).events);
+  const posts = calls.filter(function (call) { return call.url.indexOf("/events") !== -1; });
+  assert.equal(posts.length, 2);
+  assert.equal(calls.some(function (call) { return call.url.indexOf("/state") !== -1; }), true);
+  const sent = JSON.parse(posts[0].body).events.concat(JSON.parse(posts[1].body).events);
   const seen = {};
   sent.forEach(function (event) {
     assert.match(event.pieceId, /^[A-Za-z0-9:_-]{1,80}$/);

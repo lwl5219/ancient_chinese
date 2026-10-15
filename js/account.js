@@ -32,7 +32,7 @@
       method: method,
       headers: headers,
       body: body == null ? undefined : JSON.stringify(body),
-      keepalive: method === "POST" && path === "/events",
+      keepalive: (method === "POST" && path === "/events") || (method === "PUT" && path === "/state"),
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
         if (res.status === 401) {
@@ -217,6 +217,7 @@
         request("POST", "/auth/verify", { email: email.value, code: code.value }).then(function (data) {
           try { localStorage.setItem(TOKEN_KEY, data.token); } catch (_) {}
           refreshEntry();
+          pullHistory();
           location.hash = "#/me";
         }).catch(function (error) {
           formMessage(error.message || "没有登录", true);
@@ -252,7 +253,7 @@
         });
       });
       del.addEventListener("click", function () {
-        if (!window.confirm("删除账号后，云端的邮箱、会话和行为记录会清除，不能恢复。")) return;
+        if (!window.confirm("删除账号后，云端的邮箱、会话、行为记录和阅读记录会清除，不能恢复。")) return;
         request("DELETE", "/account").then(function () {
           clearToken();
           refreshEntry();
@@ -283,7 +284,7 @@
       paragraphs(wrap, [
         "典籍是一个个人读书网站。不登录可以阅读已经发布的篇目，阅读记录保存在你自己的浏览器里。",
         "登录是可选的。请使用你自己的邮箱。验证码只用于登录，不要转给别人。",
-        "可以随时在「我的」里退出，或删除账号。删除后，云端保存的邮箱、会话和行为记录会清除。",
+        "可以随时在「我的」里退出，或删除账号。删除后，云端保存的邮箱、会话、行为记录和阅读记录会清除。",
         "网站按现状提供，不保证不中断。继续使用登录功能，即表示你同意本页和隐私政策。",
       ]);
     });
@@ -295,10 +296,11 @@
         "不登录时，阅读进度、字体、拼音和逐句开关只存在这台设备的本地存储里，不会上传。",
         "登录后，服务器保存邮箱和登录会话。会话是一串保存在本机本地存储里的令牌，不放进 Cookie。请不要在公共设备上保持登录。",
         "验证码通过阿里云邮件推送发到你的邮箱。验证码是 6 位数字，10 分钟后失效。服务器只保存验证码的哈希，不保存明文。",
-        "未登录时，打开篇目和查字都不会上传。登录之后，才会记下两类行为：打开了哪一篇（page_view），以及查了哪个字（char_lookup）。这些记录先暂存在页面里，再成批发给服务器，只挂在你的账号下。",
+        "未登录时，打开篇目和查字都不会上传。最近阅读和已读标记也只留在这台设备上。登录之后，这两项会同步到你的账号，同一篇以较新的时间为准。",
+        "登录之后，才会记下两类行为：打开了哪一篇（page_view），以及查了哪个字（char_lookup）。这些记录先暂存在页面里，再成批发给服务器，只挂在你的账号下。",
         "账号和行为数据存放在阿里云香港的函数计算和表格存储。邮件从邮件推送发出，发信域名是 mail.lucca.top。",
         "这些资料不出售，也不用来发广告。网站另有百度统计和不蒜子的访问计数，与账号无关。",
-        "在「我的」里删除账号后，云端的用户、会话、验证码和记在该账号下的行为记录会删除。浏览器里的本地阅读进度需要你自己清除。",
+        "在「我的」里删除账号后，云端的用户、会话、验证码、行为记录和阅读记录会删除。浏览器里的本地阅读进度需要你自己清除。",
       ]);
     });
   }
@@ -310,6 +312,54 @@
     if (hash === "#/terms") { renderTerms(); return true; }
     if (hash === "#/privacy") { renderPrivacy(); return true; }
     return false;
+  }
+
+  var pushTimer = 0;
+  var pushing = false;
+  var pushAgain = false;
+
+  function snapshotRev() {
+    var api = bridge();
+    if (!api || typeof api.historyRev !== "function") return 0;
+    return api.historyRev();
+  }
+
+  function schedulePush() {
+    if (!token()) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(pushHistory, 12000);
+  }
+
+  function pushHistory() {
+    pushTimer = 0;
+    if (!token()) return;
+    if (pushing) {
+      pushAgain = true;
+      return;
+    }
+    var api = bridge();
+    if (!api || typeof api.historySnapshot !== "function") return;
+    var snapshot = api.historySnapshot();
+    var sentRev = snapshotRev();
+    pushing = true;
+    request("PUT", "/state", snapshot).then(function (remote) {
+      if (api.applyHistory) api.applyHistory(remote);
+      if (snapshotRev() !== sentRev) schedulePush();
+    }).catch(function () {}).then(function () {
+      pushing = false;
+      if (!pushAgain) return;
+      pushAgain = false;
+      schedulePush();
+    });
+  }
+
+  function pullHistory() {
+    if (!token()) return;
+    var api = bridge();
+    request("GET", "/state").then(function (remote) {
+      if (api && api.applyHistory) api.applyHistory(remote);
+      schedulePush();
+    }).catch(function () {});
   }
 
   function pieceFromHash() {
@@ -326,6 +376,10 @@
     enabled = true;
     window.gwgzAccount.route = route;
     window.gwgzAccount.track = track;
+    window.gwgzAccount.onHistory = function () {
+      if (!token()) return;
+      schedulePush();
+    };
     window.gwgzAccount.ready = true;
     mountEntry();
     if (/^#\/(login|me|terms|privacy)$/.test(location.hash || "")) {
@@ -334,12 +388,19 @@
       var id = pieceFromHash();
       if (id) track({ type: "page_view", pieceId: id });
     }
+    if (token()) pullHistory();
   }
 
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "hidden") flush();
   });
-  window.addEventListener("pagehide", flush);
+  window.addEventListener("pagehide", function () {
+    flush();
+    if (token()) {
+      clearTimeout(pushTimer);
+      pushHistory();
+    }
+  });
   window.addEventListener("hashchange", refreshEntry);
   enable();
 })();

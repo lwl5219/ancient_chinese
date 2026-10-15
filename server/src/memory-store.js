@@ -10,6 +10,7 @@ function createMemoryStore() {
   const limits = new Map();
   const sessions = new Map();
   const events = [];
+  const states = new Map();
   return {
     async getUser(email) { return clone(users.get(email) || null); },
     async putUser(user) { users.set(user.email, clone(user)); },
@@ -29,8 +30,11 @@ function createMemoryStore() {
         if (events[i].userId === userId) events.splice(i, 1);
       }
     },
+    async getState(userId) { return clone(states.get(userId) || null); },
+    async putState(userId, row) { states.set(userId, clone(row)); },
+    async deleteState(userId) { states.delete(userId); },
     dump() {
-      return { users: users, codes: codes, limits: limits, sessions: sessions, events: events };
+      return { users: users, codes: codes, limits: limits, sessions: sessions, events: events, states: states };
     },
   };
 }
