@@ -3,7 +3,6 @@
 
   var API = String(window.API_BASE || "").replace(/\/$/, "");
   var TOKEN_KEY = "gwgz-session-v1";
-  var DEVICE_KEY = "gwgz-device-v1";
   var enabled = false;
   var queue = [];
   var flushTimer = 0;
@@ -12,6 +11,7 @@
   window.gwgzAccount = {
     route: function () { return false; },
     track: function () {},
+    ready: false,
   };
   if (!API) return;
 
@@ -23,21 +23,6 @@
 
   function clearToken() {
     try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
-  }
-
-  function deviceId() {
-    try {
-      var current = localStorage.getItem(DEVICE_KEY) || "";
-      if (/^[A-Za-z0-9_-]{8,64}$/.test(current)) return current;
-      var bytes = new Uint8Array(12);
-      if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(bytes);
-      else for (var i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
-      var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
-      current = "";
-      for (var n = 0; n < bytes.length; n += 1) current += alphabet[bytes[n] % alphabet.length];
-      localStorage.setItem(DEVICE_KEY, current);
-      return current;
-    } catch (_) { return ""; }
   }
 
   function request(method, path, body) {
@@ -65,19 +50,19 @@
   }
 
   function flush() {
-    if (!enabled || flushing || !queue.length) return;
+    if (!enabled || !token() || flushing || !queue.length) return;
     var batch = queue.splice(0, 20);
-    var id = deviceId();
-    if (!id && !token()) return;
     flushing = true;
-    request("POST", "/events", { deviceId: id, events: batch }).catch(function () {}).then(function () {
+    request("POST", "/events", { events: batch }).catch(function () {
+      return null;
+    }).then(function () {
       flushing = false;
       if (queue.length) flush();
     });
   }
 
   function track(event) {
-    if (!enabled || !event || !event.type) return;
+    if (!enabled || !token() || !event || !event.type) return;
     var item = { type: event.type, ts: Date.now() };
     if (event.pieceId) item.pieceId = String(event.pieceId).slice(0, 80);
     if (event.payload && typeof event.payload === "object") item.payload = event.payload;
@@ -284,10 +269,10 @@
         "不登录时，阅读进度、字体、拼音和逐句开关只存在这台设备的本地存储里，不会上传。",
         "登录后，服务器保存邮箱和登录会话。会话是一串保存在本机本地存储里的令牌，不放进 Cookie。请不要在公共设备上保持登录。",
         "验证码通过阿里云邮件推送发到你的邮箱。验证码是 6 位数字，10 分钟后失效。服务器只保存验证码的哈希，不保存明文。",
-        "登录功能打开以后，阅读一篇或点开一个字时，浏览器会记下两类行为：打开了哪一篇（page_view），以及查了哪个字（char_lookup）。这些记录先暂存在页面里，再成批发给服务器。已登录时记在你的账号下；未登录时记在这台浏览器随机生成的设备标识下，不包含姓名。",
+        "未登录时，打开篇目和查字都不会上传。登录之后，才会记下两类行为：打开了哪一篇（page_view），以及查了哪个字（char_lookup）。这些记录先暂存在页面里，再成批发给服务器，只挂在你的账号下。",
         "账号和行为数据存放在阿里云香港的函数计算和表格存储。邮件从邮件推送发出，发信域名是 mail.lucca.top。",
         "这些资料不出售，也不用来发广告。网站另有百度统计和不蒜子的访问计数，与账号无关。",
-        "在「我的」里删除账号后，云端的用户、会话、验证码和记在该账号下的行为记录会删除。未登录时产生的设备记录，以及浏览器里的本地阅读进度，需要你自己清除。",
+        "在「我的」里删除账号后，云端的用户、会话、验证码和记在该账号下的行为记录会删除。浏览器里的本地阅读进度需要你自己清除。",
       ]);
     });
   }
@@ -313,13 +298,13 @@
   function enable() {
     if (enabled) return;
     enabled = true;
-    deviceId();
     window.gwgzAccount.route = route;
     window.gwgzAccount.track = track;
+    window.gwgzAccount.ready = true;
     mountEntry();
     if (/^#\/(login|me|terms|privacy)$/.test(location.hash || "")) {
       try { window.dispatchEvent(new HashChangeEvent("hashchange")); } catch (_) { route(location.hash); }
-    } else if (document.querySelector("#main article.reader")) {
+    } else if (token()) {
       var id = pieceFromHash();
       if (id) track({ type: "page_view", pieceId: id });
     }
@@ -330,8 +315,5 @@
   });
   window.addEventListener("pagehide", flush);
   window.addEventListener("hashchange", refreshEntry);
-
-  fetch(API + "/health", { method: "GET", cache: "no-store" }).then(function (res) {
-    if (res && res.ok) enable();
-  }).catch(function () {});
+  enable();
 })();

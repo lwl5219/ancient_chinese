@@ -60,7 +60,7 @@ node --test server/test/*.test.js
 | `sessions` | `tokenHash` STRING | `userId` STRING，`email` STRING，`expiresAt` INTEGER |
 | `events` | `userId` STRING，`ts` STRING | `type` STRING，`pieceId` STRING，`payload` STRING，`deviceHash` STRING，`clientTs` INTEGER |
 
-`limits.id` 是 `email:`、`ip:`、`evuser:`、`evdev:` 或 `evip:` 加上对应的值。验证码、会话和设备标识在表里只存哈希。`users.userId` 由邮箱稳定算出。以后如果要加书签或阅读进度同步，另建一张以 `userId` 为主键的表即可，不用改现在这四张账号表。这一版不建那张表。
+`limits.id` 是 `email:`、`ip:`、`evuser:` 或 `evip:` 加上对应的值。验证码和会话在表里只存哈希。`users.userId` 由邮箱稳定算出。以后如果要加书签或阅读进度同步，另建一张以 `userId` 为主键的表即可，不用改现在这四张账号表。这一版不建那张表。未登录的访问不写入 `events`。
 
 ### 2. 邮件推送
 
@@ -171,7 +171,7 @@ curl -sS "https://api.lucca.top/health"
 </script>
 ```
 
-空字符串时，页面不请求接口，不出现「登录」，也不写账号相关的本地数据。
+空字符串时，页面不请求接口，不出现「登录」，不加载 `js/account.js`，也不写账号相关的本地数据。
 
 接口确认可用之后，改成：
 
@@ -181,7 +181,7 @@ curl -sS "https://api.lucca.top/health"
 </script>
 ```
 
-然后照常发布静态站点。页面会先请求 `GET /health`。失败或被拦住时，仍然不显示登录。成功以后，页眉右侧才出现「登录」（阅读篇目时让位给拼音和字体按钮）。
+然后照常发布静态站点。未登录时，浏览器空闲后才请求一次 `GET /health`，不挡住阅读。失败或被拦住时，页面保持原样，不出现「登录」。成功以后，页眉右侧才出现「登录」（阅读篇目时让位给拼音和字体按钮）。`js/account.js` 要等读者点「登录」，或者本机已经存着登录令牌，才加载。未登录不发送行为记录。
 
 ## 接口
 
@@ -193,11 +193,11 @@ curl -sS "https://api.lucca.top/health"
 | POST | `/auth/logout` | 作废当前令牌 |
 | DELETE | `/account` | 删除用户、会话、验证码和记在该账号下的行为 |
 | GET | `/me` | `{email,userId}` |
-| POST | `/events` | `{deviceId?, events:[{type, pieceId?, payload?, ts?}]}`，最多 20 条 |
+| POST | `/events` | 必须登录。`{events:[{type, pieceId?, payload?, ts?}]}`，最多 20 条 |
 
 限流：同一邮箱 60 秒内最多 1 封，每小时最多 5 封；同一 IP 每小时最多 20 次发信。验证码最多错 5 次。会话大约 180 天。令牌是随机串，服务端只存哈希，浏览器放在 `localStorage` 的 `gwgz-session-v1`。
 
-行为记录：已登录用户每小时最多 120 条，未登录设备每小时最多 60 条，同一 IP 每小时最多 200 条。单条 `payload` 不超过约 800 字。`type` 是小写字母开头的短名字。主键里的 `ts` 用服务器收到的时间，避免客户端时钟把顺序打乱；客户端自己的时间放在 `clientTs`。
+行为记录只接受已登录用户：每小时最多 120 条，同一 IP 每小时最多 200 条。没有令牌的请求直接拒绝，不建匿名设备。单条 `payload` 不超过约 800 字。`type` 是小写字母开头的短名字。主键里的 `ts` 用服务器收到的时间，避免客户端时钟把顺序打乱；客户端自己的时间放在 `clientTs`。
 
 允许的网页来源只有：
 
@@ -210,8 +210,6 @@ curl -sS "https://api.lucca.top/health"
 
 ## 行为记录
 
-登录开关打开并且 `/health` 成功之后，阅读一篇会记 `page_view`，点开一个字会记 `char_lookup`。事件先留在页面内存里，凑满 8 条或等 4 秒再 `POST /events`。功能关闭时不生成设备标识，也不发送。
+登录成功之后，阅读一篇会记 `page_view`，点开一个字会记 `char_lookup`。事件先留在页面内存里，凑满 8 条或等 4 秒再 `POST /events`。未登录不生成设备标识，也不发送。功能关闭时整段账号代码都不加载。
 
-已登录时，`userId` 是账号 id。未登录时，`userId` 是 `anon:` 加上设备标识的哈希。设备标识是浏览器里随机生成的 `gwgz-device-v1`，请求里会带上，表里只存哈希。
-
-删除账号会按 `userId` 删掉记在该账号下的事件。未登录的设备记录不挂在账号上，删除账号不会带上它们。
+`userId` 是账号 id。删除账号会按 `userId` 删掉记在该账号下的事件。

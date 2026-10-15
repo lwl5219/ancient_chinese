@@ -1487,7 +1487,7 @@ h1 {
   .shell.has-rail .catalog { display: block; }
 }
 .account-entry {
-  margin-left: auto;
+  margin-left: 8px;
   flex: none;
   color: var(--muted);
   font-size: 0.84rem;

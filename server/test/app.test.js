@@ -161,7 +161,7 @@ test("events accept a batch for a user or an anonymous device and enforce limits
   const token = await login(w, "read@example.com");
   const auth = { authorization: "Bearer " + token };
   const missing = await call(w.app, { method: "POST", path: "/events", body: { events: [{ type: "page_view", pieceId: "v01-01", ts: 5 }] } });
-  assert.equal(missing.status, 400);
+  assert.equal(missing.status, 401);
   const bad = await call(w.app, {
     method: "POST",
     path: "/events",
@@ -189,15 +189,16 @@ test("events accept a batch for a user or an anonymous device and enforce limits
   assert.deepEqual(stored.map(function (row) { return row.type; }), ["page_view", "char_lookup"]);
   assert.equal(stored[0].ts < stored[1].ts, true);
   assert.equal(stored[0].payload.includes("床") || stored[1].payload.includes("床"), true);
-  assert.equal(stored[0].deviceHash.includes("device-1234"), false);
+  assert.equal(stored[0].deviceHash, "");
+  assert.equal(stored[1].deviceHash, "");
 
   const anon = await call(w.app, {
     method: "POST",
     path: "/events",
     body: { deviceId: "device-1234", events: [{ type: "page_view", pieceId: "v01-02" }] },
   });
-  assert.equal(anon.status, 200);
-  assert.equal(w.store.dump().events.some(function (row) { return row.userId.indexOf("anon:") === 0; }), true);
+  assert.equal(anon.status, 401);
+  assert.equal(w.store.dump().events.some(function (row) { return String(row.userId).indexOf("anon:") === 0; }), false);
 
   const huge = { type: "page_view", pieceId: "v01-01", payload: { note: "x".repeat(900) } };
   const tooBig = await call(w.app, { method: "POST", path: "/events", headers: auth, body: { events: [huge] } });
