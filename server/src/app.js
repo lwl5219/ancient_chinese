@@ -121,24 +121,35 @@ function createApp(options) {
   const randomEventNonce = options.randomEventNonce || defaultEventNonce;
   const allowed = new Set(origins);
 
-  function cors(origin) {
+  // Custom domain (api.lucca.top) lets the FC gateway inject CORS.
+  // Emitting our own there duplicates every Access-Control-* header and
+  // browsers reject the response. Direct fcapp.run URL needs ours.
+  function isCustomDomain(req) {
+    const headers = (req && req.headers) || {};
+    const host = String(headers.host || headers.Host || "").split(":")[0].toLowerCase();
+    const domain = String((req && req.domainName) || "").toLowerCase();
+    return host === "api.lucca.top" || domain === "api.lucca.top";
+  }
+
+  function cors(origin, req) {
     if (!origin || !allowed.has(origin)) return {};
+    if (req && isCustomDomain(req)) return {};
     return {
-      "access-control-allow-origin": origin,
-      "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "access-control-allow-headers": "Content-Type, Authorization",
-      "access-control-max-age": "600",
-      vary: "Origin",
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "600",
+      "Vary": "Origin",
     };
   }
 
-  function send(status, payload, origin) {
+  function send(status, payload, origin, req) {
     return {
       status: status,
       headers: Object.assign({
         "content-type": "application/json; charset=utf-8",
         "cache-control": "no-store",
-      }, cors(origin)),
+      }, cors(origin, req)),
       body: payload == null ? "" : JSON.stringify(payload),
     };
   }
@@ -205,22 +216,22 @@ function createApp(options) {
 
   async function requestCode(req, body) {
     const email = normalizeEmail(body.email);
-    if (!email) return send(400, { error: "请填写有效的邮箱" }, req.origin);
+    if (!email) return send(400, { error: "请填写有效的邮箱" }, req.origin, req);
     const nowMs = now();
     const ipKey = "ip:" + req.ip;
     const emailKey = "email:" + email;
     const ipLimit = await loadLimit(ipKey, nowMs);
     if (ipLimit.hourCount >= IP_HOUR) {
-      return send(429, { error: "发送次数过多，请稍后再试" }, req.origin);
+      return send(429, { error: "发送次数过多，请稍后再试" }, req.origin, req);
     }
     ipLimit.hourCount += 1;
     await store.putLimit(ipKey, ipLimit);
     const emailLimit = await loadLimit(emailKey, nowMs);
     if ((emailLimit.lastSent && nowMs - emailLimit.lastSent < EMAIL_GAP) || emailLimit.hourCount >= EMAIL_HOUR) {
-      return send(429, { error: "发送太频繁，请稍后再试" }, req.origin);
+      return send(429, { error: "发送太频繁，请稍后再试" }, req.origin, req);
     }
     const code = randomCode();
-    if (!/^\d{6}$/.test(code)) return send(500, { error: "服务未配置完成" }, req.origin);
+    if (!/^\d{6}$/.test(code)) return send(500, { error: "服务未配置完成" }, req.origin, req);
     await store.putCode(email, {
       hash: hashCode(email, code),
       expiresAt: nowMs + CODE_TTL,
@@ -232,36 +243,36 @@ function createApp(options) {
     } catch (err) {
       await store.deleteCode(email);
       console.error(err);
-      return send(502, { error: "邮件暂时没发出去，请稍后再试" }, req.origin);
+      return send(502, { error: "邮件暂时没发出去，请稍后再试" }, req.origin, req);
     }
     emailLimit.hourCount += 1;
     emailLimit.lastSent = nowMs;
     await store.putLimit(emailKey, emailLimit);
-    return send(200, { ok: true }, req.origin);
+    return send(200, { ok: true }, req.origin, req);
   }
 
   async function verify(req, body) {
     const email = normalizeEmail(body.email);
     const code = typeof body.code === "string" ? body.code.trim() : "";
     if (!email || !/^\d{6}$/.test(code)) {
-      return send(400, { error: "邮箱或验证码不正确" }, req.origin);
+      return send(400, { error: "邮箱或验证码不正确" }, req.origin, req);
     }
     const row = await store.getCode(email);
     const nowMs = now();
     if (!row || row.expiresAt <= nowMs) {
       if (row) await store.deleteCode(email);
-      return send(400, { error: "验证码已过期，请重新获取" }, req.origin);
+      return send(400, { error: "验证码已过期，请重新获取" }, req.origin, req);
     }
     if (row.attempts >= MAX_ATTEMPTS) {
-      return send(429, { error: "尝试次数过多，请重新获取验证码" }, req.origin);
+      return send(429, { error: "尝试次数过多，请重新获取验证码" }, req.origin, req);
     }
     row.attempts += 1;
     await store.putCode(email, row);
     if (!safeEqual(row.hash, hashCode(email, code))) {
       if (row.attempts >= MAX_ATTEMPTS) {
-        return send(429, { error: "尝试次数过多，请重新获取验证码" }, req.origin);
+        return send(429, { error: "尝试次数过多，请重新获取验证码" }, req.origin, req);
       }
-      return send(400, { error: "验证码不正确" }, req.origin);
+      return send(400, { error: "验证码不正确" }, req.origin, req);
     }
     await store.deleteCode(email);
     let user = await store.getUser(email);
@@ -269,22 +280,22 @@ function createApp(options) {
       user = { email: email, userId: userIdFor(email), createdAt: nowMs, sessionHashes: [] };
     }
     const token = await openSession(user);
-    return send(200, { token: token, email: email, userId: user.userId }, req.origin);
+    return send(200, { token: token, email: email, userId: user.userId }, req.origin, req);
   }
 
   async function logout(req) {
     const auth = await userFromToken(req.headers);
-    if (!auth) return send(401, { error: "请先登录" }, req.origin);
+    if (!auth) return send(401, { error: "请先登录" }, req.origin, req);
     await store.deleteSession(auth.tokenHash);
     const hashes = (auth.user.sessionHashes || []).filter(function (item) { return item !== auth.tokenHash; });
     auth.user.sessionHashes = hashes;
     await store.putUser(auth.user);
-    return send(200, { ok: true }, req.origin);
+    return send(200, { ok: true }, req.origin, req);
   }
 
   async function removeAccount(req) {
     const auth = await userFromToken(req.headers);
-    if (!auth) return send(401, { error: "请先登录" }, req.origin);
+    if (!auth) return send(401, { error: "请先登录" }, req.origin, req);
     const hashes = auth.user.sessionHashes || [];
     for (let i = 0; i < hashes.length; i += 1) await store.deleteSession(hashes[i]);
     await store.deleteSession(auth.tokenHash);
@@ -293,33 +304,33 @@ function createApp(options) {
     await store.deleteEventsForUser(auth.user.userId);
     await store.deleteLimit("email:" + auth.user.email);
     await store.deleteLimit("evuser:" + auth.user.userId);
-    return send(200, { ok: true }, req.origin);
+    return send(200, { ok: true }, req.origin, req);
   }
 
   async function me(req) {
     const auth = await userFromToken(req.headers);
-    if (!auth) return send(401, { error: "请先登录" }, req.origin);
-    return send(200, { email: auth.user.email, userId: auth.user.userId }, req.origin);
+    if (!auth) return send(401, { error: "请先登录" }, req.origin, req);
+    return send(200, { email: auth.user.email, userId: auth.user.userId }, req.origin, req);
   }
 
   async function postEvents(req, body) {
-    if (body.__tooBig) return send(413, { error: "事件太大" }, req.origin);
+    if (body.__tooBig) return send(413, { error: "事件太大" }, req.origin, req);
     const auth = await userFromToken(req.headers);
-    if (!auth) return send(401, { error: "请先登录" }, req.origin);
+    if (!auth) return send(401, { error: "请先登录" }, req.origin, req);
     const list = Array.isArray(body.events) ? body.events : null;
-    if (!list || !list.length || list.length > MAX_EVENTS) return send(400, { error: "事件格式不正确" }, req.origin);
+    if (!list || !list.length || list.length > MAX_EVENTS) return send(400, { error: "事件格式不正确" }, req.origin, req);
     const nowMs = now();
     const cleaned = [];
     for (let i = 0; i < list.length; i += 1) {
       const item = cleanEvent(list[i], nowMs);
-      if (!item) return send(400, { error: "事件格式不正确" }, req.origin);
+      if (!item) return send(400, { error: "事件格式不正确" }, req.origin, req);
       cleaned.push(item);
     }
     const userId = auth.user.userId;
     const ipLimit = await loadLimit("evip:" + req.ip, nowMs);
     const actorLimit = await loadLimit("evuser:" + userId, nowMs);
     if (ipLimit.hourCount + cleaned.length > IP_EVENTS_HOUR || actorLimit.hourCount + cleaned.length > USER_EVENTS_HOUR) {
-      return send(429, { error: "记录太频繁，请稍后再试" }, req.origin);
+      return send(429, { error: "记录太频繁，请稍后再试" }, req.origin, req);
     }
     const nonce = randomEventNonce();
     const rows = cleaned.map(function (item, index) {
@@ -338,7 +349,7 @@ function createApp(options) {
     actorLimit.hourCount += cleaned.length;
     await store.putLimit("evip:" + req.ip, ipLimit);
     await store.putLimit("evuser:" + userId, actorLimit);
-    return send(200, { ok: true, accepted: cleaned.length }, req.origin);
+    return send(200, { ok: true, accepted: cleaned.length }, req.origin, req);
   }
 
   return async function handle(raw) {
@@ -351,23 +362,24 @@ function createApp(options) {
       body: raw.body,
       origin: origin,
       ip: raw.ip || clientIp(headers, raw.sourceIp),
+      domainName: raw.domainName || "",
     };
-    if (!authSecret || authSecret.length < 16) return send(500, { error: "服务未配置完成" }, origin);
-    if (origin && !allowed.has(origin)) return send(403, { error: "这个网站不能调用账号接口" }, origin);
+    if (!authSecret || authSecret.length < 16) return send(500, { error: "服务未配置完成" }, origin, req);
+    if (origin && !allowed.has(origin)) return send(403, { error: "这个网站不能调用账号接口" }, origin, req);
     const method = String(req.method || "GET").toUpperCase();
     const path = String(req.path || "/").split("?")[0].replace(/\/+$/, "") || "/";
     if (method === "OPTIONS") {
-      if (origin && !allowed.has(origin)) return send(403, { error: "这个网站不能调用账号接口" }, origin);
+      if (origin && !allowed.has(origin)) return send(403, { error: "这个网站不能调用账号接口" }, origin, req);
       return {
         status: 204,
-        headers: Object.assign({ "cache-control": "no-store" }, cors(origin)),
+        headers: Object.assign({ "cache-control": "no-store" }, cors(origin, req)),
         body: "",
       };
     }
     const body = method === "GET" || method === "DELETE" ? {} : readJson(req.body);
-    if (body == null) return send(400, { error: "请求格式不正确" }, origin);
+    if (body == null) return send(400, { error: "请求格式不正确" }, origin, req);
     try {
-      if (method === "GET" && path === "/health") return send(200, { ok: true }, origin);
+      if (method === "GET" && path === "/health") return send(200, { ok: true }, origin, req);
       if (method === "POST" && path === "/auth/request-code") return await requestCode(Object.assign({ origin: origin }, req), body);
       if (method === "POST" && path === "/auth/verify") return await verify(Object.assign({ origin: origin }, req), body);
       if (method === "POST" && path === "/auth/logout") return await logout(Object.assign({ origin: origin }, req));
