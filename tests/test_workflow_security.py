@@ -21,5 +21,11 @@ class WorkflowSecurityTests(unittest.TestCase):
         workflow = Path(__file__).resolve().parents[1] / '.github/workflows/deploy-pages.yml'
         text = workflow.read_text()
         name = 'github-pages-${{ github.run_id }}-${{ github.run_attempt }}'
+        self.assertIn('actions/configure-pages@', text)
+        self.assertIn('actions/upload-pages-artifact@', text)
+        self.assertIn('actions/deploy-pages@', text)
+        self.assertIn('name: github-pages\n', text)
+        self.assertIn('pages: write', text)
+        self.assertIn('id-token: write', text)
         self.assertIn('name: ' + name, text)
         self.assertIn('artifact_name: ' + name, text)
