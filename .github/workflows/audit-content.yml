@@ -103,3 +103,38 @@ jobs:
     secrets:
       OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
       OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+
+  same-build:
+    needs: [pages, oss]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm Pages and OSS serve the same build
+        run: |
+          set -euo pipefail
+          python3 - << 'PY'
+          import json, time, urllib.request
+          def read(url):
+              request = urllib.request.Request(url, headers={"Cache-Control": "no-cache"})
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  return json.load(response)["build"]
+          pages_url = "https://maruiduan.github.io/ancient_chinese/version.json"
+          oss_url = "https://guwen.lucca.top/version.json"
+          last = "unread"
+          for attempt in range(12):
+              stamp = str(time.time())
+              try:
+                  pages = read(pages_url + "?same-build=" + stamp)
+                  oss = read(oss_url + "?same-build=" + stamp)
+              except Exception as exc:
+                  last = str(exc)
+                  time.sleep(10)
+                  continue
+              last = (pages, oss)
+              if pages == oss:
+                  print(pages)
+                  break
+              time.sleep(10)
+          else:
+              raise SystemExit("Pages and OSS builds differ: " + repr(last))
+          PY
