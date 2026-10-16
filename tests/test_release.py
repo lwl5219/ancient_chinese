@@ -130,6 +130,8 @@ class ReleaseTests(unittest.TestCase):
         workflow = (root / ".github/workflows/audit-content.yml").read_text()
         self.assertEqual(workflow.count("    needs: audit"), 2)
         self.assertEqual(workflow.count("artifact-id: ${{ needs.audit.outputs.artifact-id }}"), 2)
+        self.assertIn("for attempt in 1 2 3 4 5 6 7 8 9 10 11 12", workflow)
+        self.assertEqual(workflow.count("node scripts/previous_release.cjs https://maruiduan.github.io/ancient_chinese/ .previous-site"), 1)
         for name in ("deploy-pages.yml", "deploy-oss.yml"):
             text = (root / ".github/workflows" / name).read_text()
             self.assertIn("  workflow_call:", text)

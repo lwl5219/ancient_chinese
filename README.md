@@ -25,8 +25,8 @@ python3 -m http.server 8765 --directory /tmp/dianji-preview
 
 ## 验证和发布
 
-GitHub Pages 的 Source 是 **GitHub Actions**（`build_type=workflow`），不是 Deploy from a branch。这样不会再有一条把 `master` 原文直接发出去的 `pages-build-deployment`，和审计发布抢着写同一个站点。
-`Audit and release` 在 `master` 上先执行 Python、Node 回归和三项内容审计，再生成并校验同一份打过戳的站点产物。只有审计成功才发布：Pages 用 `configure-pages`、`upload-pages-artifact` 和 `deploy-pages`，OSS 上传同一份产物。两边都和这份产物逐字节核对，最后再确认两个公开 `version.json` 是同一个 build。`codex/reader-fixes-*` 分支仅运行检查和打包，不发布；PR 同样只检查。工作流不再修改或回推源码。
+GitHub Pages 的 Source 必须设为 **GitHub Actions**（`build_type=workflow`），不能停在 Deploy from a branch。设置在仓库 Settings → Pages → Build and deployment → Source，选 GitHub Actions（选中即生效，没有单独的 Save）。否则 `pages-build-deployment` 仍会把 `master` 原文直接发出去，和审计发布抢同一个站点。
+`Audit and release` 在 `master` 上先执行 Python、Node 回归和三项内容审计，再生成并校验同一份打过戳的站点产物。读取上一版公开 Pages 时，如果下载过程中站点被换掉，会等到这一版稳定后再继续，然后才发布。只有审计成功才发布：Pages 用 `configure-pages`、`upload-pages-artifact` 和 `deploy-pages`，OSS 上传同一份产物。两边都和这份产物逐字节核对，最后再确认两个公开 `version.json` 是同一个 build。`codex/reader-fixes-*` 分支仅运行检查和打包，不发布；PR 同样只检查。工作流不再修改或回推源码。
 
 ```bash
 python3 -m pip install -r requirements-dev.txt
