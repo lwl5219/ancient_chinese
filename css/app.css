@@ -498,7 +498,7 @@ h1 {
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   vertical-align: 0.15em;
 }
 .era-block { margin: 0 0 12px; }
@@ -580,7 +580,7 @@ h1 {
   margin-left: auto;
   flex: none;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 .piece.next-up { background: var(--accent-soft); }
@@ -935,7 +935,7 @@ h1 {
   margin-right: 6px;
   color: var(--muted);
   font-style: normal;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   letter-spacing: 0.16em;
   font-family: var(--sans);
 }
@@ -1191,7 +1191,7 @@ h1 {
 .grade-tag {
   margin-left: auto;
   color: var(--accent);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   white-space: nowrap;
 }
 .popup h3 {
@@ -1218,7 +1218,7 @@ h1 {
   font-size: 0.92rem;
 }
 .word-py span {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 650;
 }
 .word-py b {
@@ -1258,7 +1258,7 @@ h1 {
 }
 .syl i {
   font-style: normal;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 650;
   color: var(--accent);
   line-height: 1.2;
@@ -1454,7 +1454,7 @@ h1 {
     justify-content: center;
     padding: 4px 8px;
   }
-  .dock button small { font-size: 0.72rem; color: var(--muted); line-height: 1.2; }
+  .dock button small { font-size: 0.75rem; color: var(--muted); line-height: 1.2; }
   .dock button b {
     font-weight: 650;
     font-size: 0.95rem;
@@ -1564,4 +1564,38 @@ h1 {
   color: #3b3428;
   box-shadow: 0 2px 12px #0002;
   pointer-events: none;
+}
+
+/* ---- 拼音字号与适配（2026-10）----
+   拼音原来是固定 rem（散文 6.4px、诗 7.2px、词 5.9px），电脑上太小。
+   改为相对正文的 em，并按屏宽 clamp，格子同步放宽，避免相邻拼音相撞。 */
+.body.prose .orig.with-py .zi {
+  width: 1.56em; min-width: 1.56em; max-width: 1.56em;
+  padding-top: 1.12em;
+}
+.body.prose .orig.with-py .punct { padding-top: 1.12em; }
+.body.prose .orig.with-py .py-ruby { font-size: 0.42em; letter-spacing: 0.02em; top: 0.12em; }
+.body.verse .py-ruby { font-size: 0.42em; letter-spacing: 0.02em; }
+.orig.with-py .zi, .orig.with-py .punct { padding-top: 1.02em; }
+@media (min-width: 861px) {
+  .home, .reader { max-width: clamp(760px, 56vw, 880px); }
+  .body.prose .orig { font-size: clamp(1.4rem, 0.9rem + 0.75vw, 1.6rem); }
+  .body.verse { font-size: clamp(1.45rem, 1rem + 0.7vw, 1.65rem); }
+  .body.verse.ci { font-size: clamp(1.3rem, 0.85rem + 0.6vw, 1.45rem); }
+  .body.prose .orig.with-py .zi { width: 1.62em; min-width: 1.62em; max-width: 1.62em; padding-top: 1.2em; }
+  .body.prose .orig.with-py .punct { padding-top: 1.2em; }
+  .body.prose .orig.with-py .py-ruby { font-size: 0.5em; }
+  .body.verse .py-ruby { font-size: 0.48em; }
+  .orig.with-py .zi, .orig.with-py .punct { padding-top: 1.1em; }
+  .vern { font-size: 1rem; }
+}
+@media (pointer: coarse) {
+  .seg button, .grade-seg button, .famous-toggle { min-height: 44px; }
+  .recent-reads a { display: inline-block; padding: 10px 0; line-height: 1.4; }
+}
+.body.verse.ci .py-ruby { font-size: 0.48em; }
+@media (min-width: 861px) { .body.verse.ci .py-ruby { font-size: 0.52em; } }
+@media (min-width: 861px) {
+  .body.prose .orig.with-py .zi { width: 1.78em; min-width: 1.78em; max-width: 1.78em; }
+  .body.prose .orig.with-py .py-ruby { font-size: 0.47em; letter-spacing: 0; }
 }
