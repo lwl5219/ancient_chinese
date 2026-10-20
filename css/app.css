@@ -1621,3 +1621,37 @@ h1 {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* 史记目录：一百三十篇按本纪、表、书、世家、列传分组，未收的篇灰显。 */
+.shiji-block h2 small { margin-left: 8px; font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+.shiji-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.shiji-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 44px;
+  padding: 10px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  text-decoration: none;
+  min-width: 0;
+}
+.shiji-item i { font-style: normal; font-size: 0.75rem; color: var(--muted); min-width: 2.2em; font-variant-numeric: tabular-nums; }
+.shiji-item b{font-weight:600;white-space:normal;overflow-wrap:anywhere;line-height:1.35}
+.shiji-item em { font-style: normal; font-size: 0.72rem; color: var(--accent); white-space: nowrap; }
+.shiji-item.pending { background: transparent; color: var(--muted); border-style: dashed; }
+.shiji-item.pending b { font-weight: 400; }
+.shiji-item.pending em { color: var(--muted); }
+a.shiji-item { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+@media (min-width: 720px) {
+  .shiji-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1100px) {
+  .shiji-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

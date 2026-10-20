@@ -38,6 +38,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from build_renjian import CORRECTIONS, WIKI as RENJIAN_WIKI, parse_entries, split_sentences  # noqa: E402
 from build_zztj import load_years  # noqa: E402
+import build_shiji  # noqa: E402
 from hanzi import only_han  # noqa: E402
 from parse_wikisource import parse_volume  # noqa: E402
 
@@ -226,6 +227,11 @@ def translation_ref(collection: str) -> dict:
             "edition": "没有可核对的通行白话译本",
             "status": "中华书局点校本是正文校点，不是译文。本站译文未按某一译注本核定",
         }
+    if collection == "史记":
+        return {
+            "edition": "未取得中华书局《史记》全本全注全译本",
+            "status": "中华书局点校本是正文校点，不是译文。本站译文未按某一译注本核定",
+        }
     if collection == "人间词话":
         return {
             "edition": "未取得中华书局《人间词话》注译本",
@@ -389,6 +395,36 @@ def check_zztj() -> tuple[list[dict], list[dict], list[dict]]:
         "change": "增补或移入标记 %d 处" % supplement,
         "resolution": "这些字句不收进正文。阅读本与这条规则下的解析结果一致。",
     })
+    return pieces, unexpected, resolved
+
+
+def check_shiji() -> tuple[list[dict], list[dict], list[dict]]:
+    pieces = []
+    unexpected = []
+    for entry in build_shiji.load_entries():
+        art = load_article(ARTICLES / f"{entry['id']}.json")
+        expect = only_han("".join(sent for para in entry["paragraphs_t"] for sent in para))
+        got = published_han(art)
+        pieces.append({
+            "id": entry["id"],
+            "collection": "史记",
+            "edition": "维基文库《史記》卷%d %s" % (entry["juan"], entry["full_t"]),
+            "url": build_shiji.URL.format(juan=entry["juan"]),
+            "note": "正文按 sources/shiji/EDITION.md：只收本文和太史公曰，不收三家注、索隐述赞。白话和注释是本书编写的。",
+            "chars": len(got),
+        })
+        if expect != got:
+            unexpected.append({"id": entry["id"], "title": entry["title_s"], "detail": first_diff(expect, got)})
+    resolved = [
+        {"id": "s007", "collection": "史记", "change": "舉所佩玉珪 → 玉玦",
+         "resolution": "维基文库作玉珪。中华书局点校本、《资治通鉴》卷九、统编教材《鸿门宴》都作玉玦，从玦。"},
+        {"id": "s007", "collection": "史记", "change": "井殺樅公 → 并殺樅公",
+         "resolution": "井是并的形近误字。从中华书局点校本。"},
+        {"id": "s007", "collection": "史记", "change": "（北）［比］、（郡）",
+         "resolution": "维基文库照点校本标删补：圆括号里的字删去，方括号里的字补入。"},
+        {"id": "s007", "collection": "史记", "change": "简体閒 → 间",
+         "resolution": "本篇閒都是间道、离间、广武间的间。OpenCC 收成闲，改作间。"},
+    ]
     return pieces, unexpected, resolved
 
 
@@ -893,10 +929,11 @@ def main() -> int:
     gwgz, gwgz_bad = check_gwgz()
     zztj, zztj_bad, zztj_resolved = check_zztj()
     renjian, renjian_bad, renjian_resolved = check_renjian()
+    shiji, shiji_bad, shiji_resolved = check_shiji()
     poetry, poetry_bad = check_poetry(canonical)
     classics, classics_bad = check_classics()
-    unexpected = gwgz_bad + zztj_bad + renjian_bad + poetry_bad + classics_bad
-    resolved = zztj_resolved + renjian_resolved + [
+    unexpected = gwgz_bad + zztj_bad + shiji_bad + renjian_bad + poetry_bad + classics_bad
+    resolved = zztj_resolved + shiji_resolved + renjian_resolved + [
         {
             "id": "v06-15",
             "collection": "古文观止",
@@ -955,7 +992,7 @@ def main() -> int:
     policy, dict_flags = reading_policy(handian, shuowen)
     lesson, coverage = lesson_flags(handian, shuowen)
     flags = dict_flags + lesson
-    pieces = gwgz + zztj + classics + renjian + poetry
+    pieces = gwgz + zztj + shiji + classics + renjian + poetry
     provenance = {
         "note": "每篇出处。正文对照的是仓库里的底本缓存。译文参考是命名的通行本，不是逐句抄录。",
         "pieces": {
@@ -979,6 +1016,7 @@ def main() -> int:
     for name, rows, bad in (
         ("古文观止", gwgz, gwgz_bad),
         ("资治通鉴", zztj, zztj_bad),
+        ("史记", shiji, shiji_bad),
         ("道德经", [item for item in classics if item["collection"] == "道德经"], [item for item in classics_bad if str(item.get("id", "")).startswith("d")]),
         ("论语", [item for item in classics if item["collection"] == "论语"], [item for item in classics_bad if str(item.get("id", "")).startswith("l")]),
         ("人间词话", renjian, renjian_bad),

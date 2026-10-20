@@ -23,6 +23,7 @@
     renjian: null,
     renjianQuery: "",
     zztj: null,
+    shiji: null,
     provenance: null,
     readingPolicy: null,
     glossSources: null,
@@ -466,6 +467,18 @@
     return list;
   }
 
+  function shijiArticles() {
+    const list = [];
+    ((state.shiji && state.shiji.volumes) || []).forEach(function (vol) {
+      vol.articles.forEach(function (art) { list.push(art); });
+    });
+    return list;
+  }
+
+  function isShijiId(id) {
+    return /^s\d{3}$/.test(id || "");
+  }
+
   function isZztjId(id) {
     return /^z\d{2}-\d{2}$/.test(id || "");
   }
@@ -489,6 +502,7 @@
 
   function articleList(id) {
     if (isZztjId(id)) return zztjArticles();
+    if (isShijiId(id)) return shijiArticles();
     if (isRenjianId(id)) return renjianArticles();
     if (isDaodeId(id)) return classicArticles("daode");
     if (isLunyuId(id)) return classicArticles("lunyu");
@@ -497,6 +511,7 @@
 
   function bookNameFor(id) {
     if (isZztjId(id)) return "资治通鉴";
+    if (isShijiId(id)) return "史记";
     if (isRenjianId(id)) return "人间词话";
     if (isDaodeId(id)) return "道德经";
     if (isLunyuId(id)) return "论语";
@@ -508,7 +523,7 @@
   }
 
   function findArticleMeta(id) {
-    const lists = [articleList(id), flatArticles(), renjianArticles(), zztjArticles()];
+    const lists = [articleList(id), flatArticles(), renjianArticles(), zztjArticles(), shijiArticles()];
     for (let i = 0; i < lists.length; i += 1) {
       const found = lists[i].find(function (art) { return art.id === id; });
       if (found) return found;
@@ -534,7 +549,7 @@
     skeleton("正在载入");
     const paths = {
       catalog: "data/catalog.json", books: "data/books.json", proseAuthors: "data/prose-authors.json",
-      renjian: "data/renjian.json", zztj: "data/zztj.json", provenance: "data/provenance.json",
+      renjian: "data/renjian.json", zztj: "data/zztj.json", shiji: "data/shiji.json", provenance: "data/provenance.json",
       readingPolicy: "data/reading-policy.json", glossSources: "data/gloss-sources.json", grades: "data/grades.json",
       daode: "data/daode.json", lunyu: "data/lunyu.json", famous: "data/famous.json",
     };
@@ -544,7 +559,7 @@
     loadAudioManifest().catch(function () { /* The reader works without audio. */ });
     if (state.progress.last) {
       const meta = findArticleMeta(state.progress.last);
-      if (meta) state.openVol = Number(meta.id.slice(1, 3));
+      if (meta && !isShijiId(meta.id)) state.openVol = Number(meta.id.slice(1, 3));
     }
     route();
     fetch(assetUrl("data/dict.json"))
@@ -679,8 +694,8 @@
   function analyticsPath(hash) {
     // Build public paths from known catalog entries, never from arbitrary hash text.
     if (!hash || hash === "#/") return "/#/";
-    if (/^#\/(gwgz|zztj|rjch|daode|lunyu|tang|ci|ke)$/.test(hash)) return "/" + hash;
-    let match = hash.match(/^#\/read\/([vzhdl]\d{2}-\d{2})$/);
+    if (/^#\/(gwgz|zztj|shiji|rjch|daode|lunyu|tang|ci|ke)$/.test(hash)) return "/" + hash;
+    let match = hash.match(/^#\/read\/([vzhdl]\d{2}-\d{2}|s\d{3})$/);
     if (match) {
       const meta = findArticleMeta(match[1]);
       return meta ? "/#/read/" + meta.id : null;
@@ -735,7 +750,7 @@
   function dispatchRoute() {
     stopReading();
     const hash = location.hash || "#/";
-    const read = hash.match(/^#\/read\/((?:v|h|z|d|l)\d{2}-\d{2})$/);
+    const read = hash.match(/^#\/read\/((?:v|h|z|d|l)\d{2}-\d{2}|s\d{3})$/);
     const vol = hash.match(/^#\/gwgz\/(\d{1,2})$/);
     const zjuan = hash.match(/^#\/zztj\/(\d{1,2})$/);
     const authorPage = hash.match(/^#\/(tang|ci|ke)\/author\/(.+)$/);
@@ -745,6 +760,7 @@
     else if (zjuan) return showZztjJuan(Number(zjuan[1]));
     else if (hash === "#/gwgz") showBook();
     else if (hash === "#/zztj") showZztj();
+    else if (hash === "#/shiji") showShiji();
     else if (hash === "#/rjch") showRenjian();
     else if (hash === "#/daode") return showClassic("daode");
     else if (hash === "#/lunyu") return showClassic("lunyu");
@@ -760,6 +776,7 @@
     return [
       { id: "gwgz", title: "古文观止", href: "#/gwgz", meta: "十二卷 · 二百二十二篇", detail: "先读这一本。" },
       { id: "zztj", title: "资治通鉴", href: "#/zztj", meta: "司马光 · 周纪秦纪已收", detail: "汉纪以后待添加。" },
+      { id: "shiji", title: "史记", href: "#/shiji", meta: "司马迁 · 一百三十篇", detail: "先收项羽本纪。" },
       { id: "daode", title: "道德经", href: "#/daode", meta: "王弼本 · 八十一章", detail: "道经、德经。" },
       { id: "lunyu", title: "论语", href: "#/lunyu", meta: "二十篇", detail: "从《学而》读起。" },
       { id: "tang", title: "唐诗", href: "#/tang", meta: "精选名篇", detail: "从《静夜思》读起。" },
@@ -998,6 +1015,72 @@
     wrap.appendChild(chips);
     main.replaceChildren(wrap);
     document.title = "资治通鉴 · 典籍";
+    syncChrome();
+  }
+
+  function showShiji() {
+    loadToken += 1;
+    closePopup();
+    state.view = "shiji";
+    state.article = null;
+    const data = state.shiji;
+    const wrap = document.createElement("article");
+    wrap.className = "home";
+    const h1 = document.createElement("h1");
+    h1.textContent = "史记";
+    const articles = shijiArticles();
+    const lead = document.createElement("p");
+    lead.className = "lead";
+    lead.textContent = data
+      ? "司马迁。一百三十篇，已收 " + articles.length + " 篇，已读 " + learnedIn(articles) + "。其余待添加。"
+      : "目录还没有载入。";
+    wrap.appendChild(h1);
+    wrap.appendChild(lead);
+    appendCatalogTools(wrap, "shiji");
+    if (state.gradeFilter || state.famousOnly) {
+      appendGradeHits(wrap, articles, function (art) { return pieceLink(art, false); });
+      main.replaceChildren(wrap);
+      document.title = "史记 · 典籍";
+      syncChrome();
+      return;
+    }
+    ((data && data.volumes) || []).forEach(function (vol) {
+      const block = document.createElement("section");
+      block.className = "era-block shiji-block";
+      const h2 = document.createElement("h2");
+      h2.textContent = vol.title;
+      const small = document.createElement("small");
+      small.textContent = vol.entries.length + " 篇";
+      h2.appendChild(small);
+      block.appendChild(h2);
+      const list = document.createElement("div");
+      list.className = "shiji-grid";
+      vol.entries.forEach(function (item) {
+        const el = document.createElement(item.id ? "a" : "span");
+        el.className = item.id ? "shiji-item" : "shiji-item pending";
+        if (item.id) el.href = "#/read/" + item.id;
+        const num = document.createElement("i");
+        num.textContent = String(item.juan);
+        const name = document.createElement("b");
+        name.textContent = item.title;
+        el.appendChild(num);
+        el.appendChild(name);
+        if (item.id && state.progress.learned[item.id]) {
+          const mark = document.createElement("em");
+          mark.textContent = "已读";
+          el.appendChild(mark);
+        } else if (!item.id) {
+          const note = document.createElement("em");
+          note.textContent = item.note || "待添加";
+          el.appendChild(note);
+        }
+        list.appendChild(el);
+      });
+      block.appendChild(list);
+      wrap.appendChild(block);
+    });
+    main.replaceChildren(wrap);
+    document.title = "史记 · 典籍";
     syncChrome();
   }
 
@@ -1442,6 +1525,8 @@
         if (kind === "tang" || kind === "ci" || kind === "ke") renderCollection(kind);
         else if (kind === "gwgz") showBook();
         else if (kind === "zztj") showZztj();
+      else if (kind === "shiji") showShiji();
+        else if (kind === "shiji") showShiji();
         else if (kind === "rjch") showRenjian();
         else if (kind === "daode" || kind === "lunyu") showClassic(kind);
       });
@@ -1458,6 +1543,7 @@
       if (kind === "tang" || kind === "ci" || kind === "ke") renderCollection(kind);
       else if (kind === "gwgz") showBook();
       else if (kind === "zztj") showZztj();
+      else if (kind === "shiji") showShiji();
       else if (kind === "rjch") showRenjian();
       else if (kind === "daode" || kind === "lunyu") showClassic(kind);
     });
@@ -2190,7 +2276,9 @@
     }
     const credit = document.createElement("p");
     credit.className = "sheet-credit";
-    if (isZztjId(art.id)) {
+    if (isShijiId(art.id)) {
+      credit.textContent = "白话、注释和赏析是本书编写的。正文用维基文库《史记》本文和太史公曰，不收三家注和索隐述赞。部分多音字按句中意思标读音。";
+    } else if (isZztjId(art.id)) {
       credit.textContent = "白话、注释和赏析是本书编写的。正文用司马光《资治通鉴》周纪、秦纪（卷一至卷八）。标明增补或移入的段落没有收。";
     } else if (isRenjianId(art.id)) {
       credit.textContent = "白话、注释和赏析是本书编写的。正文用王国维《人间词话》一九〇八年至一九〇九年《国粹学报》已刊六十四则。";
@@ -3502,6 +3590,9 @@
     } else if (state.view === "zztj" || hash === "#/zztj") {
       tab = "zztj";
       crumbs.push({ href: "#/", label: "典籍" });
+    } else if (state.view === "shiji" || hash === "#/shiji") {
+      tab = "shiji";
+      crumbs.push({ href: "#/", label: "典籍" });
     } else if (state.view === "daode" || hash === "#/daode") {
       tab = "daode";
       crumbs.push({ href: "#/", label: "典籍" });
@@ -3526,9 +3617,12 @@
       const tongjian = isZztjId(state.article.id);
       const daode = isDaodeId(state.article.id);
       const lunyu = isLunyuId(state.article.id);
-      tab = tongjian ? "zztj" : renjian ? "rjch" : daode ? "daode" : lunyu ? "lunyu" : "gwgz";
+      const shiji = isShijiId(state.article.id);
+      tab = shiji ? "shiji" : tongjian ? "zztj" : renjian ? "rjch" : daode ? "daode" : lunyu ? "lunyu" : "gwgz";
       crumbs.push({ href: "#/", label: "典籍" });
-      if (daode) {
+      if (shiji) {
+        crumbs.push({ href: "#/shiji", label: "史记" });
+      } else if (daode) {
         crumbs.push({ href: "#/daode", label: "道德经" });
       } else if (lunyu) {
         crumbs.push({ href: "#/lunyu", label: "论语" });
@@ -3573,9 +3667,10 @@
     const onZztj = tab === "zztj";
     const onDaode = tab === "daode";
     const onLunyu = tab === "lunyu";
-    const total = onZztj ? zztjArticles().length : onRenjian ? renjianArticles().length : onDaode ? classicArticles("daode").length : onLunyu ? classicArticles("lunyu").length : (state.catalog ? state.catalog.articleCount : 0);
-    const n = onZztj ? learnedIn(zztjArticles()) : onRenjian ? learnedIn(renjianArticles()) : onDaode ? learnedIn(classicArticles("daode")) : onLunyu ? learnedIn(classicArticles("lunyu")) : learnedIn(flatArticles());
-    const showMeter = (tab === "gwgz" || tab === "rjch" || tab === "zztj" || tab === "daode" || tab === "lunyu") && total;
+    const onShiji = tab === "shiji";
+    const total = onShiji ? shijiArticles().length : onZztj ? zztjArticles().length : onRenjian ? renjianArticles().length : onDaode ? classicArticles("daode").length : onLunyu ? classicArticles("lunyu").length : (state.catalog ? state.catalog.articleCount : 0);
+    const n = onShiji ? learnedIn(shijiArticles()) : onZztj ? learnedIn(zztjArticles()) : onRenjian ? learnedIn(renjianArticles()) : onDaode ? learnedIn(classicArticles("daode")) : onLunyu ? learnedIn(classicArticles("lunyu")) : learnedIn(flatArticles());
+    const showMeter = (tab === "gwgz" || tab === "rjch" || tab === "zztj" || tab === "shiji" || tab === "daode" || tab === "lunyu") && total;
     topProgress.textContent = showMeter ? "已读 " + n + " / " + total : "";
     meter.style.width = showMeter ? Math.round((n / total) * 100) + "%" : "0%";
     if (rail === "rj") renderRenjianRail();

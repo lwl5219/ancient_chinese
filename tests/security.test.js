@@ -10,7 +10,7 @@ const json = name => JSON.parse(fs.readFileSync(path.join(root, 'data', name + '
 const walk = node => [node, ...(node.children || []).flatMap(walk)];
 
 function catalogs(t) {
-  for (const name of ['catalog', 'renjian', 'zztj', 'daode', 'lunyu']) t.app.state[name] = json(name);
+  for (const name of ['catalog', 'renjian', 'zztj', 'shiji', 'daode', 'lunyu']) t.app.state[name] = json(name);
   for (const name of ['tang', 'ci', 'ke']) t.app.state.collections[name] = json(name === 'ci' ? 'songci' : name);
 }
 
@@ -69,7 +69,7 @@ test('all four source renderers preserve HTTP and HTTPS citations with safe new-
 
 test('analytics resolves real catalog entries and canonicalizes volume and author aliases', () => {
   const t = reader(); catalogs(t);
-  for (const name of ['catalog', 'renjian', 'zztj', 'daode', 'lunyu']) {
+  for (const name of ['catalog', 'renjian', 'zztj', 'shiji', 'daode', 'lunyu']) {
     for (const volume of t.app.state[name].volumes) {
       for (const item of volume.articles) assert.equal(t.app.analyticsPath('#/read/' + item.id), '/#/read/' + item.id);
     }
@@ -83,7 +83,7 @@ test('analytics resolves real catalog entries and canonicalizes volume and autho
   }
   assert.equal(t.app.analyticsPath('#/gwgz/01'), '/#/gwgz/1');
   assert.equal(t.app.analyticsPath('#/zztj/01'), '/#/zztj/1');
-  for (const hash of ['', '#/', '#/gwgz', '#/zztj', '#/rjch', '#/daode', '#/lunyu', '#/tang', '#/ci', '#/ke']) {
+  for (const hash of ['', '#/', '#/gwgz', '#/zztj', '#/shiji', '#/rjch', '#/daode', '#/lunyu', '#/tang', '#/ci', '#/ke']) {
     assert.equal(t.app.analyticsPath(hash), '/' + (hash || '#/'));
   }
 });
@@ -91,7 +91,7 @@ test('analytics resolves real catalog entries and canonicalizes volume and autho
 test('analytics rejects unknown routes, nonexistent entries, account routes and hash payloads', () => {
   const t = reader(); catalogs(t);
   for (const hash of ['#access_token=private', '#/login', '#/me', '#/privacy', '#/terms',
-    '#/unknown', '#/read/v99-99', '#/gwgz/99', '#/zztj/99', '#/tang/private-token',
+    '#/unknown', '#/read/v99-99', '#/read/s999', '#/gwgz/99', '#/zztj/99', '#/tang/private-token',
     '#/tang/author/private-token', '#/tang/author/%E0%A4%A', '#/tang/author/%2561',
     '#/read/v01-01?secret=value', '#/read/v01-01/secret', '#/gwgz#secret', '#/?secret=value']) {
     assert.equal(t.app.analyticsPath(hash), null, hash);

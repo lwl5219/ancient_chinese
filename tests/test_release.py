@@ -15,7 +15,7 @@ def fixture(root):
     files = {"index.html": '<html data-build=""><link href="favicon.svg"><link href="css/app.css"><script src="js/asset-urls.js"></script><script src="js/app.js"></script></html>',
              "favicon.svg": '<svg xmlns="http://www.w3.org/2000/svg"/>', ".nojekyll": "", "css/app.css": "body{}", "js/app.js": "void 0;", "js/asset-urls.js": "",
              "audio/manifest.json": '{"pù":"pu4"}', "audio/pu4.ogg": "fixture recording"}
-    for name in ("catalog", "renjian", "zztj", "daode", "lunyu"):
+    for name in ("catalog", "renjian", "zztj", "shiji", "daode", "lunyu"):
         files[f"data/{name}.json"] = '{"volumes":[]}'
     for rel, text in files.items():
         path = root / rel

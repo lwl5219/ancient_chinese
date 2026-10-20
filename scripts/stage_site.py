@@ -31,7 +31,7 @@ def validate(root: Path) -> None:
     for ref in re.findall(r'(?:src|href)="([^"#]+)"', index):
         if not re.match(r"(?:https?:|//)", ref) and not (root / ref).is_file():
             raise ValueError(f"Missing entry asset: {ref}")
-    for catalog_name in ("catalog", "renjian", "zztj", "daode", "lunyu"):
+    for catalog_name in ("catalog", "renjian", "zztj", "shiji", "daode", "lunyu"):
         catalog = json.loads((root / "data" / f"{catalog_name}.json").read_text())
         for volume in catalog["volumes"]:
             for article in volume["articles"]:

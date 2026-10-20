@@ -14,6 +14,12 @@
         "unexpected": "0"
       },
       {
+        "collection": "史记",
+        "pieces": 1,
+        "chars": 8995,
+        "unexpected": "0"
+      },
+      {
         "collection": "道德经",
         "pieces": 81,
         "chars": 5297,
@@ -46,8 +52,8 @@
     ],
     "unexpected": [],
     "reviewChars": 18,
-    "cacheSingle": 114,
-    "glosses": 8991,
+    "cacheSingle": 115,
+    "glosses": 9016,
     "lessonFlags": 160,
     "missingChars": 375,
     "missingHits": 600,
@@ -55,19 +61,19 @@
       {
         "trad": "於",
         "simp": "于",
-        "count": 2254,
+        "count": 2304,
         "note": "介词作于"
       },
       {
         "trad": "後",
         "simp": "后",
-        "count": 449,
+        "count": 456,
         "note": "归并"
       },
       {
         "trad": "餘",
         "simp": "余",
-        "count": 246,
+        "count": 271,
         "note": "总表正条作余。附注说可能混淆时可用馀。没有中华书局该书，不改成馀"
       },
       {
@@ -79,7 +85,7 @@
       {
         "trad": "徵",
         "simp": "征",
-        "count": 16,
+        "count": 18,
         "note": "征召、征兆、征逐。不是乐律"
       },
       {
@@ -163,6 +169,30 @@
       "collection": "资治通鉴",
       "change": "增补或移入标记 40 处",
       "resolution": "这些字句不收进正文。阅读本与这条规则下的解析结果一致。"
+    },
+    {
+      "id": "s007",
+      "collection": "史记",
+      "change": "舉所佩玉珪 → 玉玦",
+      "resolution": "维基文库作玉珪。中华书局点校本、《资治通鉴》卷九、统编教材《鸿门宴》都作玉玦，从玦。"
+    },
+    {
+      "id": "s007",
+      "collection": "史记",
+      "change": "井殺樅公 → 并殺樅公",
+      "resolution": "井是并的形近误字。从中华书局点校本。"
+    },
+    {
+      "id": "s007",
+      "collection": "史记",
+      "change": "（北）［比］、（郡）",
+      "resolution": "维基文库照点校本标删补：圆括号里的字删去，方括号里的字补入。"
+    },
+    {
+      "id": "s007",
+      "collection": "史记",
+      "change": "简体閒 → 间",
+      "resolution": "本篇閒都是间道、离间、广武间的间。OpenCC 收成闲，改作间。"
     },
     {
       "id": "renjian",
@@ -675,6 +705,16 @@
       "word": "或",
       "reading": "yù",
       "han": "huò",
+      "ui": "silent",
+      "detail": "汉典缓存只列了这一个不同的音。缓存常缺音，页面不改。"
+    },
+    {
+      "kind": "reading",
+      "where": "字书默认音",
+      "id": "",
+      "word": "扛",
+      "reading": "gāng",
+      "han": "káng",
       "ui": "silent",
       "detail": "汉典缓存只列了这一个不同的音。缓存常缺音，页面不改。"
     },

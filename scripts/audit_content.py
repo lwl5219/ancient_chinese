@@ -38,6 +38,8 @@ def main() -> int:
     gaps.extend(audit_group(authors, re.compile(r"v\d{2}-\d{2}\.json"), 222, "古文观止"))
     gaps.extend(audit_group(authors, re.compile(r"h01-\d{2}\.json"), 64, "人间词话"))
     gaps.extend(audit_group(authors, re.compile(r"z\d{2}-\d{2}\.json"), 182, "资治通鉴"))
+    shiji_count = sum(len(v["articles"]) for v in load_json(ARTICLES.parent / "shiji.json")["volumes"])
+    gaps.extend(audit_group(authors, re.compile(r"s\d{3}\.json"), shiji_count, "史记"))
     for art_id, title, found in gaps:
         print(f"{art_id}\t{title}\t" + "；".join(found))
     if gaps:

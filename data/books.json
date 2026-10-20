@@ -17,6 +17,13 @@
       "detail": "先收卷一至卷八。汉纪以后待添加。"
     },
     {
+      "id": "shiji",
+      "title": "史记",
+      "href": "#/shiji",
+      "meta": "司马迁 · 一百三十篇",
+      "detail": "先收项羽本纪。其余篇目待添加。"
+    },
+    {
       "id": "daode",
       "title": "道德经",
       "href": "#/daode",
