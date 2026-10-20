@@ -1599,3 +1599,25 @@ h1 {
   .body.prose .orig.with-py .zi { width: 1.78em; min-width: 1.78em; max-width: 1.78em; }
   .body.prose .orig.with-py .py-ruby { font-size: 0.47em; letter-spacing: 0; }
 }
+
+/* Shortcut back to the lucca homepage (www.lucca.top). */
+.lucca-home {
+  flex: none;
+  width: 36px;
+  min-height: 44px;
+  margin: 0 -8px 0 -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.lucca-home:hover { color: var(--accent); }
+.lucca-home svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
